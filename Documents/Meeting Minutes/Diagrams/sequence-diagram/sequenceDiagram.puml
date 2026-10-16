@@ -1,38 +1,72 @@
 @startuml
-actor Customer
-participant "System" as System
-participant "Billing System" as Billing
-actor "Restaurant" as Restaurant
+actor ":Customer" as Customer
+participant ":System" as System
+participant ":Billing System" as Billing
+actor ":Restaurant" as Restaurant
 
-== 0. Browse Menus (UC-ORD-01) ==
-Customer -> System: Request to view available restaurants
-System -> System: Check restaurant statuses (Open, Paused, Closed)
-System --> Customer: Display list of open restaurants, menus, prices, and item availability
+== UC-ORD-01: Browse Menus ==
+Customer -> System: requestRestaurantSelection()
+activate System
+System -> System: checkRestaurantStatuses()
+System --> Customer: displayOpenRestaurantsAndMenus()
+deactivate System
 
-== 1. Place Order (UC-ORD-02) ==
-Customer -> System: Submit order (Restaurant ID, items, payment choice)
-System -> System: Validate restaurant is open and items are available
-System -> Billing: Trigger payment processing via billing interface
-Billing --> System: Confirm payment approval
-System -> System: Create order, set status to 'placed', insert into arrival queue
-System --> Customer: Output success confirmation and Order ID
+== UC-ORD-02: Place Order ==
+Customer -> System: submitOrder(restaurantId, lineItems, paymentChoice)
+activate System
+System -> System: validateRestaurantAndItemAvailability()
+System -> Billing: processPayment(paymentChoice)
+activate Billing
+Billing --> System: confirmPaymentApproval()
+deactivate Billing
+System -> System: createOrder(status: "placed", eventId)
+System -> Restaurant: sendOrderToRestaurnatQueue(orderId)
+System --> Customer: outputSuccessConfirmation(orderId, status: "placed", timestamp)
+deactivate System
 
-== 2. Accept Order (UC-ORD-03) ==
-System --> Restaurant: Send new order
-Restaurant -> System: Submit 'Accept' decision
-System -> System: Verify permissions and transition state from 'placed' to 'accepted'
-System --> Restaurant: Update queue display and status change notification
-System --> Customer: Notify customer order has been accepted
+== Order Cancellation Check (UC-ORD-05) ==
+alt Customer Cancels Order
+    Customer -> System: requestCancellation(orderId)
+    activate System
+    System -> System: checkOrderStatus(status: "placed")
+    System -> System: transitionToCancelled(orderId)
+    System --> Customer: outputCancellationConfirmation()
+    deactivate System
 
-== 3. Update Order Status: Preparing (UC-ORD-04) ==
-Restaurant -> System: Select accepted order to begin preparation
-System -> System: Enforce lifecycle guards preventing skipped transitions
-System -> System: Update order state to 'preparing' and log in console
-System --> Customer: Update tracking view to 'preparing'
+else Order Proceeds to Restaurant Queue
+    activate Restaurant
 
-== 4. Update Order Status: Ready (UC-ORD-04) ==
-Restaurant -> System: Mark order as 'ready' upon completion
-System -> System: Update order state sequentially to 'ready' and log in console
-System --> Restaurant: Display updated order state
-System --> Customer: Notify customer order is ready for pickup
+    alt UC-ORD-03: Restaurant Rejects Order
+        Restaurant -> System: submitDecision(orderId, decision: "Reject", rejectionReason)
+        activate System
+        System -> System: verifyPermissionsAndTransitionToRejected(orderId)
+        System -> Restaurant: updateQueueDisplayAndNotification()
+        deactivate System
+        System --> Customer: notifyOrderRejected(orderId, rejectionReason)
+
+    else UC-ORD-03 & UC-ORD-04: Restaurant Accepts & Prepares Order
+        Restaurant -> System: submitDecision(orderId, decision: "Accept")
+        activate System
+        System -> System: verifyPermissionsAndTransitionToAccepted(orderId)
+        System -> Restaurant: updateQueueDisplayAndNotification()
+        deactivate System
+        System --> Customer: notifyOrderAccepted(orderId)
+
+        == UC-ORD-04: Update Order Status (Preparing) ==
+        Restaurant -> System: submitNextStateCommand(orderId, targetState: "preparing")
+        activate System
+        System -> System: updateStatusToPreparing(orderId)
+        System --> Customer: updateTrackingView(status: "preparing")
+        deactivate System
+
+        == UC-ORD-04: Update Order Status (Ready) ==
+        Restaurant -> System: submitNextStateCommand(orderId, targetState: "ready")
+        activate System
+        System -> System: updateStatusToReady(orderId)
+        System -> Restaurant: logUpdatedOrderStateInConsole(orderId)
+        deactivate System
+        System --> Customer: notifyOrderReady(orderId)
+    end
+    deactivate Restaurant
+end
 @enduml
