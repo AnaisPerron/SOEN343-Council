@@ -40,7 +40,7 @@ else Order Proceeds to Restaurant Queue
         Restaurant -> System: submitDecision(orderId, decision: "Reject", rejectionReason)
         activate System
         System -> System: verifyPermissionsAndTransitionToRejected(orderId)
-        System -> Restaurant: updateQueueDisplayAndNotification()
+        System --> Restaurant: updateQueueDisplayAndNotification()
         deactivate System
         System --> Customer: notifyOrderRejected(orderId, rejectionReason)
 
@@ -48,7 +48,7 @@ else Order Proceeds to Restaurant Queue
         Restaurant -> System: submitDecision(orderId, decision: "Accept")
         activate System
         System -> System: verifyPermissionsAndTransitionToAccepted(orderId)
-        System -> Restaurant: updateQueueDisplayAndNotification()
+        System --> Restaurant: updateQueueDisplayAndNotification()
         deactivate System
         System --> Customer: notifyOrderAccepted(orderId)
 
@@ -63,7 +63,7 @@ else Order Proceeds to Restaurant Queue
         Restaurant -> System: submitNextStateCommand(orderId, targetState: "ready")
         activate System
         System -> System: updateStatusToReady(orderId)
-        System -> Restaurant: logUpdatedOrderStateInConsole(orderId)
+        System --> Restaurant: logUpdatedOrderStateInConsole(orderId)
         deactivate System
         System --> Customer: notifyOrderReady(orderId)
     end
