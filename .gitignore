@@ -9,6 +9,10 @@ dist/
 build/
 coverage/
 
+# Expo-generated files
+.expo/
+expo-env.d.ts
+
 # Logs and local editor/OS files
 *.log
 .DS_Store

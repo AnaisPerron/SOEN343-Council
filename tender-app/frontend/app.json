@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "Tender Mobile App",
+    "slug": "tender-mobile-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "tender-mobile-app",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {},
+    "web": {
+      "bundler": "metro",
+      "output": "server"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-image",
+      "expo-splash-screen",
+      "expo-status-bar",
+      "expo-web-browser"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
