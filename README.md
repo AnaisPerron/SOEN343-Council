@@ -11,3 +11,12 @@ Concordia University, Fall 2026
 ## Introduction
 Tender is an online platform for ordering, managing and delivering food that features a Tinder-style swipe-to-match interface that helps users discover, narrow down, and agree on their perfect meal before placing an order.
 
+
+
+---
+
+## Backend Setup Instructions
+
+1. You should see a .env.example file in the "backend" folder
+2. copy that into a .env file created AT THE SAME LEVEL and replace the necessary (DB user and password)
+3. run the app from TenderappApplication.java: if you get Started TenderappApplication in xxx seconds then it worked
