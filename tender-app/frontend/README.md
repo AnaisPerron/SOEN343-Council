@@ -10,6 +10,16 @@ Install dependencies:
 npm ci
 ```
 
+## Test
+
+Run the frontend unit tests from this directory:
+
+```bash
+npm test
+```
+
+The tests use Node's built-in test runner and TypeScript type stripping, so use the Node version in `.nvmrc` (Node 22.13 or newer).
+
 Start the app (from phone):
 
 ```bash
