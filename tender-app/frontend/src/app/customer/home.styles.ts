@@ -289,11 +289,16 @@ export const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   art: {
-    height: 125,
+    width: '100%',
+    aspectRatio: 1,
     backgroundColor: '#FCE9E8',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+  },
+  coverImage: {
+    width: '100%',
+    height: '100%',
   },
   artRing: {
     width: 71,

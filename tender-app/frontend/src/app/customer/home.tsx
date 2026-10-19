@@ -1,6 +1,7 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import {
   Image,
+  type ImageSourcePropType,
   Platform,
   ScrollView,
   Text,
@@ -10,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { restaurantsMock } from '../../mocks/restaurants.mock';
+import { menusMock, menuItemsMock } from '../../mocks/menus.mock';
 import type { RestaurantStatus } from '../../mocks/types';
 import { styles } from './home.styles';
 
@@ -49,6 +51,17 @@ const mockRatings: Record<number, string> = {
   2: '4.6',
   3: '4.9',
   4: '4.7',
+};
+
+// Static requires let Metro bundle each local menu photo into the app.
+const menuItemPhotos: Record<number, ImageSourcePropType> = {
+  1001: require('../../mocks/menu-items-imgs/maple-glazed-chicken-sandwich.jpg'),
+  1002: require('../../mocks/menu-items-imgs/truffle.jpg'),
+  1003: require('../../mocks/menu-items-imgs/apple-crumble.jpg'),
+  2001: require('../../mocks/menu-items-imgs/harvest-grain-bowl.jpg'),
+  2002: require('../../mocks/menu-items-imgs/miso-tofu-bowl.jpg'),
+  3001: require('../../mocks/menu-items-imgs/smoked-salmon-bagel.jpg'),
+  4001: require('../../mocks/menu-items-imgs/margherita-pizza.jpg'),
 };
 
 export default function CustomerHome() {
@@ -216,6 +229,12 @@ function RestaurantSection({
             name={restaurant.name}
             status={restaurant.status}
             rating={mockRatings[restaurant.id]}
+            coverOptions={menuItemsMock
+              .filter((menuItem) => menusMock.some((menu) =>
+                menu.id === menuItem.menu_id && menu.restaurant_id === restaurant.id,
+              ))
+              .map((menuItem) => menuItemPhotos[menuItem.id])
+              .filter((photo): photo is ImageSourcePropType => photo !== undefined)}
           />
         ))}
       </ScrollView>
@@ -227,11 +246,19 @@ function RestaurantCard({
   name,
   status,
   rating,
+  coverOptions,
 }: {
   name: string;
   status: RestaurantStatus;
   rating: string;
+  coverOptions: ImageSourcePropType[];
 }) {
+  // Choose once per mounted card so scrolling or rerendering does not reshuffle covers.
+  const [cover] = useState<ImageSourcePropType | undefined>(() =>
+    coverOptions.length > 0
+      ? coverOptions[Math.floor(Math.random() * coverOptions.length)]
+      : undefined,
+  );
   const isOpen = status === 'open';
   const statusText =
     isOpen
@@ -252,16 +279,23 @@ function RestaurantCard({
       accessibilityRole="button"
       accessibilityLabel={`${name}, ${status}`}
     >
+      {/* Keep a square cover frame and retain the branded fallback if no photo exists. */}
       <View style={styles.art}>
-        <View style={styles.artRing}>
-          <View style={styles.artCircle}>
-            <View style={styles.crossLine} />
-            <View style={styles.crossLineVertical} />
-          </View>
-        </View>
-        <View style={styles.artLabel}>
-          <Text style={styles.artLabelText}>PHOTO COMING SOON</Text>
-        </View>
+        {cover ? (
+          <Image source={cover} style={styles.coverImage} resizeMode="cover" />
+        ) : (
+          <>
+            <View style={styles.artRing}>
+              <View style={styles.artCircle}>
+                <View style={styles.crossLine} />
+                <View style={styles.crossLineVertical} />
+              </View>
+            </View>
+            <View style={styles.artLabel}>
+              <Text style={styles.artLabelText}>PHOTO COMING SOON</Text>
+            </View>
+          </>
+        )}
       </View>
 
       <View style={styles.cardMeta}>
@@ -272,8 +306,8 @@ function RestaurantCard({
         <View style={styles.ratingRow}>
           <Text style={styles.ratingStar}>★</Text>
           <Text style={styles.ratingValue}>{rating}</Text>
-          {/*Placeholder for now. TODO: connect with actual nb of reviews*/}
-          <Text style={styles.reviewCount}>(0)</Text>
+          {/* Review totals stay at zero until the mock data includes them. */}
+          <Text style={styles.reviewCount}>(0 reviews)</Text>
         </View>
       </View>
     </TouchableOpacity>
