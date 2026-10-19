@@ -8,7 +8,9 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { restaurantsMock } from '../../mocks/restaurants.mock';
+import type { RestaurantStatus } from '../../mocks/types';
 import { styles } from './home.styles';
 
 const tenderLogo = require('../../../assets/tender-logo.png');
@@ -46,8 +48,9 @@ export default function CustomerHome() {
   const compact = width < 600;
 
   return (
-    <View style={styles.page}>
+    <SafeAreaView style={styles.page} edges={['top']}>
       <ScrollView
+        stickyHeaderIndices={[2]}
         contentContainerStyle={[
           styles.content,
           { paddingHorizontal: compact ? 20 : 48 },
@@ -104,15 +107,17 @@ export default function CustomerHome() {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity
-          style={styles.search}
-          accessibilityRole="button"
-          accessibilityLabel="Search restaurants or dishes"
-        >
-          <Text style={styles.searchIcon}>⌕</Text>
-          <Text style={styles.searchPlaceholder}>Restaurants, dishes, anything...</Text>
-
-        </TouchableOpacity>
+        {/* Keep the search background opaque while rows scroll underneath it. */}
+        <View style={styles.stickySearch}>
+          <TouchableOpacity
+            style={styles.search}
+            accessibilityRole="button"
+            accessibilityLabel="Search restaurants or dishes"
+          >
+            <Text style={styles.searchIcon}>⌕</Text>
+            <Text style={styles.searchPlaceholder}>Restaurants, dishes, anything...</Text>
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.sectionIntro}>
           <Text style={styles.sectionKicker}>THE GOOD STUFF</Text>
@@ -136,7 +141,7 @@ export default function CustomerHome() {
           );
         })}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -198,7 +203,6 @@ function RestaurantSection({
             key={`${index}-${restaurant.id}-${itemIndex}`}
             name={restaurant.name}
             status={restaurant.status}
-            index={itemIndex + index}
           />
         ))}
       </ScrollView>
@@ -209,14 +213,23 @@ function RestaurantSection({
 function RestaurantCard({
   name,
   status,
-  index,
 }: {
   name: string;
-  status: string;
-  index: number;
+  status: RestaurantStatus;
 }) {
   const isOpen = status === 'open';
-  const artColors = ['#F0143C', '#C8102E', '#FF1744', '#E6002D'];
+  const statusText =
+    isOpen
+      ? 'Open now'
+      : status === 'paused'
+        ? 'Taking a short break'
+        : 'Closed for now';
+  const statusStyle =
+    isOpen
+      ? styles.statusOpen
+      : status === 'paused'
+        ? styles.statusPaused
+        : styles.statusClosed;
 
   return (
     <TouchableOpacity
@@ -224,7 +237,7 @@ function RestaurantCard({
       accessibilityRole="button"
       accessibilityLabel={`${name}, ${status}`}
     >
-      <View style={[styles.art, { backgroundColor: artColors[index % artColors.length] }]}>
+      <View style={styles.art}>
         <View style={styles.artRing}>
           <View style={styles.artCircle}>
             <View style={styles.crossLine} />
@@ -239,20 +252,8 @@ function RestaurantCard({
       <View style={styles.cardMeta}>
         <View style={styles.cardTitleRow}>
           <Text numberOfLines={1} style={styles.cardTitle}>{name}</Text>
-          <View style={[styles.statusDot, !isOpen && styles.statusDotClosed]} />
         </View>
-        <Text style={styles.cardDetail}>
-          {isOpen ? 'Open now' : status === 'paused' ? 'Taking a short break' : 'Closed for now'}
-          <Text style={styles.metaDivider}> · </Text>
-          20–35 min
-        </Text>
-        <View style={styles.cardFoot}>
-          <View style={styles.rating}>
-            <Text style={styles.ratingStar}>★</Text>
-            <Text style={styles.ratingText}>{['4.8', '4.6', '4.9', '4.7'][index % 4]}</Text>
-          </View>
-          <Text style={styles.delivery}>Free delivery</Text>
-        </View>
+        <Text style={[styles.cardDetail, statusStyle]}>{statusText}</Text>
       </View>
     </TouchableOpacity>
   );

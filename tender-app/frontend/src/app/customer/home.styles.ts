@@ -8,7 +8,7 @@ export const styles = StyleSheet.create({
     backgroundColor: '#FFFAF9',
   },
   content: {
-    paddingTop: 16,
+    paddingTop: 12,
     paddingBottom: 56,
     maxWidth: 1320,
     width: '100%',
@@ -78,7 +78,7 @@ export const styles = StyleSheet.create({
   },
   pointsPanel: {
     backgroundColor: '#FFF8E8',
-    borderColor: '#FFE0A3',
+    borderColor: '#ffaea3',
     borderWidth: 2,
     borderRadius: 24,
     marginBottom: 18,
@@ -178,7 +178,13 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 15,
-    marginBottom: 34,
+    marginBottom: 0,
+  },
+  stickySearch: {
+    backgroundColor: '#FFFAF9',
+    paddingTop: 7,
+    paddingBottom: 12,
+    zIndex: 2,
   },
   searchIcon: {
     fontFamily: roundedFont,
@@ -284,6 +290,7 @@ export const styles = StyleSheet.create({
   },
   art: {
     height: 125,
+    backgroundColor: '#FCE9E8',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
@@ -355,21 +362,15 @@ export const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
   },
-  statusDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: '#36A77A',
-  },
-  statusDotClosed: {
-    backgroundColor: '#E9A0AA',
-  },
   cardDetail: {
     fontFamily: roundedFont,
-    color: '#9A8589',
     fontSize: 10,
     marginTop: 5,
+    fontWeight: '700',
   },
+  statusOpen: { color: '#23845C' },
+  statusPaused: { color: '#A87413' },
+  statusClosed: { color: '#C44252' },
   metaDivider: {
     fontFamily: roundedFont,
     color: '#E0B1B8',
