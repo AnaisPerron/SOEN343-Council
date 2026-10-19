@@ -1,4 +1,4 @@
-package com.council.tenderapp.dto;
+package com.council.tenderapp.reg.dtos;
 
 import java.time.Instant;
 import java.util.Map;

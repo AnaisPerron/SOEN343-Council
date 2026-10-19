@@ -1,7 +1,7 @@
-package com.council.tenderapp.dto;
+package com.council.tenderapp.reg.dtos;
 
-import com.council.tenderapp.model.Profile;
-import com.council.tenderapp.model.Role;
+import com.council.tenderapp.reg.entities.Profile;
+import com.council.tenderapp.reg.entities.Role;
 
 public record RegisterResponse(Long id, String name, String email, String phone, Role role) {
 

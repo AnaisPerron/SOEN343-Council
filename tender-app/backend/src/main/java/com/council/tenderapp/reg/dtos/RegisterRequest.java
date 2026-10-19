@@ -1,6 +1,6 @@
-package com.council.tenderapp.dto;
+package com.council.tenderapp.reg.dtos;
 
-import com.council.tenderapp.model.Role;
+import com.council.tenderapp.reg.entities.Role;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;

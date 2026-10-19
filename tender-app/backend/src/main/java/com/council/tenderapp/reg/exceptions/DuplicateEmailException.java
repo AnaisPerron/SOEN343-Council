@@ -1,4 +1,4 @@
-package com.council.tenderapp.exception;
+package com.council.tenderapp.reg.exceptions;
 
 public class DuplicateEmailException extends RuntimeException {
 

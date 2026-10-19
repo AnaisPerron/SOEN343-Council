@@ -1,4 +1,4 @@
-package com.council.tenderapp.exception;
+package com.council.tenderapp.reg.exceptions;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -11,7 +11,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import com.council.tenderapp.dto.ErrorResponse;
+import com.council.tenderapp.reg.dtos.ErrorResponse;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {

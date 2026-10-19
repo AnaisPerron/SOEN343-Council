@@ -1,4 +1,4 @@
-package com.council.tenderapp.config;
+package com.council.tenderapp.reg.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

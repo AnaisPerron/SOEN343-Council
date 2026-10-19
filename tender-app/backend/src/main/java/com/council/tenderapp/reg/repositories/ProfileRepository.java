@@ -1,8 +1,8 @@
-package com.council.tenderapp.repository;
+package com.council.tenderapp.reg.repositories;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import com.council.tenderapp.model.Profile;
+import com.council.tenderapp.reg.entities.Profile;
 
 public interface ProfileRepository extends JpaRepository<Profile, Long> {
 

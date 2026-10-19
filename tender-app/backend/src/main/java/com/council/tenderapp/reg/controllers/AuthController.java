@@ -1,4 +1,4 @@
-package com.council.tenderapp.controller;
+package com.council.tenderapp.reg.controllers;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -7,9 +7,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.council.tenderapp.dto.RegisterRequest;
-import com.council.tenderapp.dto.RegisterResponse;
-import com.council.tenderapp.service.RegistrationService;
+import com.council.tenderapp.reg.dtos.RegisterRequest;
+import com.council.tenderapp.reg.dtos.RegisterResponse;
+import com.council.tenderapp.reg.services.RegistrationService;
 
 import jakarta.validation.Valid;
 

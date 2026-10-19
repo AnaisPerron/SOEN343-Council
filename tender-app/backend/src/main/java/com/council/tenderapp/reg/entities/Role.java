@@ -1,4 +1,4 @@
-package com.council.tenderapp.model;
+package com.council.tenderapp.reg.entities;
 
 import java.util.Locale;
 

@@ -1,4 +1,4 @@
-package com.council.tenderapp.service;
+package com.council.tenderapp.reg.services;
 
 import java.sql.SQLException;
 import java.util.Locale;
@@ -9,11 +9,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.council.tenderapp.dto.RegisterRequest;
-import com.council.tenderapp.dto.RegisterResponse;
-import com.council.tenderapp.exception.DuplicateEmailException;
-import com.council.tenderapp.model.Profile;
-import com.council.tenderapp.repository.ProfileRepository;
+import com.council.tenderapp.reg.dtos.RegisterRequest;
+import com.council.tenderapp.reg.dtos.RegisterResponse;
+import com.council.tenderapp.reg.exceptions.DuplicateEmailException;
+import com.council.tenderapp.reg.entities.Profile;
+import com.council.tenderapp.reg.repositories.ProfileRepository;
 
 @Service
 public class RegistrationService {
