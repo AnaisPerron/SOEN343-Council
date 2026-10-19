@@ -1,10 +1,11 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Image,
   type ImageSourcePropType,
   Platform,
   ScrollView,
   Text,
+  TextInput,
   TouchableOpacity,
   useWindowDimensions,
   View,
@@ -16,7 +17,7 @@ import type { RestaurantStatus } from '../../mocks/types';
 import { styles } from './home.styles';
 
 const tenderLogo = require('../../../assets/tender-logo.png');
-
+{/*Placeholder for now. TODO: for later phases, must be linked to user profile, map, etc.. */}
 const sections = [
   {
     title: 'Top picks for you',
@@ -67,11 +68,32 @@ const menuItemPhotos: Record<number, ImageSourcePropType> = {
 export default function CustomerHome() {
   const { width } = useWindowDimensions();
   const compact = width < 600;
+  const pageScrollRef = useRef<ScrollView>(null);
+  const searchTop = useRef(0);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const normalizedQuery = searchQuery.trim().toLocaleLowerCase();
+  const isMobileSearch = Platform.OS !== 'web' && (isSearchFocused || normalizedQuery.length > 0);
+  // Search the full restaurant fixture so matches are not limited to one curated row.
+  const searchResults = normalizedQuery
+    ? restaurantsMock.filter((restaurant) =>
+        restaurant.name.toLocaleLowerCase().includes(normalizedQuery),
+      )
+    : [];
+
+  // Reposition the search after the mobile points panel is removed from the layout.
+  useEffect(() => {
+    if (isMobileSearch) {
+      pageScrollRef.current?.scrollTo({ y: searchTop.current, animated: true });
+    }
+  }, [isMobileSearch]);
 
   return (
     <SafeAreaView style={styles.page} edges={['top']}>
       <ScrollView
-        stickyHeaderIndices={[2]}
+        ref={pageScrollRef}
+        stickyHeaderIndices={[isMobileSearch ? 1 : 2]}
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={[
           styles.content,
           { paddingHorizontal: compact ? 20 : 48 },
@@ -107,7 +129,8 @@ export default function CustomerHome() {
           )}
         </View>
 
-        <View style={styles.pointsPanel}>
+        {!isMobileSearch && (
+          <View style={styles.pointsPanel}>
           <View style={styles.pointsTop}>
             <View style={styles.pointsCopy}>
               <Text style={styles.pointsEyebrow}>TENDER CASH</Text>
@@ -129,27 +152,54 @@ export default function CustomerHome() {
               <Text style={styles.pointsActionArrow}>›</Text>
             </View>
           </TouchableOpacity>
-        </View>
+          </View>
+        )}
 
         {/* Keep the search background opaque while rows scroll underneath it. */}
-        <View style={styles.stickySearch}>
-          <TouchableOpacity
-            style={styles.search}
-            accessibilityRole="button"
-            accessibilityLabel="Search restaurants or dishes"
-          >
-            <Text style={styles.searchIcon}>⌕</Text>
-            {/*In later phases, a */}
-            <Text style={styles.searchPlaceholder}>Restaurants</Text>
-          </TouchableOpacity>
+        <View
+          style={styles.stickySearch}
+          onLayout={(event) => { searchTop.current = event.nativeEvent.layout.y; }}
+        >
+          <View style={styles.search}>
+            <Text style={styles.searchIcon}>{'\u2315'}</Text>
+            <TextInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Search restaurants by name"
+              placeholderTextColor="#A99498"
+              style={styles.searchInput}
+              accessibilityLabel="Search restaurants by name"
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setIsSearchFocused(false)}
+              underlineColorAndroid="transparent"
+              selectionColor="#FF4458"
+              returnKeyType="search"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity
+                onPress={() => setSearchQuery('')}
+                accessibilityRole="button"
+                accessibilityLabel="Clear restaurant search"
+                style={styles.clearSearch}
+              >
+                <Text style={styles.clearSearchText}>x</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
-        <View style={styles.sectionIntro}>
-          <Text style={styles.sectionKicker}>THE GOOD STUFF</Text>
-          <Text style={styles.introTitle}>Made for your kind of day</Text>
-        </View>
 
-        {sections.map((section, index) => {
+        {normalizedQuery ? (
+          <RestaurantSection
+            title="Search results"
+            note={`${searchResults.length} ${searchResults.length === 1 ? 'restaurant' : 'restaurants'}`}
+            items={searchResults}
+            compact={compact}
+            index={0}
+          />
+        ) : sections.map((section, index) => {
           const items = section.ids
             .map((id) => restaurantsMock.find((restaurant) => restaurant.id === id)!)
             .filter(Boolean);
@@ -217,27 +267,31 @@ function RestaurantSection({
         )}
       </View>
 
-      <ScrollView
-        ref={scrollRef}
-        horizontal
-        showsHorizontalScrollIndicator={Platform.OS === 'web'}
-        contentContainerStyle={styles.cardRow}
-      >
-        {items.map((restaurant, itemIndex) => (
-          <RestaurantCard
-            key={`${index}-${restaurant.id}-${itemIndex}`}
-            name={restaurant.name}
-            status={restaurant.status}
-            rating={mockRatings[restaurant.id]}
-            coverOptions={menuItemsMock
-              .filter((menuItem) => menusMock.some((menu) =>
-                menu.id === menuItem.menu_id && menu.restaurant_id === restaurant.id,
-              ))
-              .map((menuItem) => menuItemPhotos[menuItem.id])
-              .filter((photo): photo is ImageSourcePropType => photo !== undefined)}
-          />
-        ))}
-      </ScrollView>
+      {items.length === 0 ? (
+        <Text style={styles.emptySearch}>No restaurants match that name.</Text>
+      ) : (
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          showsHorizontalScrollIndicator={Platform.OS === 'web'}
+          contentContainerStyle={styles.cardRow}
+        >
+          {items.map((restaurant, itemIndex) => (
+            <RestaurantCard
+              key={`${index}-${restaurant.id}-${itemIndex}`}
+              name={restaurant.name}
+              status={restaurant.status}
+              rating={mockRatings[restaurant.id]}
+              coverOptions={menuItemsMock
+                .filter((menuItem) => menusMock.some((menu) =>
+                  menu.id === menuItem.menu_id && menu.restaurant_id === restaurant.id,
+                ))
+                .map((menuItem) => menuItemPhotos[menuItem.id])
+                .filter((photo): photo is ImageSourcePropType => photo !== undefined)}
+            />
+          ))}
+        </ScrollView>
+      )}
     </View>
   );
 }
