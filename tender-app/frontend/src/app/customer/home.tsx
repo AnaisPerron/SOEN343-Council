@@ -43,6 +43,14 @@ const sections = [
   },
 ];
 
+// Keep demo ratings tied to restaurant IDs so they stay consistent across sections.
+const mockRatings: Record<number, string> = {
+  1: '4.8',
+  2: '4.6',
+  3: '4.9',
+  4: '4.7',
+};
+
 export default function CustomerHome() {
   const { width } = useWindowDimensions();
   const compact = width < 600;
@@ -71,6 +79,7 @@ export default function CustomerHome() {
             accessibilityLabel="Delivery location, Montreal"
           >
             <Text style={styles.pin}>⌖</Text>
+            {/*Placeholdr for now. Will need to be implemented for later phases*/}
             <View>
               <Text style={styles.locationCaption}>DELIVERING TO</Text>
               <Text style={styles.location}>
@@ -88,9 +97,10 @@ export default function CustomerHome() {
         <View style={styles.pointsPanel}>
           <View style={styles.pointsTop}>
             <View style={styles.pointsCopy}>
-              <Text style={styles.pointsEyebrow}>TENDER REWARDS</Text>
+              <Text style={styles.pointsEyebrow}>TENDER CASH</Text>
+              {/* Placeholder for now. TODO: Connect with actual Tender Cash */}
               <Text style={styles.pointsValue}>0<Text style={styles.pointsUnit}> pts</Text></Text>
-              <Text style={styles.pointsTitle}>Your next reward is on the way</Text>
+              <Text style={styles.pointsTitle}>Your cheapest way to get lucky tonight.</Text>
             </View>
             <Image
               source={tenderLogo}
@@ -100,7 +110,8 @@ export default function CustomerHome() {
             />
           </View>
           <TouchableOpacity style={styles.pointsAction} accessibilityRole="button">
-            <Text style={styles.pointsActionText}>Explore Tender Rewards</Text>
+            {/* Empty Route for now. TODO: should lead to the swiping tinder-like page */}
+            <Text style={styles.pointsActionText}>Find a yummy soulmate</Text>
             <View style={styles.pointsActionIcon}>
               <Text style={styles.pointsActionArrow}>›</Text>
             </View>
@@ -115,7 +126,8 @@ export default function CustomerHome() {
             accessibilityLabel="Search restaurants or dishes"
           >
             <Text style={styles.searchIcon}>⌕</Text>
-            <Text style={styles.searchPlaceholder}>Restaurants, dishes, anything...</Text>
+            {/*In later phases, a */}
+            <Text style={styles.searchPlaceholder}>Restaurants</Text>
           </TouchableOpacity>
         </View>
 
@@ -203,6 +215,7 @@ function RestaurantSection({
             key={`${index}-${restaurant.id}-${itemIndex}`}
             name={restaurant.name}
             status={restaurant.status}
+            rating={mockRatings[restaurant.id]}
           />
         ))}
       </ScrollView>
@@ -213,9 +226,11 @@ function RestaurantSection({
 function RestaurantCard({
   name,
   status,
+  rating,
 }: {
   name: string;
   status: RestaurantStatus;
+  rating: string;
 }) {
   const isOpen = status === 'open';
   const statusText =
@@ -254,6 +269,12 @@ function RestaurantCard({
           <Text numberOfLines={1} style={styles.cardTitle}>{name}</Text>
         </View>
         <Text style={[styles.cardDetail, statusStyle]}>{statusText}</Text>
+        <View style={styles.ratingRow}>
+          <Text style={styles.ratingStar}>★</Text>
+          <Text style={styles.ratingValue}>{rating}</Text>
+          {/*Placeholder for now. TODO: connect with actual nb of reviews*/}
+          <Text style={styles.reviewCount}>(0)</Text>
+        </View>
       </View>
     </TouchableOpacity>
   );

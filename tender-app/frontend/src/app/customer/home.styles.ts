@@ -371,6 +371,28 @@ export const styles = StyleSheet.create({
   statusOpen: { color: '#23845C' },
   statusPaused: { color: '#A87413' },
   statusClosed: { color: '#C44252' },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 7,
+  },
+  ratingStar: {
+    fontFamily: roundedFont,
+    color: '#B97812',
+    fontSize: 12,
+  },
+  ratingValue: {
+    fontFamily: roundedFont,
+    color: '#3D3032',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  reviewCount: {
+    fontFamily: roundedFont,
+    color: '#968589',
+    fontSize: 10,
+  },
   metaDivider: {
     fontFamily: roundedFont,
     color: '#E0B1B8',
