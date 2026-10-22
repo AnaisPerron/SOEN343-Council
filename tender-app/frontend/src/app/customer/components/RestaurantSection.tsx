@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 import { Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import type { Restaurant } from '../../../types/restaurant';
 import RestaurantCard, { type RestaurantCardData } from './RestaurantCard';
 import { styles } from './RestaurantSection.styles';
 
@@ -9,7 +10,7 @@ interface RestaurantSectionProps {
   items: RestaurantCardData[];
   compact: boolean;
   index: number;
-  onRestaurantPress: (restaurantId: number) => void;
+  onRestaurantPress: (restaurant: Restaurant) => void;
 }
 
 export default function RestaurantSection({
@@ -67,7 +68,7 @@ export default function RestaurantSection({
             <RestaurantCard
               key={`${index}-${item.restaurant.id}-${itemIndex}`}
               {...item}
-              onPress={() => onRestaurantPress(item.restaurant.id)}
+              onPress={() => onRestaurantPress(item.restaurant)}
             />
           ))}
         </ScrollView>

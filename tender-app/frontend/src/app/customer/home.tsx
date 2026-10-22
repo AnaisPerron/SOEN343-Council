@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
+  Animated,
   Image,
   type ImageSourcePropType,
   Platform,
@@ -13,10 +14,17 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { restaurantsMock } from '../../mocks/restaurants.mock';
 import { menusMock, menuItemsMock } from '../../mocks/menus.mock';
+import type { Restaurant } from '../../types/restaurant';
 import { styles } from './home.styles';
 import { searchRestaurants } from './restaurantSearch';
 import RestaurantSection from './components/RestaurantSection';
 import type { RestaurantCardData } from './components/RestaurantCard';
+import {
+  getRestaurantOrderRestriction,
+  ORDER_ERROR_FADE_DELAY_MS,
+  ORDER_ERROR_FADE_DURATION_MS,
+  type RestaurantOrderRestriction,
+} from './restaurantOrderRules';
 
 const tenderLogo = require('../../../assets/tender-logo.png');
 {/*Placeholder for now. TODO: for later phases, must be linked to user profile, map, etc.. */}
@@ -89,14 +97,38 @@ export default function CustomerHome() {
   const compact = width < 600;
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [orderError, setOrderError] = useState<RestaurantOrderRestriction | null>(null);
+  const toastOpacity = useRef(new Animated.Value(0)).current;
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const normalizedQuery = searchQuery.trim().toLocaleLowerCase();
   const isMobileSearch = Platform.OS !== 'web' && (isSearchFocused || normalizedQuery.length > 0);
   // Search the full restaurant fixture so matches are not limited to one curated row.
   const searchResults: RestaurantCardData[] = searchRestaurants(restaurantsMock, normalizedQuery)
     .map((restaurant) => restaurantCardsById.get(restaurant.id)!)
     .filter(Boolean);
-  const handleRestaurantPress = (_restaurantId: number) => {
-    // TODO: Navigate to the order page for this restaurant when the order feature is implemented.
+  useEffect(() => () => {
+    // Clear the pending dismissal if the home screen unmounts while the alert is visible.
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+  }, []);
+
+  const handleRestaurantPress = (restaurant: Restaurant) => {
+    const restriction = getRestaurantOrderRestriction(restaurant);
+    if (!restriction) return;
+
+    setOrderError(restriction);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastOpacity.stopAnimation();
+    toastOpacity.setValue(1);
+    // Leave the error readable briefly, then fade it out within two seconds total.
+    toastTimer.current = setTimeout(() => {
+      Animated.timing(toastOpacity, {
+        toValue: 0,
+        duration: ORDER_ERROR_FADE_DURATION_MS,
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (finished) setOrderError(null);
+      });
+    }, ORDER_ERROR_FADE_DELAY_MS);
   };
 
   return (
@@ -219,6 +251,18 @@ export default function CustomerHome() {
           );
         })}
       </ScrollView>
+      {orderError && (
+        <View style={styles.orderErrorOverlay} pointerEvents="none">
+          <Animated.View
+            style={[styles.orderErrorToast, { opacity: toastOpacity }]}
+            accessibilityRole="alert"
+            accessibilityLiveRegion="assertive"
+          >
+            <Text style={styles.orderErrorCode}>{orderError.code}</Text>
+            <Text style={styles.orderErrorMessage}>{orderError.message}</Text>
+          </Animated.View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
