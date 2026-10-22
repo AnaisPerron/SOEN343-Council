@@ -59,8 +59,15 @@ The iOS App Store version of Expo Go does not support SDK 57. For a physical iPh
 
 ```text
 frontend/
-├── src/app/       # Expo Router screens and layout
-├── app.json       # Expo configuration
-├── package.json   # Dependencies and commands
-└── tsconfig.json  # TypeScript configuration
+├── assets/                         # App images and branding
+├── src/
+│   ├── app/                         # Expo Router routes and layouts
+│   │   ├── _layout.tsx              # Root navigation stack and safe area provider
+│   │   ├── index.tsx                # App entry route
+│   │   └── customer/                # Folder with only Customer actions
+│   ├── mocks/                       # Demo data, types, and menu photos
+│   └── tests/                       # Node-based unit tests, outside Expo routes
+├── app.json                         # Expo configuration
+├── package.json                     # Dependencies and scripts
+└── tsconfig.json                    # TypeScript configuration
 ```
