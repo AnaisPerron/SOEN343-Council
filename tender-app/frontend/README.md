@@ -18,7 +18,7 @@ Run the frontend unit tests from this directory:
 npm test
 ```
 
-The tests use Node's built-in test runner and TypeScript type stripping, so use the Node version in `.nvmrc` (Node 22.13 or newer).
+The tests use Node's built-in test runner and TypeScript type stripping. Use Node 24.11.1, the version pinned in `.nvmrc`. The `engines` field in `package.json` also allows Node `^22.13.0`, `^24.3.0`, `^26.0.0`, or `>=27.0.0`; Node 25 is excluded.
 
 Start the app (from phone):
 
@@ -64,9 +64,20 @@ frontend/
 │   ├── app/                         # Expo Router routes and layouts
 │   │   ├── _layout.tsx              # Root navigation stack and safe area provider
 │   │   ├── index.tsx                # App entry route
-│   │   └── customer/                # Customer screens and search helper
+│   │   └── customer/
+│   │       ├── components/
+│   │       │   ├── RestaurantCard.tsx
+│   │       │   ├── RestaurantCard.styles.ts
+│   │       │   ├── RestaurantSection.tsx
+│   │       │   └── RestaurantSection.styles.ts
+│   │       ├── home.tsx             # Customer home screen
+│   │       ├── home.styles.ts       # Customer home styles
+│   │       └── restaurantSearch.ts  # Restaurant name search helper
 │   ├── mocks/                       # Demo data and menu photos
-│   ├── tests/                       # Node-based unit tests, outside Expo routes
+│   │   └── menu-items-imgs/
+│   ├── tests/                       # Node tests kept outside Expo route discovery
+│   │   └── customer/
+│   │       └── restaurantSearch.test.ts
 │   └── types/
 │       └── restaurant.ts            # Shared restaurant model and status type
 ├── app.json                         # Expo configuration

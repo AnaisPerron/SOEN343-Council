@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import {
   Image,
   type ImageSourcePropType,
@@ -13,8 +13,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { restaurantsMock } from '../../mocks/restaurants.mock';
 import { menusMock, menuItemsMock } from '../../mocks/menus.mock';
-import type { RestaurantStatus } from '../../mocks/types';
 import { styles } from './home.styles';
+import { searchRestaurants } from './restaurantSearch';
+import RestaurantSection from './components/RestaurantSection';
+import type { RestaurantCardData } from './components/RestaurantCard';
 
 const tenderLogo = require('../../../assets/tender-logo.png');
 {/*Placeholder for now. TODO: for later phases, must be linked to user profile, map, etc.. */}
@@ -47,11 +49,11 @@ const sections = [
 ];
 
 // Keep demo ratings tied to restaurant IDs so they stay consistent across sections.
-const mockRatings: Record<number, string> = {
-  1: '4.8',
-  2: '4.6',
-  3: '4.9',
-  4: '4.7',
+const mockRatings: Record<number, number> = {
+  1: 4.8,
+  2: 4.6,
+  3: 4.9,
+  4: 4.7,
 };
 
 // Static requires let Metro bundle each local menu photo into the app.
@@ -65,33 +67,41 @@ const menuItemPhotos: Record<number, ImageSourcePropType> = {
   4001: require('../../mocks/menu-items-imgs/margherita-pizza.jpg'),
 };
 
+// Keep card display data derived once from the shared restaurant and menu fixtures.
+const restaurantCardsById = new Map<number, RestaurantCardData>(
+  restaurantsMock.map((restaurant) => [
+    restaurant.id,
+    {
+      restaurant,
+      rating: mockRatings[restaurant.id],
+      coverOptions: menuItemsMock
+        .filter((menuItem) => menusMock.some((menu) =>
+          menu.id === menuItem.menu_id && menu.restaurant_id === restaurant.id,
+        ))
+        .map((menuItem) => menuItemPhotos[menuItem.id])
+        .filter((photo): photo is ImageSourcePropType => photo !== undefined),
+    },
+  ] as const),
+);
+
 export default function CustomerHome() {
   const { width } = useWindowDimensions();
   const compact = width < 600;
-  const pageScrollRef = useRef<ScrollView>(null);
-  const searchTop = useRef(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const normalizedQuery = searchQuery.trim().toLocaleLowerCase();
   const isMobileSearch = Platform.OS !== 'web' && (isSearchFocused || normalizedQuery.length > 0);
   // Search the full restaurant fixture so matches are not limited to one curated row.
-  const searchResults = normalizedQuery
-    ? restaurantsMock.filter((restaurant) =>
-        restaurant.name.toLocaleLowerCase().includes(normalizedQuery),
-      )
-    : [];
-
-  // Reposition the search after the mobile points panel is removed from the layout.
-  useEffect(() => {
-    if (isMobileSearch) {
-      pageScrollRef.current?.scrollTo({ y: searchTop.current, animated: true });
-    }
-  }, [isMobileSearch]);
+  const searchResults: RestaurantCardData[] = searchRestaurants(restaurantsMock, normalizedQuery)
+    .map((restaurant) => restaurantCardsById.get(restaurant.id)!)
+    .filter(Boolean);
+  const handleRestaurantPress = (_restaurantId: number) => {
+    // TODO: Navigate to the order page for this restaurant when the order feature is implemented.
+  };
 
   return (
     <SafeAreaView style={styles.page} edges={['top']}>
       <ScrollView
-        ref={pageScrollRef}
         stickyHeaderIndices={[isMobileSearch ? 1 : 2]}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={[
@@ -99,29 +109,20 @@ export default function CustomerHome() {
           { paddingHorizontal: compact ? 20 : 48 },
         ]}
       >
-        <View style={styles.topbar}>
-          <View style={styles.brandLockup}>
-            <Image
-              source={tenderLogo}
-              style={styles.logoImage}
-              resizeMode="contain"
-              accessibilityLabel="Tender"
-            />
-          </View>
+        <View style={[styles.topbar, compact && styles.mobileTopbar]}>
+          {/* TODO: Restore the delivery location control when location selection is implemented.
           <TouchableOpacity
             style={styles.locationPill}
             accessibilityRole="button"
             accessibilityLabel="Delivery location, Montreal"
           >
             <Text style={styles.pin}>⌖</Text>
-            {/*Placeholdr for now. Will need to be implemented for later phases*/}
             <View>
               <Text style={styles.locationCaption}>DELIVERING TO</Text>
-              <Text style={styles.location}>
-                Montreal, QC <Text style={styles.chevron}>⌄</Text>
-              </Text>
+              <Text style={styles.location}>Montreal, QC <Text style={styles.chevron}>⌄</Text></Text>
             </View>
           </TouchableOpacity>
+          */}
           {!compact && (
             <TouchableOpacity style={styles.profile} accessibilityRole="button">
               <Text style={styles.profileText}>A</Text>
@@ -138,10 +139,13 @@ export default function CustomerHome() {
               <Text style={styles.pointsValue}>0<Text style={styles.pointsUnit}> pts</Text></Text>
               <Text style={styles.pointsTitle}>Your cheapest way to get lucky tonight.</Text>
             </View>
+            {/* Disable the native fade while keeping tintColor consistent across phone and web. */}
             <Image
               source={tenderLogo}
               style={styles.pointsLogo}
               resizeMode="contain"
+              fadeDuration={0}
+              resizeMethod="resize"
               accessibilityLabel="Tender logo"
             />
           </View>
@@ -156,10 +160,7 @@ export default function CustomerHome() {
         )}
 
         {/* Keep the search background opaque while rows scroll underneath it. */}
-        <View
-          style={styles.stickySearch}
-          onLayout={(event) => { searchTop.current = event.nativeEvent.layout.y; }}
-        >
+        <View style={styles.stickySearch}>
           <View style={styles.search}>
             <Text style={styles.searchIcon}>{'\u2315'}</Text>
             <TextInput
@@ -198,10 +199,11 @@ export default function CustomerHome() {
             items={searchResults}
             compact={compact}
             index={0}
+            onRestaurantPress={handleRestaurantPress}
           />
         ) : sections.map((section, index) => {
-          const items = section.ids
-            .map((id) => restaurantsMock.find((restaurant) => restaurant.id === id)!)
+          const items: RestaurantCardData[] = section.ids
+            .map((id) => restaurantCardsById.get(id)!)
             .filter(Boolean);
 
           return (
@@ -212,158 +214,11 @@ export default function CustomerHome() {
               items={items}
               compact={compact}
               index={index}
+              onRestaurantPress={handleRestaurantPress}
             />
           );
         })}
       </ScrollView>
     </SafeAreaView>
-  );
-}
-
-function RestaurantSection({
-  title,
-  note,
-  items,
-  compact,
-  index,
-}: {
-  title: string;
-  note: string;
-  items: typeof restaurantsMock;
-  compact: boolean;
-  index: number;
-}) {
-  const scrollRef = useRef<ScrollView>(null);
-  const scrollBy = (direction: number) => {
-    scrollRef.current?.scrollTo({ x: direction * 430, animated: true });
-  };
-
-  return (
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <View style={styles.sectionTitles}>
-          <Text style={styles.sectionTitle}>{title}</Text>
-          <Text style={styles.sectionNote}>{note}</Text>
-        </View>
-        {Platform.OS === 'web' && !compact && (
-          <View style={styles.arrows}>
-            <TouchableOpacity
-              onPress={() => scrollBy(-1)}
-              style={styles.arrow}
-              accessibilityRole="button"
-              accessibilityLabel={`Scroll ${title} left`}
-            >
-              <Text style={styles.arrowText}>‹</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => scrollBy(1)}
-              style={styles.arrow}
-              accessibilityRole="button"
-              accessibilityLabel={`Scroll ${title} right`}
-            >
-              <Text style={styles.arrowText}>›</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-
-      {items.length === 0 ? (
-        <Text style={styles.emptySearch}>No restaurants match that name.</Text>
-      ) : (
-        <ScrollView
-          ref={scrollRef}
-          horizontal
-          showsHorizontalScrollIndicator={Platform.OS === 'web'}
-          contentContainerStyle={styles.cardRow}
-        >
-          {items.map((restaurant, itemIndex) => (
-            <RestaurantCard
-              key={`${index}-${restaurant.id}-${itemIndex}`}
-              name={restaurant.name}
-              status={restaurant.status}
-              rating={mockRatings[restaurant.id]}
-              coverOptions={menuItemsMock
-                .filter((menuItem) => menusMock.some((menu) =>
-                  menu.id === menuItem.menu_id && menu.restaurant_id === restaurant.id,
-                ))
-                .map((menuItem) => menuItemPhotos[menuItem.id])
-                .filter((photo): photo is ImageSourcePropType => photo !== undefined)}
-            />
-          ))}
-        </ScrollView>
-      )}
-    </View>
-  );
-}
-
-function RestaurantCard({
-  name,
-  status,
-  rating,
-  coverOptions,
-}: {
-  name: string;
-  status: RestaurantStatus;
-  rating: string;
-  coverOptions: ImageSourcePropType[];
-}) {
-  // Choose once per mounted card so scrolling or rerendering does not reshuffle covers.
-  const [cover] = useState<ImageSourcePropType | undefined>(() =>
-    coverOptions.length > 0
-      ? coverOptions[Math.floor(Math.random() * coverOptions.length)]
-      : undefined,
-  );
-  const isOpen = status === 'open';
-  const statusText =
-    isOpen
-      ? 'Open now'
-      : status === 'paused'
-        ? 'Taking a short break'
-        : 'Closed for now';
-  const statusStyle =
-    isOpen
-      ? styles.statusOpen
-      : status === 'paused'
-        ? styles.statusPaused
-        : styles.statusClosed;
-
-  return (
-    <TouchableOpacity
-      style={styles.card}
-      accessibilityRole="button"
-      accessibilityLabel={`${name}, ${status}`}
-    >
-      {/* Keep a square cover frame and retain the branded fallback if no photo exists. */}
-      <View style={styles.art}>
-        {cover ? (
-          <Image source={cover} style={styles.coverImage} resizeMode="cover" />
-        ) : (
-          <>
-            <View style={styles.artRing}>
-              <View style={styles.artCircle}>
-                <View style={styles.crossLine} />
-                <View style={styles.crossLineVertical} />
-              </View>
-            </View>
-            <View style={styles.artLabel}>
-              <Text style={styles.artLabelText}>PHOTO COMING SOON</Text>
-            </View>
-          </>
-        )}
-      </View>
-
-      <View style={styles.cardMeta}>
-        <View style={styles.cardTitleRow}>
-          <Text numberOfLines={1} style={styles.cardTitle}>{name}</Text>
-        </View>
-        <Text style={[styles.cardDetail, statusStyle]}>{statusText}</Text>
-        <View style={styles.ratingRow}>
-          <Text style={styles.ratingStar}>★</Text>
-          <Text style={styles.ratingValue}>{rating}</Text>
-          {/* Review totals stay at zero until the mock data includes them. */}
-          <Text style={styles.reviewCount}>(0 reviews)</Text>
-        </View>
-      </View>
-    </TouchableOpacity>
   );
 }
