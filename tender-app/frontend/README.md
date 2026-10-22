@@ -64,9 +64,11 @@ frontend/
 │   ├── app/                         # Expo Router routes and layouts
 │   │   ├── _layout.tsx              # Root navigation stack and safe area provider
 │   │   ├── index.tsx                # App entry route
-│   │   └── customer/                # Folder with only Customer actions
-│   ├── mocks/                       # Demo data, types, and menu photos
-│   └── tests/                       # Node-based unit tests, outside Expo routes
+│   │   └── customer/                # Customer screens and search helper
+│   ├── mocks/                       # Demo data and menu photos
+│   ├── tests/                       # Node-based unit tests, outside Expo routes
+│   └── types/
+│       └── restaurant.ts            # Shared restaurant model and status type
 ├── app.json                         # Expo configuration
 ├── package.json                     # Dependencies and scripts
 └── tsconfig.json                    # TypeScript configuration

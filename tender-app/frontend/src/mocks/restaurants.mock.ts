@@ -1,4 +1,4 @@
-import type { Restaurant } from './types';
+import type { Restaurant } from '../types/restaurant';
 
 export const restaurantsMock: Restaurant[] = [
   { id: 1, name: 'Maple & Main', status: 'open', latitude: 45.5019, longitude: -73.5674 },

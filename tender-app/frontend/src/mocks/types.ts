@@ -1,6 +1,5 @@
 /** Frontend fixture types based on Documents/Diagrams/ERD.drawio. */
 export type UserRole = 'customer' | 'restaurant_staff' | 'courier' | 'admin';
-export type RestaurantStatus = 'open' | 'paused' | 'closed';
 export type MenuItemStatus = 'available' | 'sold_out';
 export type CourierStatus = 'offline' | 'idle' | 'assigned' | 'carrying';
 export type OrderStatus =
@@ -20,14 +19,6 @@ export interface User {
   email: string;
   /** Demo-only placeholder; never use real credentials in fixtures. */
   password_hash: string;
-}
-
-export interface Restaurant {
-  id: number;
-  name: string;
-  status: RestaurantStatus;
-  latitude: number | null;
-  longitude: number | null;
 }
 
 export interface RestaurantStaff {
