@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,7 +16,13 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
-import { fetchOrders, transitionOrder, type IncomingOrder, type OrderAction } from '@/lib/orderApi';
+import {
+  fetchOrders,
+  observeOrderStatus,
+  transitionOrder,
+  type IncomingOrder,
+  type OrderAction,
+} from '@/lib/orderApi';
 
 function formatOrderTime(timestamp: string | null, label: string): string {
   if (!timestamp) {
@@ -91,6 +98,17 @@ export default function IncomingOrdersScreen() {
       cancelled = true;
     };
   }, [restaurantId, queue]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') {
+      return;
+    }
+
+    const stopObserving = observeOrderStatus(restaurantId, () => {
+      void loadOrders(restaurantId, queue);
+    });
+    return stopObserving;
+  }, [restaurantId, queue, loadOrders]);
 
   const performAction = async (order: IncomingOrder, action: OrderAction, reason?: string) => {
     setActingOrderId(order.id);

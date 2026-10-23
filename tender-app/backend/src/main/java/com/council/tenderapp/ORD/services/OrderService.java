@@ -2,31 +2,30 @@ package com.council.tenderapp.ORD.services;
 
 import com.council.tenderapp.ORD.entities.Order;
 import com.council.tenderapp.ORD.entities.OrderStatus;
-import com.council.tenderapp.ORD.repositories.OrderRepository;
 import com.council.tenderapp.ORD.dto.response.OrderLineResponse;
 import com.council.tenderapp.ORD.dto.response.OrderResponse;
+import com.council.tenderapp.ORD.repositories.OrderRepository;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class OrderService {
 
-    private static final Logger logger = LoggerFactory.getLogger(OrderService.class);
     private static final List<OrderStatus> PREPARATION_STATUSES =
         List.of(OrderStatus.ACCEPTED, OrderStatus.PREPARING);
 
     private final OrderRepository orderRepository;
-    private long eventSequence;
+    private final OrderStatusPublisher orderStatusPublisher;
 
-    public OrderService(OrderRepository orderRepository) {
+    public OrderService(OrderRepository orderRepository, OrderStatusPublisher orderStatusPublisher) {
         this.orderRepository = orderRepository;
+        this.orderStatusPublisher = orderStatusPublisher;
     }
 
     @Transactional(readOnly = true)
@@ -59,9 +58,10 @@ public class OrderService {
     @Transactional
     public OrderResponse acceptOrder(Long restaurantId, Long orderId) {
         Order order = getOwnedOrderForUpdate(restaurantId, orderId);
+        OrderStatus previousStatus = order.getStatus();
         transitionOrder(order, OrderStatus.ACCEPTED, "accept");
         Order savedOrder = orderRepository.save(order);
-        logStatusChange(restaurantId, orderId, "accepted", savedOrder.getStatus(), null);
+        publishStatusChange(savedOrder, previousStatus, "accepted", null);
         return toResponse(savedOrder);
     }
 
@@ -73,64 +73,71 @@ public class OrderService {
         }
 
         Order order = getOwnedOrderForUpdate(restaurantId, orderId);
+        OrderStatus previousStatus = order.getStatus();
         transitionOrder(order, OrderStatus.REJECTED, "reject");
         order.setRejectionReason(trimmedReason);
         Order savedOrder = orderRepository.save(order);
-        logStatusChange(restaurantId, orderId, "rejected", savedOrder.getStatus(), trimmedReason);
+        publishStatusChange(savedOrder, previousStatus, "rejected", trimmedReason);
         return toResponse(savedOrder);
     }
 
     @Transactional
     public OrderResponse cancelOrder(Long restaurantId, Long orderId) {
         Order order = getOwnedOrderForUpdate(restaurantId, orderId);
+        OrderStatus previousStatus = order.getStatus();
         transitionOrder(order, OrderStatus.CANCELLED, "cancel");
         Order savedOrder = orderRepository.save(order);
-        logStatusChange(restaurantId, orderId, "cancelled", savedOrder.getStatus(), null);
+        publishStatusChange(savedOrder, previousStatus, "cancelled", null);
         return toResponse(savedOrder);
     }
 
     @Transactional
     public OrderResponse startPreparation(Long restaurantId, Long orderId) {
         Order order = getOwnedOrderForUpdate(restaurantId, orderId);
+        OrderStatus previousStatus = order.getStatus();
         transitionOrder(order, OrderStatus.PREPARING, "prepare");
         Order savedOrder = orderRepository.save(order);
-        logStatusChange(restaurantId, orderId, "started preparing", savedOrder.getStatus(), null);
+        publishStatusChange(savedOrder, previousStatus, "started preparing", null);
         return toResponse(savedOrder);
     }
 
     @Transactional
     public OrderResponse markReady(Long restaurantId, Long orderId) {
         Order order = getOwnedOrderForUpdate(restaurantId, orderId);
+        OrderStatus previousStatus = order.getStatus();
         transitionOrder(order, OrderStatus.READY, "mark ready");
         Order savedOrder = orderRepository.save(order);
-        logStatusChange(restaurantId, orderId, "marked ready", savedOrder.getStatus(), null);
+        publishStatusChange(savedOrder, previousStatus, "marked ready", null);
         return toResponse(savedOrder);
     }
 
     @Transactional
     public OrderResponse markPickedUp(Long restaurantId, Long orderId) {
         Order order = getOwnedOrderForUpdate(restaurantId, orderId);
+        OrderStatus previousStatus = order.getStatus();
         transitionOrder(order, OrderStatus.PICKED_UP, "mark picked up");
         Order savedOrder = orderRepository.save(order);
-        logStatusChange(restaurantId, orderId, "marked picked up", savedOrder.getStatus(), null);
+        publishStatusChange(savedOrder, previousStatus, "marked picked up", null);
         return toResponse(savedOrder);
     }
 
     @Transactional
     public OrderResponse markDelivered(Long restaurantId, Long orderId) {
         Order order = getOwnedOrderForUpdate(restaurantId, orderId);
+        OrderStatus previousStatus = order.getStatus();
         transitionOrder(order, OrderStatus.DELIVERED, "mark delivered");
         Order savedOrder = orderRepository.save(order);
-        logStatusChange(restaurantId, orderId, "marked delivered", savedOrder.getStatus(), null);
+        publishStatusChange(savedOrder, previousStatus, "marked delivered", null);
         return toResponse(savedOrder);
     }
 
     @Transactional
     public OrderResponse refundOrder(Long restaurantId, Long orderId) {
         Order order = getOwnedOrderForUpdate(restaurantId, orderId);
+        OrderStatus previousStatus = order.getStatus();
         transitionOrder(order, OrderStatus.REFUNDED, "refund");
         Order savedOrder = orderRepository.save(order);
-        logStatusChange(restaurantId, orderId, "refunded", savedOrder.getStatus(), null);
+        publishStatusChange(savedOrder, previousStatus, "refunded", null);
         return toResponse(savedOrder);
     }
 
@@ -143,30 +150,24 @@ public class OrderService {
         }
     }
 
-    private synchronized void logStatusChange(
-        Long restaurantId,
-        Long orderId,
+    private void publishStatusChange(
+        Order order,
+        OrderStatus previousStatus,
         String action,
-        OrderStatus newStatus,
         String rejectionReason
     ) {
-        String eventId = String.format(Locale.ROOT, "EVENT%02d", ++eventSequence);
-        String reasonDetails = rejectionReason == null
-            ? ""
-            : " | Rejection reason: \"" + rejectionReason
-                .replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\r", " ")
-                .replace("\n", " ") + "\"";
-        logger.info(
-            "{}: Restaurant_{} {} order #{}: new status: {}{}",
-            eventId,
-            restaurantId,
-            action,
-            orderId,
-            newStatus,
-            reasonDetails
-        );
+        Runnable publish = () ->
+            orderStatusPublisher.publish(order, previousStatus, action, rejectionReason);
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    publish.run();
+                }
+            });
+        } else {
+            publish.run();
+        }
     }
 
     private Order getOwnedOrderForUpdate(Long restaurantId, Long orderId) {

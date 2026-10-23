@@ -1,26 +1,30 @@
 package com.council.tenderapp.ORD.controllers;
 
-import com.council.tenderapp.ORD.services.OrderService;
 import com.council.tenderapp.ORD.dto.request.RejectOrderRequest;
 import com.council.tenderapp.ORD.dto.response.OrderResponse;
+import com.council.tenderapp.ORD.observers.DashboardObserver;
+import com.council.tenderapp.ORD.services.OrderService;
 import jakarta.validation.Valid;
 import java.util.List;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @RestController
 @CrossOrigin(origins = "${app.cors.allowed-origin:http://localhost:8081}")
 @RequestMapping("/api/restaurants/{restaurantId}/orders")
 public class OrderController {
     private final OrderService orderService;
+    private final DashboardObserver dashboardObserver;
 
-    public OrderController(OrderService orderService) {
+    public OrderController(OrderService orderService, DashboardObserver dashboardObserver) {
         this.orderService = orderService;
+        this.dashboardObserver = dashboardObserver;
     }
 
     @GetMapping({"/preparation", "/arrival-queue"})
@@ -36,6 +40,11 @@ public class OrderController {
     @GetMapping("/pickup")
     public List<OrderResponse> getPickupQueue(@PathVariable Long restaurantId) {
         return orderService.getPickupQueue(restaurantId);
+    }
+
+    @GetMapping(path = "/events", produces = "text/event-stream")
+    public SseEmitter observeOrderStatus(@PathVariable Long restaurantId) {
+        return dashboardObserver.subscribe(restaurantId);
     }
 
     @PostMapping("/{orderId}/accept")

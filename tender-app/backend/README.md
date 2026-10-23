@@ -43,6 +43,14 @@ preparation queue (accepted and preparing orders) is ordered by acceptance time.
 Rejections require a nonblank reason. Every successful action is logged to the
 application console with the order ID and, for rejections, the reason.
 
+Order status changes are published as `OrderStatusEvent` notifications to
+registered `OrderObserver` implementations. `OrderRecord` preserves the
+existing console event log, while `DashboardObserver` streams changes to
+subscribed web dashboards through
+`GET /api/restaurants/{restaurantId}/orders/events` (Server-Sent Events). The
+dashboard refreshes its selected queue when it receives an event; manual
+refresh and the existing lifecycle actions remain available.
+
 The current project has no authentication/authorization integration. The local
 restaurant profile is a demo context, not an authenticated account. Actions
 verify that the order belongs to the restaurant ID in the URL, but this is not

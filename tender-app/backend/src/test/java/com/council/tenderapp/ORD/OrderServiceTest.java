@@ -14,6 +14,7 @@ import com.council.tenderapp.ORD.entities.OrderStatus;
 import com.council.tenderapp.ORD.dto.response.OrderResponse;
 import com.council.tenderapp.ORD.repositories.OrderRepository;
 import com.council.tenderapp.ORD.services.OrderService;
+import com.council.tenderapp.ORD.services.OrderStatusPublisher;
 import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
@@ -30,6 +31,9 @@ class OrderServiceTest {
 
     @Mock
     private OrderRepository orderRepository;
+
+    @Mock
+    private OrderStatusPublisher orderStatusPublisher;
 
     @InjectMocks
     private OrderService orderService;
@@ -113,6 +117,7 @@ class OrderServiceTest {
 
         assertThat(accepted.getStatus()).isEqualTo(OrderStatus.ACCEPTED);
         assertThat(accepted.getAcceptedAt()).isNotNull();
+        verify(orderStatusPublisher).publish(placed, OrderStatus.PLACED, "accepted", null);
     }
 
     @Test
@@ -207,6 +212,7 @@ class OrderServiceTest {
             .hasMessageContaining("Invalid order transition");
 
         verify(orderRepository, never()).save(any());
+        verify(orderStatusPublisher, never()).publish(any(), any(), any(), any());
     }
 
     @Test

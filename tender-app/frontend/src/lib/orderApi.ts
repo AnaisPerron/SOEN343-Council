@@ -83,3 +83,14 @@ export async function transitionOrder(
     throw new Error(detail || `Unable to ${action} order (HTTP ${response.status}).`);
   }
 }
+
+export function observeOrderStatus(
+  restaurantId: string,
+  onStatusChange: () => void,
+): () => void {
+  const events = new EventSource(
+    `${getApiBaseUrl()}/api/restaurants/${encodeURIComponent(restaurantId)}/orders/events`,
+  );
+  events.onmessage = onStatusChange;
+  return () => events.close();
+}
