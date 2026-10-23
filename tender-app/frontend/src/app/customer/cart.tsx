@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCart } from '../../context/CartContext';
@@ -7,19 +7,46 @@ import { groupCartLinesByRestaurant } from './cartStore';
 import { menuItemOptionsMock, menuItemsMock } from '../../mocks/menus.mock';
 import { restaurantsMock } from '../../mocks/restaurants.mock';
 import { restaurantDisplayMock } from '../../mocks/restaurantDisplay.mock';
+import { getCartOrderRestriction, ORDER_ERROR_FADE_DELAY_MS, ORDER_ERROR_FADE_DURATION_MS, type RestaurantOrderRestriction } from './restaurantOrderRules';
 import { styles } from './cart.styles';
 
 export default function CartScreen() {
   const router = useRouter();
   const { lines, setQuantity } = useCart();
   const [orderNotice, setOrderNotice] = useState(false);
+  const [orderError, setOrderError] = useState<RestaurantOrderRestriction | null>(null);
+  const [toastOpacity] = useState(() => new Animated.Value(0));
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // The cart badge counts units, while each rendered row represents one item/extras combination.
   const count = lines.reduce((total, line) => total + line.quantity, 0);
   const groups = groupCartLinesByRestaurant(lines);
   const grandTotal = groups.reduce((total, group) => total + group.total, 0);
   const goBack = () => router.canGoBack() ? router.back() : router.replace('/customer/home');
 
+  useEffect(() => () => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastOpacity.stopAnimation();
+  }, [toastOpacity]);
+
   const makeOrder = () => {
+    const restriction = getCartOrderRestriction(groups.map((group) => group.restaurantId), restaurantsMock);
+    if (restriction) {
+      setOrderNotice(false);
+      setOrderError(restriction);
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+      toastOpacity.stopAnimation();
+      toastOpacity.setValue(1);
+      toastTimer.current = setTimeout(() => {
+        Animated.timing(toastOpacity, {
+          toValue: 0,
+          duration: ORDER_ERROR_FADE_DURATION_MS,
+          useNativeDriver: true,
+        }).start(({ finished }) => {
+          if (finished) setOrderError(null);
+        });
+      }, ORDER_ERROR_FADE_DELAY_MS);
+      return;
+    }
     // TODO: Connect checkout to order placement when the order API is implemented.
     // Keep the cart intact and explain why no order was created.
     setOrderNotice(true);
@@ -85,11 +112,17 @@ export default function CartScreen() {
         </>}
       </ScrollView>
       <View style={styles.footer}>
-
+        {orderNotice && <Text style={styles.orderNotice}>Ordering is not available yet. Your cart has been kept.</Text>}
         <TouchableOpacity style={[styles.makeOrderButton, lines.length === 0 && styles.makeOrderButtonDisabled]} accessibilityRole="button" accessibilityState={{ disabled: lines.length === 0 }} disabled={lines.length === 0} onPress={makeOrder}>
           <Text style={styles.makeOrderText}>Make my order</Text>
         </TouchableOpacity>
       </View>
+      {orderError && <View style={styles.orderErrorOverlay} pointerEvents="none">
+        <Animated.View style={[styles.orderErrorToast, { opacity: toastOpacity }]} accessibilityRole="alert" accessibilityLiveRegion="assertive">
+          <Text style={styles.orderErrorCode}>{orderError.code}</Text>
+          <Text style={styles.orderErrorMessage}>{orderError.message}</Text>
+        </Animated.View>
+      </View>}
     </SafeAreaView>
   );
 }

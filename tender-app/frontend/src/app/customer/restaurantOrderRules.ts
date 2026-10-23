@@ -22,6 +22,24 @@ export function getRestaurantOrderRestriction(
   };
 }
 
+export function getCartOrderRestriction(
+  restaurantIds: number[],
+  restaurants: Restaurant[],
+): RestaurantOrderRestriction | null {
+  for (const id of restaurantIds) {
+    const restaurant = restaurants.find((entry) => entry.id === id);
+    if (!restaurant) {
+      return {
+        code: ORDER_RESTRICTION_CODE,
+        message: 'Orders are unavailable because a restaurant in your cart could not be found.',
+      };
+    }
+    const restriction = getRestaurantOrderRestriction(restaurant);
+    if (restriction) return restriction;
+  }
+  return null;
+}
+
 export function getMenuItemOrderRestriction(item: MenuItem): RestaurantOrderRestriction | null {
   if (item.available) return null;
 

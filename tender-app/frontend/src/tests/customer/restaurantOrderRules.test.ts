@@ -4,6 +4,7 @@ import { describe, it } from 'node:test';
 import { restaurantsMock } from '../../mocks/restaurants.mock.ts';
 import { menuItemsMock } from '../../mocks/menus.mock.ts';
 import {
+  getCartOrderRestriction,
   getMenuItemOrderRestriction,
   getRestaurantOrderRestriction,
   ORDER_ERROR_FADE_DELAY_MS,
@@ -43,6 +44,18 @@ describe('R-ORD-02 - ORD restaurant order restriction', () => {
 
   it('configures the alert to disappear after two seconds total', () => {
     assert.equal(ORDER_ERROR_FADE_DELAY_MS + ORDER_ERROR_FADE_DURATION_MS, 2000);
+  });
+
+  it('blocks a cart when any restaurant is closed or paused', () => {
+    assert.equal(getCartOrderRestriction([1, 2], restaurantsMock), null);
+    assert.deepEqual(getCartOrderRestriction([1, 4], restaurantsMock), {
+      code: ORDER_RESTRICTION_CODE,
+      message: 'Orders are unavailable at Little Italy Pizza because it is closed.',
+    });
+    assert.deepEqual(getCartOrderRestriction([3, 1], restaurantsMock), {
+      code: ORDER_RESTRICTION_CODE,
+      message: 'Orders are unavailable at Café Nord because it is paused.',
+    });
   });
 });
 

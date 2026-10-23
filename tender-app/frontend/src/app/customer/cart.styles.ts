@@ -52,4 +52,8 @@ export const styles = StyleSheet.create({
   makeOrderButtonDisabled: { backgroundColor: '#BFB5B7' },
   makeOrderText: { fontFamily: font, color: '#FFFFFF', fontSize: 17, fontWeight: '800' },
   orderNotice: { fontFamily: font, color: '#A92140', fontSize: 12, lineHeight: 18, textAlign: 'center', marginBottom: 10, maxWidth: 760 },
+  orderErrorOverlay: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, zIndex: 10 },
+  orderErrorToast: { width: '100%', maxWidth: 420, paddingVertical: 18, paddingHorizontal: 22, backgroundColor: '#FFE6EB', borderColor: '#EF9AAA', borderWidth: 1, borderRadius: 18, shadowColor: '#852B3F', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.18, shadowRadius: 12, elevation: 8 },
+  orderErrorCode: { fontFamily: font, color: '#A92140', fontSize: 15, fontWeight: '900', textAlign: 'center' },
+  orderErrorMessage: { fontFamily: font, color: '#5C343B', fontSize: 14, lineHeight: 20, marginTop: 6, textAlign: 'center' },
 });
