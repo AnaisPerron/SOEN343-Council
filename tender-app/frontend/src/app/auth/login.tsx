@@ -17,36 +17,26 @@ import { authStyles as styles } from './auth.styles';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 type SupportedRole = Exclude<Role, 'courier'>;
-type FormErrors = { identifier?: string; password?: string; form?: string };
+type FormErrors = { email?: string; password?: string; form?: string };
 
 function LoginForm({ role }: { role: SupportedRole }) {
   const { signIn } = useAuth();
-  const [identifier, setIdentifier] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
-  const isOperator = role === 'Operator';
 
   const handleSubmit = async () => {
     if (loading) return;
     const next: FormErrors = {};
-    if (isOperator) {
-      const id = Number(identifier.trim());
-      if (!Number.isSafeInteger(id) || id < 1) next.identifier = 'Enter a valid operator ID';
-    } else if (!EMAIL_REGEX.test(identifier.trim())) {
-      next.identifier = 'Enter a valid email address';
-    }
+    if (!EMAIL_REGEX.test(email.trim())) next.email = 'Enter a valid email address';
     if (!password) next.password = 'Password is required';
     setErrors(next);
     if (Object.keys(next).length) return;
 
     setLoading(true);
     try {
-      if (isOperator) {
-        await signIn({ role, id: Number(identifier.trim()), password });
-      } else {
-        await signIn({ role, email: identifier.trim(), password });
-      }
+      await signIn({ role, email: email.trim(), password });
     } catch (error) {
       setErrors({ form: error instanceof Error ? error.message : 'Something went wrong' });
       setLoading(false);
@@ -55,19 +45,19 @@ function LoginForm({ role }: { role: SupportedRole }) {
 
   return (
     <View>
-      <Text style={styles.label}>{isOperator ? 'Operator ID' : 'Email'}</Text>
+      <Text style={styles.label}>Email</Text>
       <TextInput
-        style={[styles.input, errors.identifier && styles.inputError]}
-        value={identifier}
-        onChangeText={setIdentifier}
-        placeholder={isOperator ? 'Your operator ID' : 'you@example.com'}
+        style={[styles.input, errors.email && styles.inputError]}
+        value={email}
+        onChangeText={setEmail}
+        placeholder="you@example.com"
         placeholderTextColor="#9ca3af"
         autoCapitalize="none"
-        autoComplete={isOperator ? 'off' : 'email'}
-        keyboardType={isOperator ? 'number-pad' : 'email-address'}
-        textContentType={isOperator ? 'none' : 'emailAddress'}
+        autoComplete="email"
+        keyboardType="email-address"
+        textContentType="emailAddress"
       />
-      {errors.identifier && <Text style={styles.error}>{errors.identifier}</Text>}
+      {errors.email && <Text style={styles.error}>{errors.email}</Text>}
 
       <Text style={styles.label}>Password</Text>
       <TextInput
