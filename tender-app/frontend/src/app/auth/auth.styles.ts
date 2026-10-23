@@ -19,12 +19,13 @@ export const authStyles = StyleSheet.create({
   heroText: { fontSize: 16, color: '#6b7280', textAlign: 'center', marginTop: 8 },
   roleRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     backgroundColor: '#f3f4f6',
     borderRadius: 12,
     padding: 4,
     marginBottom: 12,
   },
-  roleButton: { flex: 1, paddingVertical: 10, borderRadius: 9, alignItems: 'center' },
+  roleButton: { width: '50%', paddingVertical: 10, borderRadius: 9, alignItems: 'center' },
   roleButtonSelected: { backgroundColor: ACCENT },
   roleText: { fontWeight: '600', color: '#374151' },
   roleTextSelected: { color: '#fff' },
@@ -41,6 +42,8 @@ export const authStyles = StyleSheet.create({
   inputError: { borderColor: ACCENT },
   error: { color: ACCENT, fontSize: 13, marginTop: 4 },
   formError: { textAlign: 'center', marginTop: 12 },
+  notice: { color: '#374151', fontSize: 15, lineHeight: 22, marginTop: 16, textAlign: 'center' },
+  addressHeading: { color: '#111827', fontSize: 18, fontWeight: '700', marginTop: 24 },
   submit: {
     marginTop: 24,
     backgroundColor: ACCENT,

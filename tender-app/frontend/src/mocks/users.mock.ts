@@ -5,7 +5,7 @@ export const usersMock: User[] = [
   { id: 2, role: 'customer', name: 'Sam Chen', email: 'sam@example.test', password_hash: 'demo-only' },
   { id: 3, role: 'restaurant_staff', name: 'Jamie Roy', email: 'jamie@example.test', password_hash: 'demo-only' },
   { id: 4, role: 'courier', name: 'Taylor Singh', email: 'taylor@example.test', password_hash: 'demo-only' },
-  { id: 5, role: 'admin', name: 'Morgan Lee', email: 'morgan@example.test', password_hash: 'demo-only' },
+  { id: 5, role: 'Operator', name: 'Morgan Lee', email: 'morgan@example.test', password_hash: 'demo-only' },
   { id: 6, role: 'restaurant_staff', name: 'Chris Bouchard', email: 'chris@example.test', password_hash: 'demo-only' },
 ];
 

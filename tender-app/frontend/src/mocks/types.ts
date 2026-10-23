@@ -1,5 +1,5 @@
 /** Frontend fixture types based on Documents/Diagrams/ERD.drawio. */
-export type UserRole = 'customer' | 'restaurant_staff' | 'courier' | 'admin';
+export type UserRole = 'customer' | 'restaurant_staff' | 'courier' | 'Operator';
 export type MenuItemStatus = 'available' | 'sold_out';
 export type CourierStatus = 'offline' | 'idle' | 'assigned' | 'carrying';
 export type OrderStatus =
