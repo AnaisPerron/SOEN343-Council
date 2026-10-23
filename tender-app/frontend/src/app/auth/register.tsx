@@ -29,7 +29,7 @@ type FormErrors = {
 };
 
 export default function RegisterScreen() {
-  const { signUp } = useAuth();
+  const { signIn, signUp } = useAuth();
   const router = useRouter();
   const [role, setRole] = useState<Role>('customer');
   const [name, setName] = useState('');
@@ -71,10 +71,17 @@ export default function RegisterScreen() {
     try {
       if (role === 'customer') await signUp({ ...details, role: 'customer', name: name.trim() });
       else await signUp({ ...details, role: 'restaurant', restaurantName: name.trim() });
-      router.replace('/auth/login');
     } catch (error) {
       setErrors({ form: error instanceof Error ? error.message : 'Something went wrong' });
       setLoading(false);
+      return;
+    }
+
+    // Signing in switches the navigator to the home screen; the account already exists, so fall back to the sign in screen
+    try {
+      await signIn({ role, email: details.email, password });
+    } catch {
+      router.replace('/auth/login');
     }
   };
 
