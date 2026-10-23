@@ -1,5 +1,6 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
 
+import { register } from '@/api/auth';
 import { createMockAuthStore } from '@/auth/mockAuthStore';
 import type {
   AuthUser,
@@ -26,13 +27,9 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+// Sign in stays mocked until the backend has a login endpoint
 const mockAuthStore = createMockAuthStore();
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-async function mockRegister(input: RegistrationInput): Promise<void> {
-  await wait(400);
-  mockAuthStore.register(input);
-}
 
 async function mockLogin(input: SignInInput): Promise<AuthUser> {
   await wait(400);
@@ -46,7 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       user,
       signIn: async (input) => setUser(await mockLogin(input)),
-      signUp: mockRegister,
+      signUp: register,
       signOut: () => setUser(null),
     }),
     [user],
