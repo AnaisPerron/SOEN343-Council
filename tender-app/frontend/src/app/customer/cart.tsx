@@ -6,6 +6,7 @@ import { useCart } from '../../context/CartContext';
 import { groupCartLinesByRestaurant } from './cartStore';
 import { menuItemOptionsMock, menuItemsMock } from '../../mocks/menus.mock';
 import { restaurantsMock } from '../../mocks/restaurants.mock';
+import { restaurantDisplayMock } from '../../mocks/restaurantDisplay.mock';
 import { styles } from './cart.styles';
 
 export default function CartScreen() {
@@ -41,8 +42,14 @@ export default function CartScreen() {
           {groups.map((group) => {
             // Each restaurant gets a separate vertical bill and subtotal.
             const restaurant = restaurantsMock.find((entry) => entry.id === group.restaurantId);
+            const address = restaurantDisplayMock[group.restaurantId]?.address;
+            const status = restaurant?.status === 'open' ? 'Open now' : restaurant?.status === 'paused' ? 'Temporarily paused' : 'Closed now';
             return <View key={group.restaurantId} style={styles.restaurantSection}>
               <Text style={styles.restaurantName}>{restaurant?.name ?? 'Restaurant'}</Text>
+              <View style={styles.restaurantDetails}>
+                <Text style={styles.restaurantDetailText}>{address ?? 'Address unavailable'}</Text>
+                <Text style={styles.restaurantStatus}>{status}</Text>
+              </View>
               <View style={styles.divider} />
               {group.lines.map((line) => {
                 // The cart stores IDs and prices; resolve fixture names only for display.

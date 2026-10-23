@@ -16,7 +16,10 @@ export const styles = StyleSheet.create({
   count: { fontFamily: font, color: '#887B7E', fontSize: 13, marginBottom: 24 },
   // Each restaurant reads as its own receipt, with grey rules separating items and totals.
   restaurantSection: { marginBottom: 32 },
-  restaurantName: { fontFamily: font, color: ink, fontSize: 21, fontWeight: '900', marginBottom: 13 },
+  restaurantName: { fontFamily: font, color: ink, fontSize: 21, fontWeight: '900', marginBottom: 11 },
+  restaurantDetails: { alignSelf: 'flex-start', borderWidth: 1, borderColor: '#302629', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9, marginBottom: 16, gap: 3 },
+  restaurantDetailText: { fontFamily: font, color: ink, fontSize: 12, lineHeight: 17 },
+  restaurantStatus: { fontFamily: font, color: ink, fontSize: 12, lineHeight: 17, fontWeight: '800' },
   divider: { height: 1, backgroundColor: '#DAD4D6' },
   line: { paddingVertical: 18, borderBottomWidth: 1, borderBottomColor: '#E6E1E2' },
   lineTop: { flexDirection: 'row', justifyContent: 'space-between', gap: 15 },
