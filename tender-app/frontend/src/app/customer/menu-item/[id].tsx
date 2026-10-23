@@ -8,6 +8,7 @@ import { restaurantsMock } from '../../../mocks/restaurants.mock';
 import { useCart } from '../../../context/CartContext';
 import { useItemCustomization } from '../../../context/ItemCustomizationContext';
 import { DetailBackButton, DetailPage } from '../components/DetailPage';
+import CartIconButton from '../components/CartIconButton';
 import { getMenuItemOrderRestriction, getRestaurantOrderRestriction, ORDER_ERROR_FADE_DELAY_MS, ORDER_ERROR_FADE_DURATION_MS, type RestaurantOrderRestriction } from '../restaurantOrderRules';
 import { styles } from './item.styles';
 
@@ -23,6 +24,11 @@ export default function MenuItemDetails() {
   const [orderError, setOrderError] = useState<RestaurantOrderRestriction | null>(null);
   const [toastOpacity] = useState(() => new Animated.Value(0));
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [addedCount, setAddedCount] = useState<number | null>(null);
+  const [isAdding, setIsAdding] = useState(false);
+  const addingRef = useRef(false);
+  const [addedOpacity] = useState(() => new Animated.Value(0));
+  const [addedOffset] = useState(() => new Animated.Value(12));
   const item = menuItemsMock.find((entry) => entry.id === Number(id));
   const selectedOptionIds = selections[item?.id ?? -1] ?? [];
   const menu = menusMock.find((entry) => entry.id === item?.menu_id);
@@ -36,7 +42,9 @@ export default function MenuItemDetails() {
 
   useEffect(() => () => {
     if (toastTimer.current) clearTimeout(toastTimer.current);
-  }, []);
+    addedOpacity.stopAnimation();
+    addedOffset.stopAnimation();
+  }, [addedOpacity, addedOffset]);
 
   if (!item || !restaurant) {
     return <View style={styles.notFound}>
@@ -65,11 +73,28 @@ export default function MenuItemDetails() {
   };
 
   const addToCart = () => {
+    if (addingRef.current) return;
     // Check both restrictions here so a direct link cannot add an unavailable item or a closed restaurant's item.
     const restriction = getRestaurantOrderRestriction(restaurant) ?? getMenuItemOrderRestriction(item);
     if (restriction) return showError(restriction);
+    // Lock immediately so rapid taps cannot create duplicate cart lines before the button rerenders.
+    addingRef.current = true;
     addItem(item, restaurant.id, selectedOptionIds, optionCost, quantity);
-    router.push('/customer/cart');
+    setAddedCount(quantity);
+    setIsAdding(true);
+    addedOpacity.setValue(0);
+    addedOffset.setValue(12);
+    // Confirm the cart update before returning to this restaurant's menu.
+    Animated.sequence([
+      Animated.parallel([
+        Animated.timing(addedOpacity, { toValue: 1, duration: 180, useNativeDriver: true }),
+        Animated.timing(addedOffset, { toValue: 0, duration: 180, useNativeDriver: true }),
+      ]),
+      Animated.delay(1300),
+      Animated.timing(addedOpacity, { toValue: 0, duration: 260, useNativeDriver: true }),
+    ]).start(({ finished }) => {
+      if (finished) router.replace({ pathname: '/customer/restaurant/[id]', params: { id: String(restaurant.id) } });
+    });
   };
 
   return (
@@ -81,18 +106,22 @@ export default function MenuItemDetails() {
       foreground={<>
         {!stickyVisible && <View style={[styles.coverControls, { top: insets.top + 12 }]}>
           <DetailBackButton onPress={goBack} />
-          <TouchableOpacity style={styles.coverCart} accessibilityRole="button" accessibilityLabel={`Cart, ${cartCount} items`} onPress={() => router.push('/customer/cart')}><Text style={styles.coverCartText}>Cart{cartCount > 0 ? ` (${cartCount})` : ''}</Text></TouchableOpacity>
+          <CartIconButton count={cartCount} tone="dark" onPress={() => router.push('/customer/cart')} />
         </View>}
         {stickyVisible && <View style={[styles.stickyHeader, { paddingTop: insets.top }]}>
           <DetailBackButton onPress={goBack} />
           <Text numberOfLines={1} style={styles.stickyTitle}>{item.name}</Text>
-          <TouchableOpacity style={styles.stickyCart} accessibilityRole="button" accessibilityLabel={`Cart, ${cartCount} items`} onPress={() => router.push('/customer/cart')}><Text style={styles.stickyCartText}>Cart{cartCount > 0 ? ` (${cartCount})` : ''}</Text></TouchableOpacity>
+          <CartIconButton count={cartCount} onPress={() => router.push('/customer/cart')} />
         </View>}
         <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-          <TouchableOpacity style={[styles.addToCart, (!item.available || restaurant.status !== 'open') && styles.addToCartUnavailable]} accessibilityRole="button" accessibilityLabel={`Add ${quantity} ${item.name} to cart for $${total.toFixed(2)}`} onPress={addToCart}>
+          <TouchableOpacity style={[styles.addToCart, (!item.available || restaurant.status !== 'open') && styles.addToCartUnavailable]} accessibilityRole="button" accessibilityLabel={`Add ${quantity} ${item.name} to cart for $${total.toFixed(2)}`} accessibilityState={{ disabled: isAdding }} disabled={isAdding} onPress={addToCart}>
             <Text style={styles.addToCartText}>+  Add to Cart · ${total.toFixed(2)}</Text>
           </TouchableOpacity>
         </View>
+        {addedCount !== null && <Animated.View pointerEvents="none" style={[styles.addedToast, { bottom: Math.max(insets.bottom, 12) + 82, opacity: addedOpacity, transform: [{ translateY: addedOffset }] }]} accessibilityRole="alert" accessibilityLiveRegion="polite">
+          <View style={styles.addedCheck}><Text style={styles.addedCheckText}>✓</Text></View>
+          <Text style={styles.addedText}>{addedCount} {addedCount === 1 ? 'item' : 'items'} added to cart</Text>
+        </Animated.View>}
         {orderError && <View style={styles.orderErrorOverlay} pointerEvents="none">
           <Animated.View style={[styles.orderErrorToast, { opacity: toastOpacity }]} accessibilityRole="alert" accessibilityLiveRegion="assertive">
             <Text style={styles.orderErrorCode}>{orderError.code}</Text>

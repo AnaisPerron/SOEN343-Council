@@ -8,10 +8,6 @@ const font = 'Gotham Rounded';
 export const styles = StyleSheet.create({
   coverControls: { position: 'absolute', left: 18, right: 18, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   controlGroup: { flexDirection: 'row', gap: 9 },
-  cartButton: { minWidth: 66, height: 40, borderRadius: 20, backgroundColor: 'rgba(30,25,26,0.66)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
-  cartButtonText: { fontFamily: font, color: '#FFFFFF', fontSize: 12, fontWeight: '800' },
-  stickyCartButton: { borderRadius: 18, backgroundColor: '#FCE7EB', paddingHorizontal: 10, paddingVertical: 9 },
-  stickyCartText: { fontFamily: font, color: '#A92140', fontSize: 11, fontWeight: '800' },
   iconButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(30,25,26,0.66)', alignItems: 'center', justifyContent: 'center' },
   iconText: { color: '#FFFFFF', fontSize: 27, fontWeight: '500', lineHeight: 32, marginTop: -2 },
   lightIconButton: { backgroundColor: '#F7F3F3', width: 36, height: 36, borderRadius: 18 },

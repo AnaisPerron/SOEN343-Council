@@ -2,6 +2,8 @@ import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider } from '@/context/AuthContext';
+import { CartProvider } from '@/context/CartContext';
+import { ItemCustomizationProvider } from '@/context/ItemCustomizationContext';
 
 function RootNavigator() {
   return (
@@ -15,6 +17,8 @@ function RootNavigator() {
       <Stack.Screen name="customer/home" />
       <Stack.Screen name="customer/restaurant/[id]" />
       <Stack.Screen name="customer/menu-item/[id]" />
+      <Stack.Screen name="customer/customize/[id]" />
+      <Stack.Screen name="customer/cart" />
       <Stack.Screen name="auth/login" />
       <Stack.Screen name="auth/register" />
     </Stack>
@@ -25,7 +29,11 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <RootNavigator />
+        <CartProvider>
+          <ItemCustomizationProvider>
+            <RootNavigator />
+          </ItemCustomizationProvider>
+        </CartProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

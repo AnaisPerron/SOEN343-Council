@@ -1,0 +1,27 @@
+import assert from 'node:assert/strict';
+import { describe, it } from 'node:test';
+import { menuItemsMock } from '../../mocks/menus.mock.ts';
+import { addCartLine, cartTotal, changeCartLineQuantity } from '../../app/customer/cartStore.ts';
+
+describe('cart draft', () => {
+  it('adds selected extras and quantity to the total', () => {
+    const lines = addCartLine([], menuItemsMock[0], 1, [5002, 5001], 3.5, 2);
+    assert.deepEqual(lines[0].optionIds, [5001, 5002]);
+    assert.equal(lines[0].quantity, 2);
+    assert.equal(cartTotal(lines), 36);
+  });
+
+  it('combines the same item and extras but keeps a different selection separate', () => {
+    const first = addCartLine([], menuItemsMock[0], 1, [5001], 2, 1);
+    const combined = addCartLine(first, menuItemsMock[0], 1, [5001], 2, 2);
+    const separate = addCartLine(combined, menuItemsMock[0], 1, [], 0, 1);
+    assert.equal(separate.length, 2);
+    assert.equal(separate[0].quantity, 3);
+  });
+
+  it('rejects unavailable items and removes a line when its quantity reaches zero', () => {
+    assert.deepEqual(addCartLine([], menuItemsMock[2], 1, [], 0, 1), []);
+    const lines = addCartLine([], menuItemsMock[0], 1, [], 0, 1);
+    assert.deepEqual(changeCartLineQuantity(lines, lines[0].key, 0), []);
+  });
+});

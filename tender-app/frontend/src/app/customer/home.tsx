@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useCart } from '../../context/CartContext';
 import { restaurantsMock } from '../../mocks/restaurants.mock';
 import { menusMock, menuItemsMock } from '../../mocks/menus.mock';
 import { restaurantDisplayMock } from '../../mocks/restaurantDisplay.mock';
@@ -20,6 +21,7 @@ import type { Restaurant } from '../../types/restaurant';
 import { styles } from './home.styles';
 import { searchRestaurants } from './restaurantSearch';
 import RestaurantSection from './components/RestaurantSection';
+import CartIconButton from './components/CartIconButton';
 import type { RestaurantCardData } from './components/RestaurantCard';
 import {
   getRestaurantOrderRestriction,
@@ -97,6 +99,8 @@ const restaurantCardsById = new Map<number, RestaurantCardData>(
 
 export default function CustomerHome() {
   const router = useRouter();
+  const { lines } = useCart();
+  const cartCount = lines.reduce((count, line) => count + line.quantity, 0);
   const { width } = useWindowDimensions();
   const compact = width < 600;
   const [searchQuery, setSearchQuery] = useState('');
@@ -162,6 +166,7 @@ export default function CustomerHome() {
             </View>
           </TouchableOpacity>
           */}
+          <CartIconButton count={cartCount} onPress={() => router.push('/customer/cart')} />
           {!compact && (
             <TouchableOpacity style={styles.profile} accessibilityRole="button">
               <Text style={styles.profileText}>A</Text>

@@ -17,6 +17,7 @@ import { menuItemDisplayMock, menuItemPhotos, restaurantDisplayMock } from '../.
 import type { MenuItem } from '../../../mocks/types';
 import type { Restaurant } from '../../../types/restaurant';
 import { DetailPage } from '../components/DetailPage';
+import CartIconButton from '../components/CartIconButton';
 import { useCart } from '../../../context/CartContext';
 import { styles } from './restaurant.styles';
 
@@ -136,7 +137,7 @@ export default function RestaurantDetails() {
       {coverControlsVisible && !stickyVisible && <View pointerEvents="box-none" style={[styles.coverControls, { top: insets.top + 12 }]}>
         <IconButton label="Back to restaurants" symbol="‹" onPress={goToRestaurants} />
         <View style={styles.controlGroup}>
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Cart, ${cartCount} items`} style={styles.cartButton} onPress={() => router.push('/customer/cart')}><Text style={styles.cartButtonText}>Cart{cartCount > 0 ? ` (${cartCount})` : ''}</Text></TouchableOpacity>
+          <CartIconButton count={cartCount} tone="dark" onPress={() => router.push('/customer/cart')} />
           <IconButton label="Search menu" symbol="⌕" onPress={() => setSearchOpen(true)} />
           <IconButton label={favorite ? 'Remove from favorites' : 'Add to favorites'} symbol={favorite ? '♥' : '♡'} onPress={() => setFavorite((value) => !value)} />
           <IconButton label="More restaurant information" symbol="⋯" onPress={() => setMoreOpen((value) => !value)} />
@@ -147,7 +148,7 @@ export default function RestaurantDetails() {
           <IconButton label="Back to restaurants" symbol="‹" onPress={goToRestaurants} light />
           {searchOpen ? <TextInput autoFocus value={query} onChangeText={setQuery} placeholder="Search menu" placeholderTextColor="#9F9092" style={styles.searchInput} returnKeyType="search" /> : <Text numberOfLines={1} style={styles.stickyName}>{restaurant.name}</Text>}
           <IconButton label={searchOpen ? 'Close search' : 'Search menu'} symbol={searchOpen ? '×' : '⌕'} onPress={() => { setSearchOpen((value) => !value); setQuery(''); }} light />
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Cart, ${cartCount} items`} style={styles.stickyCartButton} onPress={() => router.push('/customer/cart')}><Text style={styles.stickyCartText}>Cart{cartCount > 0 ? ` (${cartCount})` : ''}</Text></TouchableOpacity>
+          <CartIconButton count={cartCount} onPress={() => router.push('/customer/cart')} />
           <IconButton label={favorite ? 'Remove from favorites' : 'Add to favorites'} symbol={favorite ? '♥' : '♡'} onPress={() => setFavorite((value) => !value)} light />
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryNav} contentContainerStyle={styles.categoryNavContent}>
