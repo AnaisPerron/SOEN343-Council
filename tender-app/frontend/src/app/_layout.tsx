@@ -9,11 +9,6 @@ import { OrdersProvider } from '@/context/OrdersContext';
 function RootNavigator() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      {/*
-        TODO: Route through the actual sign-in flow before exposing customer pages.
-        For the current restaurant demo, index opens the restaurant display directly
-        without an auth guard. Restore protected routes when sign-in is ready.
-      */}
       <Stack.Screen name="index" />
       <Stack.Screen name="customer" />
       <Stack.Screen name="auth/login" />

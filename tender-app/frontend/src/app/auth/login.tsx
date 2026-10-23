@@ -1,4 +1,4 @@
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -21,6 +21,7 @@ type FormErrors = { email?: string; password?: string; form?: string };
 
 function LoginForm({ role }: { role: SupportedRole }) {
   const { signIn } = useAuth();
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<FormErrors>({});
@@ -37,6 +38,8 @@ function LoginForm({ role }: { role: SupportedRole }) {
     setLoading(true);
     try {
       await signIn({ role, email: email.trim(), password });
+      if (role === 'customer') router.replace('/customer/home/home');
+      else setLoading(false);
     } catch (error) {
       setErrors({ form: error instanceof Error ? error.message : 'Something went wrong' });
       setLoading(false);
