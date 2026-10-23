@@ -39,6 +39,7 @@ class RegistrationServiceTest {
 
     @Mock private RestaurantRepository restaurantRepository;
     @Mock private RestaurantStaffRepository restaurantStaffRepository;
+    @Mock private CustomerProfileService customerProfileService;
 
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
@@ -46,16 +47,21 @@ class RegistrationServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new RegistrationService(repository, passwordEncoder, restaurantRepository, restaurantStaffRepository);
+        service = new RegistrationService(repository, passwordEncoder, restaurantRepository, restaurantStaffRepository, customerProfileService);
     }
 
     @Test
     void registersProfileWithHashedPassword() {
         when(repository.existsByEmailIgnoreCase("jane@example.com")).thenReturn(false);
-        when(repository.saveAndFlush(any(Profile.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(repository.saveAndFlush(any(Profile.class))).thenAnswer(inv -> {
+            Profile profile = inv.getArgument(0);
+            ReflectionTestUtils.setField(profile, "id", 5L);
+            return profile;
+        });
 
         RegisterResponse response = service.register(
                 new RegisterRequest("Jane", " Jane@Example.com ", "secret123", "514-555-0101", Role.CUSTOMER));
+        verify(customerProfileService).ensureExists(5L);
 
         ArgumentCaptor<Profile> saved = ArgumentCaptor.forClass(Profile.class);
         verify(repository).saveAndFlush(saved.capture());
@@ -94,6 +100,7 @@ class RegistrationServiceTest {
         verify(restaurantStaffRepository).saveAndFlush(link.capture());
         assertThat(link.getValue().getUserId()).isEqualTo(7L);
         assertThat(link.getValue().getRestaurantId()).isEqualTo(42L);
+        verify(customerProfileService, never()).ensureExists(any());
     }
 
     @Test

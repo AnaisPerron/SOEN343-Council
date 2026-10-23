@@ -3,9 +3,8 @@ import { ActivityIndicator, Animated, ScrollView, Text, TouchableOpacity, View }
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCart } from '@/context/CartContext';
-import { useOrders } from '@/context/OrdersContext';
-import { menuItemsMock } from '@/mocks/menus.mock';
-import { restaurantsMock } from '@/mocks/restaurants.mock';
+import { useOrders, type OrderFailure } from '@/context/OrdersContext';
+import { useCatalog } from '@/context/CatalogContext';
 import { groupCartLinesByRestaurant } from '../cart/cartStore';
 import { getCartOrderRestriction, type RestaurantOrderRestriction } from '../services/restaurantOrderRules';
 import { styles } from './confirm-order.styles';
@@ -14,12 +13,15 @@ type OrderPhase = 'review' | 'submitting' | 'success';
 
 export default function ConfirmOrderScreen() {
   const router = useRouter();
-  const { lines, setQuantity } = useCart();
-  const { orders, placeOrder, cancelOrder } = useOrders();
+  const { lines, removeRestaurant } = useCart();
+  const { restaurants, findItem } = useCatalog();
+  const { orders, placeOrders, cancelOrder } = useOrders();
   const [phase, setPhase] = useState<OrderPhase>('review');
   const [placedIds, setPlacedIds] = useState<string[]>([]);
   const [restriction, setRestriction] = useState<RestaurantOrderRestriction | null>(null);
-  const [submitError, setSubmitError] = useState('');
+  const [failures, setFailures] = useState<OrderFailure[]>([]);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [successOpacity] = useState(() => new Animated.Value(0));
   const [successScale] = useState(() => new Animated.Value(0.88));
   const sending = useRef(false);
@@ -38,38 +40,48 @@ export default function ConfirmOrderScreen() {
 
   const sendOrders = async () => {
     if (sending.current || phase !== 'review' || lines.length === 0) return;
-    const blocked = getCartOrderRestriction(groups.map((group) => group.restaurantId), restaurantsMock);
+    const blocked = getCartOrderRestriction(groups.map((group) => group.restaurantId), restaurants);
     if (blocked) {
       setRestriction(blocked);
       return;
     }
 
     setRestriction(null);
-    setSubmitError('');
-    if (groups.some((group) => group.lines.some((line) => line.optionIds.length > 0))) {
-      setSubmitError('Ordering items with options is not supported yet. Remove the options before ordering.');
-      return;
-    }
+    setFailures([]);
     sending.current = true;
     setPhase('submitting');
-    const submitted: string[] = [];
-    try {
-      for (const group of groups) {
-        const placed = await placeOrder(group);
-        submitted.push(placed.id);
-        group.lines.forEach((line) => setQuantity(line.key, 0));
-      }
-      setPlacedIds(submitted);
-      setPhase('success');
-      Animated.parallel([
-        Animated.timing(successOpacity, { toValue: 1, duration: 280, useNativeDriver: true }),
-        Animated.spring(successScale, { toValue: 1, friction: 6, tension: 75, useNativeDriver: true }),
-      ]).start();
-    } catch (error) {
-      setSubmitError(`${submitted.length ? `${submitted.length} order(s) were placed. Remaining items are still in your cart. ` : ''}${error instanceof Error ? error.message : 'Could not place the order.'}`);
+    const result = await placeOrders(groups);
+    sending.current = false;
+    // Only placed restaurants leave the cart, so failed ones can be retried.
+    result.placed.forEach((order) => removeRestaurant(order.restaurantId));
+    setFailures(result.failures);
+    if (result.placed.length === 0) {
       setPhase('review');
-    } finally { sending.current = false; }
+      return;
+    }
+    setPlacedIds(result.placed.map((order) => order.id));
+    setPhase('success');
+    Animated.parallel([
+      Animated.timing(successOpacity, { toValue: 1, duration: 280, useNativeDriver: true }),
+      Animated.spring(successScale, { toValue: 1, friction: 6, tension: 75, useNativeDriver: true }),
+    ]).start();
   };
+
+  const cancel = (orderId: string) => {
+    if (cancellingId) return;
+    setCancelError(null);
+    setCancellingId(orderId);
+    cancelOrder(orderId)
+      .catch((error) => setCancelError(error instanceof Error ? error.message : 'Could not cancel the order.'))
+      .finally(() => setCancellingId(null));
+  };
+
+  const restaurantName = (restaurantId: number) => restaurants.find((entry) => entry.id === restaurantId)?.name ?? 'Restaurant';
+  const failurePanel = failures.length > 0 && <View style={styles.restrictionPanel} accessibilityRole="alert">
+    <Text style={styles.restrictionCode}>{phase === 'success' ? 'Some orders were not placed' : 'Order not placed'}</Text>
+    {failures.map((failure) => <Text key={failure.restaurantId} style={styles.restrictionText}>{restaurantName(failure.restaurantId)}: {failure.message}</Text>)}
+    {phase === 'success' && <Text style={styles.restrictionText}>Those items are still in your cart.</Text>}
+  </View>;
 
   return (
     <SafeAreaView style={styles.page} edges={['top', 'bottom']}>
@@ -88,8 +100,10 @@ export default function ConfirmOrderScreen() {
             <View style={styles.successIcon}><Text style={styles.successCheck}>{'\u2713'}</Text></View>
             <Text style={styles.successTitle}>{placedOrders.every((order) => order.status === 'cancelled') ? 'Your order has been cancelled.' : 'Your order has been placed.'}</Text>
           </Animated.View>
+          {failurePanel}
+          {cancelError && <View style={styles.restrictionPanel} accessibilityRole="alert"><Text style={styles.restrictionText}>{cancelError}</Text></View>}
           {placedOrders.map((order) => {
-            const restaurant = restaurantsMock.find((entry) => entry.id === order.restaurantId);
+            const restaurant = restaurants.find((entry) => entry.id === order.restaurantId);
             return <View key={order.id} style={styles.statusPanel}>
               <Text style={styles.statusRestaurant}>{restaurant?.name ?? 'Restaurant'}</Text>
               <Text style={styles.statusSubtitle}>Order #{order.id} · ${order.total.toFixed(2)}</Text>
@@ -100,7 +114,7 @@ export default function ConfirmOrderScreen() {
                 <View style={styles.statusStep}><View style={styles.statusDotFuture} /><Text style={styles.statusFuture}>Accepted or rejected</Text></View>
                 <View style={styles.statusStep}><View style={styles.statusDotPreparing} /><Text style={styles.statusFuture}>Preparing</Text></View>
                 <View style={styles.statusStep}><View style={styles.statusDotReady} /><Text style={styles.statusFuture}>Ready</Text></View>
-                <TouchableOpacity style={styles.cancelButton} accessibilityRole="button" accessibilityLabel={`Cancel order for ${restaurant?.name ?? 'Restaurant'}`} onPress={() => { void cancelOrder(order.id).catch((error) => setSubmitError(error instanceof Error ? error.message : 'Could not cancel order.')); }}><Text style={styles.cancelButtonText}>Cancel order</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.cancelButton} accessibilityRole="button" accessibilityLabel={`Cancel order for ${restaurant?.name ?? 'Restaurant'}`} disabled={cancellingId !== null} onPress={() => cancel(order.id)}><Text style={styles.cancelButtonText}>{cancellingId === order.id ? 'Cancelling...' : 'Cancel order'}</Text></TouchableOpacity>
               </>}
             </View>;
           })}
@@ -114,11 +128,11 @@ export default function ConfirmOrderScreen() {
         <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
           <Text style={styles.sectionTitle}>Review your order</Text>
           {groups.map((group) => {
-            const restaurant = restaurantsMock.find((entry) => entry.id === group.restaurantId);
+            const restaurant = restaurants.find((entry) => entry.id === group.restaurantId);
             return <View key={group.restaurantId} style={styles.restaurantBlock}>
               <Text style={styles.restaurantName}>{restaurant?.name ?? 'Restaurant'}</Text>
               {group.lines.map((line) => {
-                const item = menuItemsMock.find((entry) => entry.id === line.itemId);
+                const item = findItem(line.itemId);
                 return <View key={line.key} style={styles.itemRow}>
                   <Text style={styles.itemName}>{line.quantity} × {item?.name ?? 'Menu item'}</Text>
                   <Text style={styles.itemPrice}>${(line.quantity * line.unitPrice).toFixed(2)}</Text>
@@ -137,12 +151,12 @@ export default function ConfirmOrderScreen() {
             <Text style={styles.restrictionCode}>{restriction.code}</Text>
             <Text style={styles.restrictionText}>{restriction.message}</Text>
           </View>}
+          {failurePanel}
         </ScrollView>
       )}
 
-      {!!submitError && <View style={styles.restrictionPanel} accessibilityRole="alert"><Text style={styles.restrictionText}>{submitError}</Text></View>}
       <View style={styles.footer}>
-      {phase === 'success' ? (
+        {phase === 'success' ? (
           <TouchableOpacity style={styles.sendButton} accessibilityRole="button" onPress={() => router.replace('/customer/home/home')}><Text style={styles.sendButtonText}>Browse restaurants</Text></TouchableOpacity>
         ) : (
           <TouchableOpacity style={[styles.sendButton, (phase === 'submitting' || lines.length === 0) && styles.sendButtonDisabled]} accessibilityRole="button" accessibilityLabel="Send orders" accessibilityState={{ disabled: phase === 'submitting' || lines.length === 0, busy: phase === 'submitting' }} disabled={phase === 'submitting' || lines.length === 0} onPress={sendOrders}>

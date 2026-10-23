@@ -4,15 +4,14 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCart } from '@/context/CartContext';
 import { groupCartLinesByRestaurant } from './cartStore';
-import { menuItemOptionsMock, menuItemsMock } from '@/mocks/menus.mock';
-import { restaurantsMock } from '@/mocks/restaurants.mock';
-import { restaurantDisplayMock } from '@/mocks/restaurantDisplay.mock';
+import { useCatalog } from '@/context/CatalogContext';
 import { getCartOrderRestriction, ORDER_ERROR_FADE_DELAY_MS, ORDER_ERROR_FADE_DURATION_MS, type RestaurantOrderRestriction } from '../services/restaurantOrderRules';
 import { styles } from './cart.styles';
 
 export default function CartScreen() {
   const router = useRouter();
   const { lines, setQuantity } = useCart();
+  const { restaurants, findItem, findOptions } = useCatalog();
   const [orderError, setOrderError] = useState<RestaurantOrderRestriction | null>(null);
   const [toastOpacity] = useState(() => new Animated.Value(0));
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -28,7 +27,7 @@ export default function CartScreen() {
   }, [toastOpacity]);
 
   const makeOrder = () => {
-    const restriction = getCartOrderRestriction(groups.map((group) => group.restaurantId), restaurantsMock);
+    const restriction = getCartOrderRestriction(groups.map((group) => group.restaurantId), restaurants);
     if (restriction) {
       setOrderError(restriction);
       if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -64,20 +63,20 @@ export default function CartScreen() {
           <Text style={styles.count}>{count} {count === 1 ? 'item' : 'items'} in your cart</Text>
           {groups.map((group) => {
             // Each restaurant gets a separate vertical bill and subtotal.
-            const restaurant = restaurantsMock.find((entry) => entry.id === group.restaurantId);
-            const address = restaurantDisplayMock[group.restaurantId]?.address;
+            const restaurant = restaurants.find((entry) => entry.id === group.restaurantId);
             const status = restaurant?.status === 'open' ? 'Open now' : restaurant?.status === 'paused' ? 'Temporarily paused' : 'Closed now';
             return <View key={group.restaurantId} style={styles.restaurantSection}>
               <Text style={styles.restaurantName}>{restaurant?.name ?? 'Restaurant'}</Text>
               <View style={styles.restaurantDetails}>
-                <Text style={styles.restaurantDetailText}>{address ?? 'Address unavailable'}</Text>
+                {/* TODO: Show the restaurant address once the browse API returns it. */}
+                <Text style={styles.restaurantDetailText}>Address unavailable</Text>
                 <Text style={styles.restaurantStatus}>{status}</Text>
               </View>
               <View style={styles.divider} />
               {group.lines.map((line) => {
-                // The cart stores IDs and prices; resolve fixture names only for display.
-                const item = menuItemsMock.find((entry) => entry.id === line.itemId);
-                const selectedOptions = menuItemOptionsMock.filter((option) => line.optionIds.includes(option.id));
+                // The cart stores IDs and prices; resolve names from the loaded menus only for display.
+                const item = findItem(line.itemId);
+                const selectedOptions = findOptions(line.optionIds);
                 if (!item) return null;
                 return <View key={line.key} style={styles.line}>
                   <View style={styles.lineTop}>

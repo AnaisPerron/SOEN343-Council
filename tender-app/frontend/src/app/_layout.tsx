@@ -4,6 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { CartProvider } from '@/context/CartContext';
+import { CatalogProvider } from '@/context/CatalogContext';
 import { ItemCustomizationProvider } from '@/context/ItemCustomizationContext';
 import { OrdersProvider } from '@/context/OrdersContext';
 
@@ -25,13 +26,15 @@ function RootNavigator() {
 
 function SessionContent() {
   const { user } = useAuth();
-  return <CartProvider key={user?.id ?? 'signed-out'}>
-    <OrdersProvider key={user?.id ?? 'signed-out'}>
-      <ItemCustomizationProvider>
-        <RootNavigator />
-      </ItemCustomizationProvider>
-    </OrdersProvider>
-  </CartProvider>;
+  return <CatalogProvider key={user?.id ?? 'signed-out'}>
+    <CartProvider key={user?.id ?? 'signed-out'}>
+      <OrdersProvider key={user?.id ?? 'signed-out'}>
+        <ItemCustomizationProvider>
+          <RootNavigator />
+        </ItemCustomizationProvider>
+      </OrdersProvider>
+    </CartProvider>
+  </CatalogProvider>;
 }
 
 export default function RootLayout() {

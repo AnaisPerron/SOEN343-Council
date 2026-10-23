@@ -11,19 +11,17 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { restaurantsMock } from '../../../mocks/restaurants.mock';
-import { menusMock, menuItemsMock } from '../../../mocks/menus.mock';
-import { menuItemDisplayMock, menuItemPhotos, restaurantDisplayMock } from '../../../mocks/restaurantDisplay.mock';
-import type { MenuItem } from '../../../mocks/types';
+import type { CatalogItem } from '../../../api/customerCatalog';
 import type { Restaurant } from '../../../types/restaurant';
 import { DetailPage } from '../components/DetailPage';
 import CartIconButton from '../components/CartIconButton';
 import { useCart } from '../../../context/CartContext';
+import { useCatalog, useRestaurantMenu } from '../../../context/CatalogContext';
 import { styles } from './restaurant.styles';
-import { getMenuItemsForRestaurant } from '../services/menuCatalog';
 
 const PANEL_OVERLAP = 30;
 const STICKY_HEIGHT = 106;
+const categoryOf = (item: CatalogItem) => item.category?.trim() || 'Menu';
 
 function IconButton({ label, symbol, onPress, light = false }: {
   label: string;
@@ -49,30 +47,27 @@ function RestaurantInfoPanel({ restaurant, showMore }: {
   
   showMore: boolean;
 }) {
-  const details = restaurantDisplayMock[restaurant.id];
+  const statusText = restaurant.status === 'open' ? 'Open now' : restaurant.status === 'paused' ? 'Temporarily paused' : 'Closed now';
+  // Rating, address and delivery fee are not in the browse API yet, so only their fallbacks show.
   return (
     <View style={styles.info}>
       <Text style={styles.restaurantName}>{restaurant.name}</Text>
       <View style={styles.ratingLine}>
-        {details?.rating != null && <Text style={styles.rating}>★ {details.rating.toFixed(1)}</Text>}
-        {details?.reviewCount != null && <Text style={styles.muted}>({details.reviewCount} reviews)</Text>}
-        <Text style={styles.dot}>·</Text>
-        <Text style={styles.muted}>{restaurant.status === 'open' ? 'Open now' : restaurant.status === 'paused' ? 'Temporarily paused' : 'Closed now'}</Text>
+        <Text style={styles.muted}>{statusText}</Text>
       </View>
-      {details?.address && <Text style={styles.address}>{details.address}</Text>}
       <View style={styles.fulfillmentRow}>
         <View style={styles.fulfillmentBlock}>
-          <Text style={styles.fulfillmentValue}>{details?.deliveryFee != null ? `$${details.deliveryFee.toFixed(2)}` : 'See checkout'}</Text>
+          <Text style={styles.fulfillmentValue}>See checkout</Text>
           <Text style={styles.fulfillmentLabel}>Delivery fee</Text>
         </View>
       </View>
-      {showMore && <Text style={styles.moreDetails}>{details?.address ?? 'Address unavailable'} · {restaurant.status === 'open' ? 'Accepting orders' : 'Ordering unavailable right now'}</Text>}
+      {showMore && <Text style={styles.moreDetails}>Address unavailable · {restaurant.status === 'open' ? 'Accepting orders' : 'Ordering unavailable right now'}</Text>}
     </View>
   );
 }
 
-function MenuItemCard({ item, onOpen }: { item: MenuItem; onOpen: (item: MenuItem) => void }) {
-  const photo = item.photURL ? { uri: item.photURL } : menuItemPhotos[item.id];
+function MenuItemCard({ item, onOpen }: { item: CatalogItem; onOpen: (item: CatalogItem) => void }) {
+  const photo = item.photURL ? { uri: item.photURL } : undefined;
   return (
     // Open the item detail first; quantity, extras, and adding to cart live there.
     <TouchableOpacity style={styles.menuCard} accessibilityRole="button" accessibilityLabel={`View ${item.name} details`} onPress={() => onOpen(item)} activeOpacity={0.85}>
@@ -82,7 +77,7 @@ function MenuItemCard({ item, onOpen }: { item: MenuItem; onOpen: (item: MenuIte
       <View style={styles.itemTitleRow}>
         <Text style={styles.itemName}>{item.name}</Text>
       </View>
-      {item.description && <Text style={styles.itemDescription} numberOfLines={2}>{item.description}</Text>}
+      {!!item.description && <Text style={styles.itemDescription} numberOfLines={2}>{item.description}</Text>}
       {!item.available && <Text style={styles.itemAvailability}>Not available right now</Text>}
       <Text style={styles.itemPrice}>${item.price.toFixed(2)}</Text>
     </TouchableOpacity>
@@ -105,15 +100,21 @@ export default function RestaurantDetails() {
   const [moreOpen, setMoreOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const restaurant = restaurantsMock.find((entry) => entry.id === Number(id));
+  const { restaurants, restaurantsStatus } = useCatalog();
+  const restaurant = restaurants.find((entry) => entry.id === Number(id));
+  const { menu, status: menuStatus, error: menuError, retry: retryMenu } = useRestaurantMenu(restaurant?.id);
   const goToRestaurants = () => router.replace('/customer/home/home');
   const coverHeight = Math.max(290, Math.min(windowHeight * 0.39, 390));
-  const items = useMemo(() => getMenuItemsForRestaurant(restaurant?.id ?? -1, menusMock, menuItemsMock), [restaurant?.id]);
-  const categories = useMemo(() => [...new Set(items.map((item) => menuItemDisplayMock[item.id]?.category ?? 'Menu'))], [items]);
+  const items = useMemo(() => menu?.items ?? [], [menu]);
+  const categories = useMemo(() => [...new Set(items.map(categoryOf))], [items]);
   const filteredItems = items.filter((item) => item.name.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
-  const visibleCategories = categories.filter((category) => filteredItems.some((item) => (menuItemDisplayMock[item.id]?.category ?? 'Menu') === category));
-  const coverItemId = restaurant && restaurantDisplayMock[restaurant.id]?.coverItemId;
-  const cover = coverItemId ? menuItemPhotos[coverItemId] : menuItemPhotos[items[0]?.id];
+  const visibleCategories = categories.filter((category) => filteredItems.some((item) => categoryOf(item) === category));
+  const coverUrl = restaurant?.photoUrl ?? items.find((item) => item.photURL)?.photURL;
+  const cover = coverUrl ? { uri: coverUrl } : undefined;
+
+  if (!restaurant && restaurantsStatus === 'loading') {
+    return <View style={styles.notFound}><Text style={styles.emptyText}>Loading restaurant...</Text></View>;
+  }
 
   if (!restaurant) {
     return <View style={styles.notFound}><Text style={styles.restaurantName}>Restaurant not found</Text><TouchableOpacity onPress={goToRestaurants}><Text style={styles.backLink}>Back to restaurants</Text></TouchableOpacity></View>;
@@ -124,8 +125,8 @@ export default function RestaurantDetails() {
     if (sectionY != null) scrollRef.current?.scrollTo({ y: Math.max(0, coverHeight - PANEL_OVERLAP + infoHeight + sectionY - insets.top - STICKY_HEIGHT - 12), animated: true });
   };
 
-  const openItem = (item: MenuItem) => {
-    router.push({ pathname: '/customer/menu-item/[id]', params: { id: String(item.id) } });
+  const openItem = (item: CatalogItem) => {
+    router.push({ pathname: '/customer/menu-item/[id]', params: { id: String(item.id), restaurantId: String(restaurant.id) } });
   };
 
   return (
@@ -162,14 +163,17 @@ export default function RestaurantDetails() {
           <View style={styles.menu}>
             <Text style={styles.menuHeading}>Menu</Text>
             {visibleCategories.map((category) => {
-              const categoryItems = filteredItems.filter((item) => (menuItemDisplayMock[item.id]?.category ?? 'Menu') === category);
+              const categoryItems = filteredItems.filter((item) => categoryOf(item) === category);
               if (categoryItems.length === 0) return null;
               return <View key={category} style={styles.categorySection} onLayout={(event) => { sectionOffsets.current[category] = event.nativeEvent.layout.y; }}>
                 <Text style={styles.categoryHeading}>{category}</Text>
                 <View style={styles.itemGrid}>{categoryItems.map((item) => <MenuItemCard key={item.id} item={item} onOpen={openItem} />)}</View>
               </View>;
             })}
-            {filteredItems.length === 0 && <Text style={styles.emptyText}>No menu items match “{query}”.</Text>}
+            {menuStatus === 'loading' && <Text style={styles.emptyText}>Loading menu...</Text>}
+            {menuStatus === 'error' && <TouchableOpacity onPress={retryMenu} accessibilityRole="button"><Text style={styles.emptyText}>{menuError} Tap to try again.</Text></TouchableOpacity>}
+            {menuStatus === 'ready' && items.length === 0 && <Text style={styles.emptyText}>This restaurant has no menu items yet.</Text>}
+            {menuStatus === 'ready' && items.length > 0 && filteredItems.length === 0 && <Text style={styles.emptyText}>No menu items match “{query}”.</Text>}
           </View>
     </DetailPage>
   );

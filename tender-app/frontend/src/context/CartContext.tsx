@@ -7,6 +7,7 @@ interface CartContextValue {
   addItem: (item: MenuItem, restaurantId: number, optionIds: number[], optionCost: number, quantity: number) => void;
   setQuantity: (key: string, quantity: number) => void;
   clearCart: () => void;
+  removeRestaurant: (restaurantId: number) => void;
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -22,7 +23,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setLines((current) => changeCartLineQuantity(current, key, quantity));
   };
   const clearCart = () => setLines([]);
-  return <CartContext.Provider value={{ lines, addItem, setQuantity, clearCart }}>{children}</CartContext.Provider>;
+  // Drop one restaurant's lines, e.g. after its order is placed while another restaurant's failed.
+  const removeRestaurant = (restaurantId: number) => {
+    setLines((current) => current.filter((line) => line.restaurantId !== restaurantId));
+  };
+  return <CartContext.Provider value={{ lines, addItem, setQuantity, clearCart, removeRestaurant }}>{children}</CartContext.Provider>;
 }
 
 export function useCart() {

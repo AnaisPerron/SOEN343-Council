@@ -7,4 +7,6 @@ export interface Restaurant {
   status: RestaurantStatus;
   longitude: number | null;
   latitude: number | null;
+  /** Absolute cover photo URL from the API; fixtures leave it unset. */
+  photoUrl?: string | null;
 }
