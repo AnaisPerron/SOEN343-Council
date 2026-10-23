@@ -6,8 +6,10 @@ import { DetailPage } from '../customer/components/DetailPage';
 import { styles as customerStyles } from '../customer/restaurant/restaurant.styles';
 import { useAuth } from '@/context/AuthContext';
 import { loadRestaurantMenu, saveRestaurantMenu, type MenuItem, type RestaurantMenu } from '@/api/restaurantMenu';
+import { emptyDemoRestaurantMenu } from '@/mocks/restaurantMenu';
+import { isDemoRestaurantToken } from '@/mocks/restaurantAccount';
 
-const newItem = (): MenuItem => ({ id: null, name: '', description: '', category: 'Menu', price: 0, status: 'available', photoUrl: null, options: [] });
+const newItem = (): MenuItem => ({ id: null, name: '', description: '', category: '', price: 0, status: 'available', photoUrl: null, options: [] });
 const money = (value: number) => Number.isFinite(value) ? value.toFixed(2) : '0.00';
 
 export default function EditMenu() {
@@ -20,6 +22,16 @@ export default function EditMenu() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [expanded, setExpanded] = useState<number | null>(null);
+
+  const createMenu = () => {
+    const draft = emptyDemoRestaurantMenu();
+    if (!token || !isDemoRestaurantToken(token)) {
+      draft.restaurantId = 0;
+      draft.name = user?.name ?? '';
+    }
+    setMenu(draft);
+    setMessage('');
+  };
 
   useEffect(() => {
     if (!token || user?.role !== 'restaurant') { router.replace('/auth/login'); return; }
@@ -36,13 +48,18 @@ export default function EditMenu() {
       setMessage('Complete each name, category, and nonnegative price before saving.'); return;
     }
     setSaving(true); setMessage('');
-    try { setMenu(await saveRestaurantMenu(token, menu)); setMessage('Menu saved and published.'); }
+    try { setMenu(await saveRestaurantMenu(token, menu)); setMessage(isDemoRestaurantToken(token) ? 'Demo menu saved locally.' : 'Menu saved and published.'); }
     catch (error) { setMessage(error instanceof Error ? error.message : 'Could not save menu.'); }
     finally { setSaving(false); }
   };
 
   if (loading) return <View style={local.center}><ActivityIndicator color="#D42F50" /></View>;
-  if (!menu) return <View style={local.center}><Text>{message || 'Menu unavailable'}</Text><Pressable onPress={() => router.back()}><Text style={local.link}>Back</Text></Pressable></View>;
+  if (!menu) return <View style={local.center}>
+    <Text style={local.emptyTitle}>We couldn&apos;t fetch a menu for your restaurant.</Text>
+    <Text style={local.emptyDetail}>{message}</Text>
+    <Pressable accessibilityRole="button" style={local.addButton} onPress={createMenu}><Text style={local.addText}>Press here to create one</Text></Pressable>
+    <Pressable accessibilityRole="button" onPress={() => router.back()}><Text style={local.link}>Back</Text></Pressable>
+  </View>;
   const coverHeight = Math.max(290, Math.min(height * 0.39, 390));
   const categories = [...new Set(menu.items.map((item) => item.category.trim() || 'Menu'))];
   return <DetailPage title={menu.name} cover={menu.coverUrl ? { uri: menu.coverUrl } : undefined} coverHeight={coverHeight} foreground={<View style={[local.topBar, { top: insets.top + 12 }]}>
@@ -50,16 +67,17 @@ export default function EditMenu() {
     <Pressable style={local.saveButton} accessibilityRole="button" accessibilityState={{ disabled: saving }} disabled={saving} onPress={save}><Text style={local.saveText}>{saving ? 'Saving…' : 'Save menu'}</Text></Pressable>
   </View>}>
     <View style={customerStyles.info}>
-      <Field label="Restaurant name" value={menu.name} onChangeText={(name) => update({ name })} large />
+      <Field label="Restaurant name" value={menu.name} placeholder="Your restaurant name" onChangeText={(name) => update({ name })} large />
       <View style={customerStyles.ratingLine}><Text style={customerStyles.muted}>Restaurant status</Text></View>
       <View style={local.chips}>{(['open', 'paused', 'closed'] as const).map((status) => <Chip key={status} label={status} selected={menu.status === status} onPress={() => update({ status })} />)}</View>
-      <Field label="Address" value={menu.address ?? ''} onChangeText={(address) => update({ address })} />
-      <Field label="Delivery fee ($)" value={String(menu.deliveryFee ?? 0)} onChangeText={(value) => update({ deliveryFee: Number(value) || 0 })} keyboardType="decimal-pad" />
-      <Field label="Cover image URL" value={menu.coverUrl ?? ''} onChangeText={(coverUrl) => update({ coverUrl })} />
+      <Field label="Address" value={menu.address ?? ''} placeholder="Street address" onChangeText={(address) => update({ address })} />
+      <Field label="Delivery fee ($)" value={menu.deliveryFee ? String(menu.deliveryFee) : ''} placeholder="0.00" onChangeText={(value) => update({ deliveryFee: Number(value) || 0 })} keyboardType="decimal-pad" />
+
     </View>
     <View style={customerStyles.menu}>
       <Text style={customerStyles.menuHeading}>Menu</Text>
-      <Field label="Menu name" value={menu.menuName} onChangeText={(menuName) => update({ menuName })} />
+      <Field label="Menu name" value={menu.menuName} placeholder="e.g. Little Italy Pizza Menu" onChangeText={(menuName) => update({ menuName })} />
+      {menu.items.length === 0 && <Text style={local.emptyItems}>Your menu is empty. Add an item to get started.</Text>}
       {categories.map((category) => <View key={category} style={customerStyles.categorySection}>
         <Text style={customerStyles.categoryHeading}>{category}</Text>
         <View style={customerStyles.itemGrid}>{menu.items.map((item, index) => (item.category.trim() || 'Menu') === category && <Pressable key={item.id ?? `new-${index}`} style={customerStyles.menuCard} accessibilityRole="button" onPress={() => setExpanded(expanded === index ? null : index)}>
@@ -73,11 +91,11 @@ export default function EditMenu() {
       </View>)}
       {expanded != null && menu.items[expanded] && <View style={local.editor}>
         <Text style={customerStyles.categoryHeading}>Edit item</Text>
-        <Field label="Item name" value={menu.items[expanded].name} onChangeText={(name) => updateItem(expanded, { name })} />
-        <Field label="Description" value={menu.items[expanded].description ?? ''} onChangeText={(description) => updateItem(expanded, { description })} multiline />
-        <Field label="Category" value={menu.items[expanded].category} onChangeText={(category) => updateItem(expanded, { category })} />
-        <Field label="Price ($)" value={String(menu.items[expanded].price)} onChangeText={(value) => updateItem(expanded, { price: Number(value) || 0 })} keyboardType="decimal-pad" />
-        <Field label="Photo URL" value={menu.items[expanded].photoUrl ?? ''} onChangeText={(photoUrl) => updateItem(expanded, { photoUrl })} />
+        <Field label="Item name" value={menu.items[expanded].name} placeholder="e.g. Margherita pizza" onChangeText={(name) => updateItem(expanded, { name })} />
+        <Field label="Description" value={menu.items[expanded].description ?? ''} placeholder="Describe this item" onChangeText={(description) => updateItem(expanded, { description })} multiline />
+        <Field label="Category" value={menu.items[expanded].category} placeholder="e.g. Pizza" onChangeText={(category) => updateItem(expanded, { category })} />
+        <Field label="Price ($)" value={menu.items[expanded].price ? String(menu.items[expanded].price) : ''} placeholder="0.00" onChangeText={(value) => updateItem(expanded, { price: Number(value) || 0 })} keyboardType="decimal-pad" />
+        <Field label="Photo URL" value={menu.items[expanded].photoUrl ?? ''} placeholder="https://example.com/pizza.jpg" onChangeText={(photoUrl) => updateItem(expanded, { photoUrl })} />
         <Text style={local.label}>Availability</Text><View style={local.chips}><Chip label="Available" selected={menu.items[expanded].status === 'available'} onPress={() => updateItem(expanded, { status: 'available' })} /><Chip label="Sold out" selected={menu.items[expanded].status === 'sold_out'} onPress={() => updateItem(expanded, { status: 'sold_out' })} /></View>
         <Text style={local.subheading}>Toppings</Text>
         {menu.items[expanded].options.map((option, optionIndex) => <View key={option.id ?? `new-${optionIndex}`} style={local.optionRow}>
@@ -100,5 +118,5 @@ function Chip({ label, selected, onPress }: { label: string; selected: boolean; 
   return <Pressable accessibilityRole="button" accessibilityState={{ selected }} onPress={onPress} style={[local.chip, selected && local.selectedChip]}><Text style={[local.chipText, selected && local.selectedChipText]}>{label}</Text></Pressable>;
 }
 const local = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14 }, topBar: { position: 'absolute', left: 18, right: 18, flexDirection: 'row', justifyContent: 'space-between' }, topButton: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#302629', alignItems: 'center', justifyContent: 'center' }, topButtonText: { color: '#FFF', fontSize: 30 }, saveButton: { backgroundColor: '#D42F50', paddingHorizontal: 18, justifyContent: 'center', borderRadius: 21 }, saveText: { color: '#FFF', fontWeight: '800' }, field: { marginTop: 15 }, label: { color: '#887B7E', fontSize: 11, fontWeight: '700', marginBottom: 6 }, input: { borderWidth: 1, borderColor: '#EDE6E6', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, color: '#302629', fontSize: 14, backgroundColor: '#FFF' }, largeInput: { fontSize: 25, fontWeight: '800' }, chips: { flexDirection: 'row', gap: 8, marginTop: 8 }, chip: { borderRadius: 16, backgroundColor: '#F7F3F3', paddingHorizontal: 13, paddingVertical: 8 }, selectedChip: { backgroundColor: '#D42F50' }, chipText: { color: '#887B7E', fontSize: 12, fontWeight: '700', textTransform: 'capitalize' }, selectedChipText: { color: '#FFF' }, editHint: { color: '#D42F50', fontSize: 11, fontWeight: '700', marginTop: 7 }, editor: { backgroundColor: '#FFF8F9', borderRadius: 18, padding: 18, marginVertical: 20 }, subheading: { fontSize: 18, fontWeight: '800', color: '#302629', marginTop: 24 }, optionRow: { flexDirection: 'row', gap: 12 }, optionName: { flex: 2 }, optionPrice: { flex: 1 }, link: { color: '#D42F50', fontWeight: '800', marginTop: 15 }, addButton: { borderWidth: 1, borderColor: '#D42F50', borderRadius: 14, alignItems: 'center', padding: 14, marginTop: 15 }, addText: { color: '#D42F50', fontWeight: '800' }, message: { color: '#302629', marginTop: 16 }, bottomSave: { backgroundColor: '#D42F50', borderRadius: 14, alignItems: 'center', padding: 16, marginVertical: 20 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, paddingHorizontal: 24, backgroundColor: '#FFF' }, emptyTitle: { color: '#302629', fontSize: 22, fontWeight: '800', textAlign: 'center' }, emptyDetail: { color: '#887B7E', textAlign: 'center' }, emptyItems: { color: '#887B7E', marginTop: 20 }, topBar: { position: 'absolute', left: 18, right: 18, flexDirection: 'row', justifyContent: 'space-between' }, topButton: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#302629', alignItems: 'center', justifyContent: 'center' }, topButtonText: { color: '#FFF', fontSize: 30 }, saveButton: { backgroundColor: '#D42F50', paddingHorizontal: 18, justifyContent: 'center', borderRadius: 21 }, saveText: { color: '#FFF', fontWeight: '800' }, field: { marginTop: 15 }, label: { color: '#887B7E', fontSize: 11, fontWeight: '700', marginBottom: 6 }, input: { borderWidth: 1, borderColor: '#EDE6E6', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, color: '#302629', fontSize: 14, backgroundColor: '#FFF' }, largeInput: { fontSize: 25, fontWeight: '800' }, chips: { flexDirection: 'row', gap: 8, marginTop: 8 }, chip: { borderRadius: 16, backgroundColor: '#F7F3F3', paddingHorizontal: 13, paddingVertical: 8 }, selectedChip: { backgroundColor: '#D42F50' }, chipText: { color: '#887B7E', fontSize: 12, fontWeight: '700', textTransform: 'capitalize' }, selectedChipText: { color: '#FFF' }, editHint: { color: '#D42F50', fontSize: 11, fontWeight: '700', marginTop: 7 }, editor: { backgroundColor: '#FFF8F9', borderRadius: 18, padding: 18, marginVertical: 20 }, subheading: { fontSize: 18, fontWeight: '800', color: '#302629', marginTop: 24 }, optionRow: { flexDirection: 'row', gap: 12 }, optionName: { flex: 2 }, optionPrice: { flex: 1 }, link: { color: '#D42F50', fontWeight: '800', marginTop: 15 }, addButton: { borderWidth: 1, borderColor: '#D42F50', borderRadius: 14, alignItems: 'center', padding: 14, marginTop: 15 }, addText: { color: '#D42F50', fontWeight: '800' }, message: { color: '#302629', marginTop: 16 }, bottomSave: { backgroundColor: '#D42F50', borderRadius: 14, alignItems: 'center', padding: 16, marginVertical: 20 },
 });

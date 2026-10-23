@@ -35,6 +35,12 @@ Start the app (from the web):
 npx expo start --web
 ```
 
+## Little Italy Pizza demo
+
+Choose **Restaurant** on the sign-in screen and use either `littleitaly@demo.test` or `littleitaly.manager@demo.test` with password `DemoPass123!`. These are frontend-only demo accounts; they do not require a backend restaurant record.
+
+The first visit to **Menu** shows a create-menu prompt. Add a menu name and items, then save. On web, the demo menu is saved in that browser's local storage. In Expo Go, it is kept for the current app session. Both demo accounts share the same local menu.
+
 
 
 ## Troubleshooting: Expo Go version mismatch

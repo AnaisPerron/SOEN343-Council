@@ -80,7 +80,7 @@ export default function RegisterScreen() {
     // Signing in switches the navigator to the home screen; the account already exists, so fall back to the sign in screen
     try {
       await signIn({ role, email: details.email, password });
-      router.replace(role === 'restaurant' ? '/restaurant/index' : '/customer/home/home');
+      router.replace(role === 'restaurant' ? '/restaurant' : '/customer/home/home');
     } catch {
       router.replace('/auth/login');
     }

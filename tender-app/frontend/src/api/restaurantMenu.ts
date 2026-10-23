@@ -1,10 +1,18 @@
 import { API_URL, ApiError } from './client';
+import { isDemoRestaurantToken } from '../mocks/restaurantAccount';
+import { loadDemoRestaurantMenu, saveDemoRestaurantMenu } from '../mocks/restaurantMenu';
 
 export type MenuOption = { id: number | null; name: string; additionalCost: number };
 export type MenuItem = { id: number | null; name: string; description: string; category: string; price: number; status: 'available' | 'sold_out'; photoUrl: string | null; options: MenuOption[] };
 export type RestaurantMenu = { restaurantId: number; name: string; status: 'open' | 'paused' | 'closed'; address: string; deliveryFee: number; coverUrl: string | null; menuName: string; items: MenuItem[] };
 
 async function request(method: 'GET' | 'PUT', token: string, body?: RestaurantMenu): Promise<RestaurantMenu> {
+  if (isDemoRestaurantToken(token)) {
+    if (method === 'PUT' && body) return saveDemoRestaurantMenu(body);
+    const menu = loadDemoRestaurantMenu();
+    if (!menu) throw new ApiError(404, 'No menu has been created yet');
+    return menu;
+  }
   let response: Response;
   try {
     response = await fetch(`${API_URL}/api/restaurant/menu`, {

@@ -39,7 +39,7 @@ function LoginForm({ role }: { role: SupportedRole }) {
     try {
       await signIn({ role, email: email.trim(), password });
       if (role === 'customer') router.replace('/customer/home/home');
-      else if (role === 'restaurant') router.replace('/restaurant/index');
+      else if (role === 'restaurant') router.replace('/restaurant');
       else setLoading(false);
     } catch (error) {
       setErrors({ form: error instanceof Error ? error.message : 'Something went wrong' });
@@ -120,7 +120,10 @@ export default function LoginScreen() {
           {role === 'courier' ? (
             <Text style={styles.notice}>Courier accounts are not supported yet.</Text>
           ) : (
-            <LoginForm key={role} role={role} />
+            <>
+              {role === 'restaurant' && <Text style={styles.notice}>Little Italy Pizza demo: littleitaly@demo.test / DemoPass123!</Text>}
+              <LoginForm key={role} role={role} />
+            </>
           )}
 
           {role === 'Operator' ? (

@@ -98,6 +98,17 @@ describe('login api', () => {
     });
   });
 
+  it('signs in both Little Italy Pizza demo staff without contacting the backend', async () => {
+    const fetchMock = mock.method(globalThis, 'fetch', async () => { throw new Error('Unexpected backend request'); });
+    for (const email of ['littleitaly@demo.test', 'littleitaly.manager@demo.test']) {
+      const session = await login({ role: 'restaurant', email, password: 'DemoPass123!' });
+      assert.equal(session.user.name, 'Little Italy Pizza');
+      assert.equal(session.user.role, 'restaurant');
+      await logout(session.token);
+    }
+    assert.equal(fetchMock.mock.callCount(), 0);
+  });
+
   it('rejects an account of a different role and ends its session', async () => {
     const fetchMock = mockFetch(200, loginResponse);
     await assert.rejects(
