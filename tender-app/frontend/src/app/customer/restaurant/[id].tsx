@@ -83,8 +83,7 @@ function RestaurantInfoPanel({ restaurant, showMore }: {
 }
 
 function MenuItemCard({ item, onAdd }: { item: MenuItem; onAdd: (item: MenuItem) => void }) {
-  const display = menuItemDisplayMock[item.id];
-  const photo = item.photo_url ? { uri: item.photo_url } : menuItemPhotos[item.id];
+  const photo = item.photURL ? { uri: item.photURL } : menuItemPhotos[item.id];
   return (
     <View style={styles.menuCard}>
       <View style={styles.itemImageWrap}>
@@ -92,12 +91,12 @@ function MenuItemCard({ item, onAdd }: { item: MenuItem; onAdd: (item: MenuItem)
       </View>
       <View style={styles.itemTitleRow}>
         <Text style={styles.itemName}>{item.name}</Text>
-        <TouchableOpacity style={[styles.addButton, item.status === 'sold_out' && styles.addButtonDisabled]} accessibilityRole="button" accessibilityLabel={`Add ${item.name}`} accessibilityState={{ disabled: item.status === 'sold_out' }} disabled={item.status === 'sold_out'} onPress={() => onAdd(item)}>
+        <TouchableOpacity style={[styles.addButton, !item.available && styles.addButtonDisabled]} accessibilityRole="button" accessibilityLabel={`Add ${item.name}`} accessibilityState={{ disabled: !item.available }} disabled={!item.available} onPress={() => onAdd(item)}>
           <Text style={styles.addButtonText}>+</Text>
         </TouchableOpacity>
       </View>
-      {display?.description && <Text style={styles.itemDescription} numberOfLines={2}>{display.description}</Text>}
-      <Text style={styles.itemPrice}>{item.status === 'sold_out' ? 'Sold out · ' : ''}${item.price.toFixed(2)}</Text>
+      {item.description && <Text style={styles.itemDescription} numberOfLines={2}>{item.description}</Text>}
+      <Text style={styles.itemPrice}>{!item.available ? 'Sold out · ' : ''}${item.price.toFixed(2)}</Text>
     </View>
   );
 }

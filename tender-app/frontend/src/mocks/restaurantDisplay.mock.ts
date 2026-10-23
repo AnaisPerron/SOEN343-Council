@@ -43,30 +43,29 @@ export const menuItemPhotos: Record<number, ImageSourcePropType> = {
 };
 
 export interface MenuItemDisplay {
-  description: string;
   category: string;
 }
 
 export const menuItemDisplayMock: Record<number, MenuItemDisplay> = {
-  1001: { description: 'Tender chicken, maple glaze and crisp greens.', category: 'Popular' },
-  1002: { description: 'Golden fries tossed with fragrant truffle.', category: 'Sides' },
-  1003: { description: 'Warm apples under a buttery crumble.', category: 'Desserts' },
-  1004: { description: 'Seasonal vegetables, grains and house dressing.', category: 'Bowls' },
-  1005: { description: 'Miso tofu with fresh vegetables and rice.', category: 'Bowls' },
-  1006: { description: 'Smoked salmon, cream cheese and a toasted bagel.', category: 'Popular' },
-  2001: { description: 'Seasonal vegetables, grains and house dressing.', category: 'Popular' },
-  2002: { description: 'Miso tofu with fresh vegetables and rice.', category: 'Bowls' },
-  2003: { description: 'Golden fries tossed with fragrant truffle.', category: 'Sides' },
-  2004: { description: 'Warm apples under a buttery crumble.', category: 'Desserts' },
-  2005: { description: 'Tender chicken, maple glaze and crisp greens.', category: 'Popular' },
-  3001: { description: 'Smoked salmon, cream cheese and a toasted bagel.', category: 'Popular' },
-  3002: { description: 'Tender chicken, maple glaze and crisp greens.', category: 'Popular' },
-  3003: { description: 'Golden fries tossed with fragrant truffle.', category: 'Sides' },
-  3004: { description: 'Warm apples under a buttery crumble.', category: 'Desserts' },
-  3005: { description: 'Seasonal vegetables, grains and house dressing.', category: 'Bowls' },
-  4001: { description: 'Tomato, mozzarella and fresh basil.', category: 'Pizza' },
-  4002: { description: 'Golden fries tossed with fragrant truffle.', category: 'Sides' },
-  4003: { description: 'Warm apples under a buttery crumble.', category: 'Desserts' },
-  4004: { description: 'Seasonal vegetables, grains and house dressing.', category: 'Bowls' },
-  4005: { description: 'Smoked salmon, cream cheese and a toasted bagel.', category: 'Popular' },
+  1001: { category: 'Popular' },
+  1002: { category: 'Sides' },
+  1003: { category: 'Desserts' },
+  1004: { category: 'Bowls' },
+  1005: { category: 'Bowls' },
+  1006: { category: 'Popular' },
+  2001: { category: 'Popular' },
+  2002: { category: 'Bowls' },
+  2003: { category: 'Sides' },
+  2004: { category: 'Desserts' },
+  2005: { category: 'Popular' },
+  3001: { category: 'Popular' },
+  3002: { category: 'Popular' },
+  3003: { category: 'Sides' },
+  3004: { category: 'Desserts' },
+  3005: { category: 'Bowls' },
+  4001: { category: 'Pizza' },
+  4002: { category: 'Sides' },
+  4003: { category: 'Desserts' },
+  4004: { category: 'Bowls' },
+  4005: { category: 'Popular' },
 };

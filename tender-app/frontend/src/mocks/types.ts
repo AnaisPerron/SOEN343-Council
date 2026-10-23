@@ -1,6 +1,5 @@
 /** Frontend fixture types based on Documents/Diagrams/ERD.drawio. */
 export type UserRole = 'customer' | 'restaurant_staff' | 'courier' | 'Operator';
-export type MenuItemStatus = 'available' | 'sold_out';
 export type CourierStatus = 'offline' | 'idle' | 'assigned' | 'carrying';
 export type OrderStatus =
   | 'placed'
@@ -51,8 +50,9 @@ export interface MenuItem {
   menu_id: number;
   name: string;
   price: number;
-  status: MenuItemStatus;
-  photo_url: string | null;
+  description: string;
+  available: boolean;
+  photURL: string | null;
 }
 
 export interface MenuItemOption {
