@@ -11,10 +11,11 @@ export interface RestaurantDisplay {
 }
 
 export const restaurantDisplayMock: Record<number, RestaurantDisplay> = {
-  1: { rating: 4.8, reviewCount: 124, address: 'Downtown Montréal', deliveryFee: 2.99, coverItemId: 1001 },
-  2: { rating: 4.6, reviewCount: 89, address: 'Montréal, QC', deliveryFee: 1.99, coverItemId: 2001 },
-  3: { rating: 4.9, reviewCount: 56, address: 'Montréal, QC', deliveryFee: 2.49, coverItemId: 3001 },
-  4: { rating: 4.7, reviewCount: 203, address: 'Little Italy, Montréal', deliveryFee: 3.49 },
+  // TODO: Replace these zero delivery fees once delivery pricing is supported.
+  1: { rating: 4.8, reviewCount: 124, address: 'Downtown Montréal', deliveryFee: 0, coverItemId: 1001 },
+  2: { rating: 4.6, reviewCount: 89, address: 'Montréal, QC', deliveryFee: 0, coverItemId: 2001 },
+  3: { rating: 4.9, reviewCount: 56, address: 'Montréal, QC', deliveryFee: 0, coverItemId: 3001 },
+  4: { rating: 4.7, reviewCount: 203, address: 'Little Italy, Montréal', deliveryFee: 0 },
 };
 
 // Metro requires literal local asset paths.

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { menuItemsMock } from '../../mocks/menus.mock.ts';
-import { addCartLine, cartTotal, changeCartLineQuantity } from '../../app/customer/cartStore.ts';
+import { addCartLine, cartTotal, changeCartLineQuantity, groupCartLinesByRestaurant } from '../../app/customer/cartStore.ts';
 
 describe('cart draft', () => {
   it('adds selected extras and quantity to the total', () => {
@@ -23,5 +23,15 @@ describe('cart draft', () => {
     assert.deepEqual(addCartLine([], menuItemsMock[2], 1, [], 0, 1), []);
     const lines = addCartLine([], menuItemsMock[0], 1, [], 0, 1);
     assert.deepEqual(changeCartLineQuantity(lines, lines[0].key, 0), []);
+  });
+
+  it('keeps each restaurant subtotal and placeholder fees separate', () => {
+    const first = addCartLine([], menuItemsMock[0], 1, [], 0, 2);
+    const both = addCartLine(first, menuItemsMock[6], 2, [], 0, 1);
+    const groups = groupCartLinesByRestaurant(both);
+    assert.deepEqual(groups.map((group) => ({ restaurantId: group.restaurantId, subtotal: group.subtotal, deliveryFee: group.deliveryFee, serviceFee: group.serviceFee, total: group.total })), [
+      { restaurantId: 1, subtotal: 29, deliveryFee: 0, serviceFee: 0, total: 29 },
+      { restaurantId: 2, subtotal: 15.75, deliveryFee: 0, serviceFee: 0, total: 15.75 },
+    ]);
   });
 });
