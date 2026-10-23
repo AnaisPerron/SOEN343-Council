@@ -1,4 +1,4 @@
-package com.council.tenderapp.ORD.persistence;
+package com.council.tenderapp.ORD.entities;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -9,10 +9,11 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
 
 @Entity
-@Table(name = "order_items")
-public class OrderItem {
+@Table(name = "order_lines")
+public class OrderLine {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -22,18 +23,23 @@ public class OrderItem {
     @JoinColumn(name = "order_id", nullable = false)
     private Order order;
 
-    @Column(name = "item_name", nullable = false)
-    private String itemName;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "menu_item_id", nullable = false)
+    private MenuItem menuItem;
 
     @Column(nullable = false)
     private int quantity;
 
-    protected OrderItem() {
+    @Column(name = "unit_price", nullable = false, precision = 10, scale = 2)
+    private BigDecimal unitPrice;
+
+    protected OrderLine() {
     }
 
-    public OrderItem(String itemName, int quantity) {
-        this.itemName = itemName;
+    public OrderLine(MenuItem menuItem, int quantity, BigDecimal unitPrice) {
+        this.menuItem = menuItem;
         this.quantity = quantity;
+        this.unitPrice = unitPrice;
     }
 
     public Long getId() {
@@ -48,12 +54,12 @@ public class OrderItem {
         this.order = order;
     }
 
-    public String getItemName() {
-        return itemName;
+    public MenuItem getMenuItem() {
+        return menuItem;
     }
 
-    public void setItemName(String itemName) {
-        this.itemName = itemName;
+    public void setMenuItem(MenuItem menuItem) {
+        this.menuItem = menuItem;
     }
 
     public int getQuantity() {
@@ -62,5 +68,13 @@ public class OrderItem {
 
     public void setQuantity(int quantity) {
         this.quantity = quantity;
+    }
+
+    public BigDecimal getUnitPrice() {
+        return unitPrice;
+    }
+
+    public void setUnitPrice(BigDecimal unitPrice) {
+        this.unitPrice = unitPrice;
     }
 }
