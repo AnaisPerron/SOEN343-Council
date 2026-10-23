@@ -1,0 +1,104 @@
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { DetailPage } from '../customer/components/DetailPage';
+import { styles as customerStyles } from '../customer/restaurant/restaurant.styles';
+import { useAuth } from '@/context/AuthContext';
+import { loadRestaurantMenu, saveRestaurantMenu, type MenuItem, type RestaurantMenu } from '@/api/restaurantMenu';
+
+const newItem = (): MenuItem => ({ id: null, name: '', description: '', category: 'Menu', price: 0, status: 'available', photoUrl: null, options: [] });
+const money = (value: number) => Number.isFinite(value) ? value.toFixed(2) : '0.00';
+
+export default function EditMenu() {
+  const router = useRouter();
+  const { user, token } = useAuth();
+  const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
+  const [menu, setMenu] = useState<RestaurantMenu | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
+  const [expanded, setExpanded] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!token || user?.role !== 'restaurant') { router.replace('/auth/login'); return; }
+    loadRestaurantMenu(token).then(setMenu).catch((error) => setMessage(error.message)).finally(() => setLoading(false));
+  }, [token, user?.role, router]);
+
+  const update = (changes: Partial<RestaurantMenu>) => setMenu((current) => current && { ...current, ...changes });
+  const updateItem = (index: number, changes: Partial<MenuItem>) => setMenu((current) => current && {
+    ...current, items: current.items.map((item, position) => position === index ? { ...item, ...changes } : item),
+  });
+  const save = async () => {
+    if (!menu || !token || saving) return;
+    if (!menu.name.trim() || !menu.menuName.trim() || menu.items.some((item) => !item.name.trim() || !item.category.trim() || item.price < 0 || item.options.some((option) => !option.name.trim() || option.additionalCost < 0))) {
+      setMessage('Complete each name, category, and nonnegative price before saving.'); return;
+    }
+    setSaving(true); setMessage('');
+    try { setMenu(await saveRestaurantMenu(token, menu)); setMessage('Menu saved and published.'); }
+    catch (error) { setMessage(error instanceof Error ? error.message : 'Could not save menu.'); }
+    finally { setSaving(false); }
+  };
+
+  if (loading) return <View style={local.center}><ActivityIndicator color="#D42F50" /></View>;
+  if (!menu) return <View style={local.center}><Text>{message || 'Menu unavailable'}</Text><Pressable onPress={() => router.back()}><Text style={local.link}>Back</Text></Pressable></View>;
+  const coverHeight = Math.max(290, Math.min(height * 0.39, 390));
+  const categories = [...new Set(menu.items.map((item) => item.category.trim() || 'Menu'))];
+  return <DetailPage title={menu.name} cover={menu.coverUrl ? { uri: menu.coverUrl } : undefined} coverHeight={coverHeight} foreground={<View style={[local.topBar, { top: insets.top + 12 }]}>
+    <Pressable style={local.topButton} accessibilityRole="button" onPress={() => router.back()}><Text style={local.topButtonText}>‹</Text></Pressable>
+    <Pressable style={local.saveButton} accessibilityRole="button" accessibilityState={{ disabled: saving }} disabled={saving} onPress={save}><Text style={local.saveText}>{saving ? 'Saving…' : 'Save menu'}</Text></Pressable>
+  </View>}>
+    <View style={customerStyles.info}>
+      <Field label="Restaurant name" value={menu.name} onChangeText={(name) => update({ name })} large />
+      <View style={customerStyles.ratingLine}><Text style={customerStyles.muted}>Restaurant status</Text></View>
+      <View style={local.chips}>{(['open', 'paused', 'closed'] as const).map((status) => <Chip key={status} label={status} selected={menu.status === status} onPress={() => update({ status })} />)}</View>
+      <Field label="Address" value={menu.address ?? ''} onChangeText={(address) => update({ address })} />
+      <Field label="Delivery fee ($)" value={String(menu.deliveryFee ?? 0)} onChangeText={(value) => update({ deliveryFee: Number(value) || 0 })} keyboardType="decimal-pad" />
+      <Field label="Cover image URL" value={menu.coverUrl ?? ''} onChangeText={(coverUrl) => update({ coverUrl })} />
+    </View>
+    <View style={customerStyles.menu}>
+      <Text style={customerStyles.menuHeading}>Menu</Text>
+      <Field label="Menu name" value={menu.menuName} onChangeText={(menuName) => update({ menuName })} />
+      {categories.map((category) => <View key={category} style={customerStyles.categorySection}>
+        <Text style={customerStyles.categoryHeading}>{category}</Text>
+        <View style={customerStyles.itemGrid}>{menu.items.map((item, index) => (item.category.trim() || 'Menu') === category && <Pressable key={item.id ?? `new-${index}`} style={customerStyles.menuCard} accessibilityRole="button" onPress={() => setExpanded(expanded === index ? null : index)}>
+          <View style={customerStyles.itemImageWrap}>{item.photoUrl ? <Image source={{ uri: item.photoUrl }} style={customerStyles.itemImage} /> : <View style={customerStyles.itemImageFallback}><Text style={customerStyles.itemImageFallbackText}>Tender</Text></View>}</View>
+          <View style={customerStyles.itemTitleRow}><Text style={customerStyles.itemName}>{item.name || 'New item'}</Text></View>
+          {!!item.description && <Text style={customerStyles.itemDescription} numberOfLines={2}>{item.description}</Text>}
+          {item.status === 'sold_out' && <Text style={customerStyles.itemAvailability}>Sold out</Text>}
+          <Text style={customerStyles.itemPrice}>${money(item.price)}</Text>
+          <Text style={local.editHint}>{expanded === index ? 'Close editor' : 'Edit item'}</Text>
+        </Pressable>)}</View>
+      </View>)}
+      {expanded != null && menu.items[expanded] && <View style={local.editor}>
+        <Text style={customerStyles.categoryHeading}>Edit item</Text>
+        <Field label="Item name" value={menu.items[expanded].name} onChangeText={(name) => updateItem(expanded, { name })} />
+        <Field label="Description" value={menu.items[expanded].description ?? ''} onChangeText={(description) => updateItem(expanded, { description })} multiline />
+        <Field label="Category" value={menu.items[expanded].category} onChangeText={(category) => updateItem(expanded, { category })} />
+        <Field label="Price ($)" value={String(menu.items[expanded].price)} onChangeText={(value) => updateItem(expanded, { price: Number(value) || 0 })} keyboardType="decimal-pad" />
+        <Field label="Photo URL" value={menu.items[expanded].photoUrl ?? ''} onChangeText={(photoUrl) => updateItem(expanded, { photoUrl })} />
+        <Text style={local.label}>Availability</Text><View style={local.chips}><Chip label="Available" selected={menu.items[expanded].status === 'available'} onPress={() => updateItem(expanded, { status: 'available' })} /><Chip label="Sold out" selected={menu.items[expanded].status === 'sold_out'} onPress={() => updateItem(expanded, { status: 'sold_out' })} /></View>
+        <Text style={local.subheading}>Toppings</Text>
+        {menu.items[expanded].options.map((option, optionIndex) => <View key={option.id ?? `new-${optionIndex}`} style={local.optionRow}>
+          <View style={local.optionName}><Field label={`Topping ${optionIndex + 1}`} value={option.name} onChangeText={(name) => updateItem(expanded, { options: menu.items[expanded].options.map((entry, position) => position === optionIndex ? { ...entry, name } : entry) })} /></View>
+          <View style={local.optionPrice}><Field label="Extra ($)" value={String(option.additionalCost)} keyboardType="decimal-pad" onChangeText={(value) => updateItem(expanded, { options: menu.items[expanded].options.map((entry, position) => position === optionIndex ? { ...entry, additionalCost: Number(value) || 0 } : entry) })} /></View>
+        </View>)}
+        <Pressable onPress={() => updateItem(expanded, { options: [...menu.items[expanded].options, { id: null, name: '', additionalCost: 0 }] })}><Text style={local.link}>+ Add topping</Text></Pressable>
+      </View>}
+      <Pressable style={local.addButton} accessibilityRole="button" onPress={() => { update({ items: [...menu.items, newItem()] }); setExpanded(menu.items.length); }}><Text style={local.addText}>+ Add menu item</Text></Pressable>
+      {!!message && <Text style={local.message}>{message}</Text>}
+      <Pressable style={local.bottomSave} accessibilityRole="button" disabled={saving} onPress={save}><Text style={local.saveText}>{saving ? 'Saving…' : 'Save menu'}</Text></Pressable>
+    </View>
+  </DetailPage>;
+}
+
+function Field({ label, large, ...props }: { label: string; large?: boolean } & React.ComponentProps<typeof TextInput>) {
+  return <View style={local.field}><Text style={local.label}>{label}</Text><TextInput {...props} style={[local.input, large && local.largeInput]} placeholderTextColor="#9F9092" /></View>;
+}
+function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
+  return <Pressable accessibilityRole="button" accessibilityState={{ selected }} onPress={onPress} style={[local.chip, selected && local.selectedChip]}><Text style={[local.chipText, selected && local.selectedChipText]}>{label}</Text></Pressable>;
+}
+const local = StyleSheet.create({
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14 }, topBar: { position: 'absolute', left: 18, right: 18, flexDirection: 'row', justifyContent: 'space-between' }, topButton: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#302629', alignItems: 'center', justifyContent: 'center' }, topButtonText: { color: '#FFF', fontSize: 30 }, saveButton: { backgroundColor: '#D42F50', paddingHorizontal: 18, justifyContent: 'center', borderRadius: 21 }, saveText: { color: '#FFF', fontWeight: '800' }, field: { marginTop: 15 }, label: { color: '#887B7E', fontSize: 11, fontWeight: '700', marginBottom: 6 }, input: { borderWidth: 1, borderColor: '#EDE6E6', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, color: '#302629', fontSize: 14, backgroundColor: '#FFF' }, largeInput: { fontSize: 25, fontWeight: '800' }, chips: { flexDirection: 'row', gap: 8, marginTop: 8 }, chip: { borderRadius: 16, backgroundColor: '#F7F3F3', paddingHorizontal: 13, paddingVertical: 8 }, selectedChip: { backgroundColor: '#D42F50' }, chipText: { color: '#887B7E', fontSize: 12, fontWeight: '700', textTransform: 'capitalize' }, selectedChipText: { color: '#FFF' }, editHint: { color: '#D42F50', fontSize: 11, fontWeight: '700', marginTop: 7 }, editor: { backgroundColor: '#FFF8F9', borderRadius: 18, padding: 18, marginVertical: 20 }, subheading: { fontSize: 18, fontWeight: '800', color: '#302629', marginTop: 24 }, optionRow: { flexDirection: 'row', gap: 12 }, optionName: { flex: 2 }, optionPrice: { flex: 1 }, link: { color: '#D42F50', fontWeight: '800', marginTop: 15 }, addButton: { borderWidth: 1, borderColor: '#D42F50', borderRadius: 14, alignItems: 'center', padding: 14, marginTop: 15 }, addText: { color: '#D42F50', fontWeight: '800' }, message: { color: '#302629', marginTop: 16 }, bottomSave: { backgroundColor: '#D42F50', borderRadius: 14, alignItems: 'center', padding: 16, marginVertical: 20 },
+});

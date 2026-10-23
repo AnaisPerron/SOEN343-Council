@@ -16,6 +16,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -33,13 +34,16 @@ class RegistrationServiceTest {
     @Mock
     private ProfileRepository repository;
 
+    @Mock
+    private JdbcTemplate jdbc;
+
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     private RegistrationService service;
 
     @BeforeEach
     void setUp() {
-        service = new RegistrationService(repository, passwordEncoder);
+        service = new RegistrationService(repository, passwordEncoder, jdbc);
     }
 
     @Test

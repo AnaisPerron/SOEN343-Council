@@ -5,6 +5,7 @@ import java.util.Locale;
 
 import org.springframework.core.NestedExceptionUtils;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,10 +23,12 @@ public class RegistrationService {
 
     private final ProfileRepository repository;
     private final PasswordEncoder passwordEncoder;
+    private final JdbcTemplate jdbc;
 
-    public RegistrationService(ProfileRepository repository, PasswordEncoder passwordEncoder) {
+    public RegistrationService(ProfileRepository repository, PasswordEncoder passwordEncoder, JdbcTemplate jdbc) {
         this.repository = repository;
         this.passwordEncoder = passwordEncoder;
+        this.jdbc = jdbc;
     }
 
     @Transactional
@@ -44,7 +47,13 @@ public class RegistrationService {
                 request.phone().trim());
 
         try {
-            return RegisterResponse.from(repository.saveAndFlush(profile));
+            Profile saved = repository.saveAndFlush(profile);
+            if (request.role() == com.council.tenderapp.reg.entities.Role.STAFF) {
+                Long restaurantId = jdbc.queryForObject("insert into restaurants (name, status) values (?, 'closed') returning id", Long.class, request.name().trim());
+                jdbc.update("insert into restaurant_staff (user_id, restaurant_id) values (?, ?)", saved.getId(), restaurantId);
+                jdbc.update("insert into menus (restaurant_id, name) values (?, ?)", restaurantId, request.name().trim() + " Menu");
+            }
+            return RegisterResponse.from(saved);
         } catch (DataIntegrityViolationException ex) {
             // Another request registered the same email between the check and the insert
             if (isUniqueViolation(ex)) {

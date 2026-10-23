@@ -14,6 +14,7 @@ export const ROLE_OPTIONS: { value: Role; label: string }[] = [
 
 type AuthContextValue = {
   user: AuthUser | null;
+  token: string | null;
   signIn: (input: SignInInput) => Promise<void>;
   signUp: (input: RegistrationInput) => Promise<void>;
   signOut: () => void;
@@ -27,6 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AuthContextValue>(
     () => ({
       user: session?.user ?? null,
+      token: session?.token ?? null,
       signIn: async (input) => setSession(await login(input)),
       signUp: register,
       // Sign out locally right away; the backend session expires on its own if this request fails
