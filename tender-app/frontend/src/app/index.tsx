@@ -1,22 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Redirect } from 'expo-router';
 
 export default function IndexRoute() {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Welcome to Tender!</Text>
-    </View>
-  );
+  return <Redirect href="/incoming-orders" />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-  },
-});
