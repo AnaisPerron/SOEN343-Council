@@ -11,7 +11,7 @@ import java.time.ZoneOffset;
 import org.junit.jupiter.api.Test;
 
 import com.council.tenderapp.reg.entities.Role;
-import com.council.tenderapp.reg.models.Session;
+import com.council.tenderapp.reg.security.Session;
 
 class SessionServiceTest {
 
