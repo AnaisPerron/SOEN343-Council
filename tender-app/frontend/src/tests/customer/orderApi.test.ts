@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { sendOrder, type OrderSubmission } from '../../app/customer/orderApi.ts';
+import { sendOrder, type OrderSubmission } from '../../app/customer/services/orderApi.ts';
 
 const order: OrderSubmission = {
   restaurantId: 1,

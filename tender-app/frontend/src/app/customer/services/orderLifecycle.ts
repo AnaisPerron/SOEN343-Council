@@ -1,4 +1,4 @@
-import type { RestaurantCartGroup } from './cartStore';
+import type { RestaurantCartGroup } from '../cart/cartStore';
 
 export type CustomerOrderStatus = 'placed' | 'cancelled' | 'accepted' | 'rejected' | 'preparing' | 'ready';
 

@@ -13,24 +13,24 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useCart } from '../../context/CartContext';
-import { restaurantsMock } from '../../mocks/restaurants.mock';
-import { menusMock, menuItemsMock } from '../../mocks/menus.mock';
-import { restaurantDisplayMock } from '../../mocks/restaurantDisplay.mock';
-import type { Restaurant } from '../../types/restaurant';
+import { useCart } from '@/context/CartContext';
+import { restaurantsMock } from '@/mocks/restaurants.mock';
+import { menusMock, menuItemsMock } from '@/mocks/menus.mock';
+import { restaurantDisplayMock } from '@/mocks/restaurantDisplay.mock';
+import type { Restaurant } from '@/types/restaurant';
 import { styles } from './home.styles';
-import { searchRestaurants } from './restaurantSearch';
-import RestaurantSection from './components/RestaurantSection';
-import CartIconButton from './components/CartIconButton';
-import type { RestaurantCardData } from './components/RestaurantCard';
+import { searchRestaurants } from '../services/restaurantSearch';
+import RestaurantSection from '../components/RestaurantSection';
+import CartIconButton from '../components/CartIconButton';
+import type { RestaurantCardData } from '../components/RestaurantCard';
 import {
   getRestaurantOrderRestriction,
   ORDER_ERROR_FADE_DELAY_MS,
   ORDER_ERROR_FADE_DURATION_MS,
   type RestaurantOrderRestriction,
-} from './restaurantOrderRules';
+} from '../services/restaurantOrderRules';
 
-const tenderLogo = require('../../../assets/tender-logo.png');
+const tenderLogo = require('../../../../assets/tender-logo.png');
 {/*Placeholder for now. TODO: for later phases, must be linked to user profile, map, etc.. */}
 const sections = [
   {
@@ -70,13 +70,13 @@ const mockRatings: Record<number, number> = {
 
 // Static requires let Metro bundle each local menu photo into the app.
 const menuItemPhotos: Record<number, ImageSourcePropType> = {
-  1001: require('../../mocks/menu-items-imgs/maple-glazed-chicken-sandwich.jpg'),
-  1002: require('../../mocks/menu-items-imgs/truffle.jpg'),
-  1003: require('../../mocks/menu-items-imgs/apple-crumble.jpg'),
-  2001: require('../../mocks/menu-items-imgs/harvest-grain-bowl.jpg'),
-  2002: require('../../mocks/menu-items-imgs/miso-tofu-bowl.jpg'),
-  3001: require('../../mocks/menu-items-imgs/smoked-salmon-bagel.jpg'),
-  4001: require('../../mocks/menu-items-imgs/margherita-pizza.jpg'),
+  1001: require('../../../mocks/menu-items-imgs/maple-glazed-chicken-sandwich.jpg'),
+  1002: require('../../../mocks/menu-items-imgs/truffle.jpg'),
+  1003: require('../../../mocks/menu-items-imgs/apple-crumble.jpg'),
+  2001: require('../../../mocks/menu-items-imgs/harvest-grain-bowl.jpg'),
+  2002: require('../../../mocks/menu-items-imgs/miso-tofu-bowl.jpg'),
+  3001: require('../../../mocks/menu-items-imgs/smoked-salmon-bagel.jpg'),
+  4001: require('../../../mocks/menu-items-imgs/margherita-pizza.jpg'),
 };
 
 // Keep card display data derived once from the shared restaurant and menu fixtures.
@@ -166,7 +166,7 @@ export default function CustomerHome() {
             </View>
           </TouchableOpacity>
           */}
-          <CartIconButton count={cartCount} onPress={() => router.push('/customer/cart')} />
+          <CartIconButton count={cartCount} onPress={() => router.push('/customer/cart/cart')} />
           {!compact && (
             <TouchableOpacity style={styles.profile} accessibilityRole="button">
               <Text style={styles.profileText}>A</Text>

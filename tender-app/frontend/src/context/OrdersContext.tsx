@@ -1,6 +1,6 @@
 import { createContext, useContext, useRef, useState, type ReactNode } from 'react';
-import type { RestaurantCartGroup } from '../app/customer/cartStore';
-import { cancelPlacedOrder, createPlacedOrders, type CustomerOrder } from '../app/customer/orderLifecycle';
+import type { RestaurantCartGroup } from '../app/customer/cart/cartStore';
+import { cancelPlacedOrder, createPlacedOrders, type CustomerOrder } from '../app/customer/services/orderLifecycle';
 
 interface OrdersContextValue {
   orders: CustomerOrder[];

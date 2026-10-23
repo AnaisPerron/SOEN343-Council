@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { getMenuItemsForRestaurant } from '../../app/customer/menuCatalog.ts';
+import { getMenuItemsForRestaurant } from '../../app/customer/services/menuCatalog.ts';
 import { menuItemsMock, menusMock } from '../../mocks/menus.mock.ts';
 
 describe('restaurant menu', () => {

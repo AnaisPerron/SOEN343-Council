@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
 import type { MenuItem } from '../mocks/types';
-import { addCartLine, changeCartLineQuantity, type CartLine } from '../app/customer/cartStore';
+import { addCartLine, changeCartLineQuantity, type CartLine } from '../app/customer/cart/cartStore';
 
 interface CartContextValue {
   lines: CartLine[];

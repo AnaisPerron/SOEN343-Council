@@ -15,12 +15,7 @@ function RootNavigator() {
         without an auth guard. Restore protected routes when sign-in is ready.
       */}
       <Stack.Screen name="index" />
-      <Stack.Screen name="customer/home" />
-      <Stack.Screen name="customer/restaurant/[id]" />
-      <Stack.Screen name="customer/menu-item/[id]" />
-      <Stack.Screen name="customer/customize/[id]" />
-      <Stack.Screen name="customer/cart" />
-      <Stack.Screen name="customer/confirm-order" />
+      <Stack.Screen name="customer" />
       <Stack.Screen name="auth/login" />
       <Stack.Screen name="auth/register" />
     </Stack>

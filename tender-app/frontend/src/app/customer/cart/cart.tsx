@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useCart } from '../../context/CartContext';
+import { useCart } from '@/context/CartContext';
 import { groupCartLinesByRestaurant } from './cartStore';
-import { menuItemOptionsMock, menuItemsMock } from '../../mocks/menus.mock';
-import { restaurantsMock } from '../../mocks/restaurants.mock';
-import { restaurantDisplayMock } from '../../mocks/restaurantDisplay.mock';
-import { getCartOrderRestriction, ORDER_ERROR_FADE_DELAY_MS, ORDER_ERROR_FADE_DURATION_MS, type RestaurantOrderRestriction } from './restaurantOrderRules';
+import { menuItemOptionsMock, menuItemsMock } from '@/mocks/menus.mock';
+import { restaurantsMock } from '@/mocks/restaurants.mock';
+import { restaurantDisplayMock } from '@/mocks/restaurantDisplay.mock';
+import { getCartOrderRestriction, ORDER_ERROR_FADE_DELAY_MS, ORDER_ERROR_FADE_DURATION_MS, type RestaurantOrderRestriction } from '../services/restaurantOrderRules';
 import { styles } from './cart.styles';
 
 export default function CartScreen() {
@@ -20,7 +20,7 @@ export default function CartScreen() {
   const count = lines.reduce((total, line) => total + line.quantity, 0);
   const groups = groupCartLinesByRestaurant(lines);
   const grandTotal = groups.reduce((total, group) => total + group.total, 0);
-  const goBack = () => router.canGoBack() ? router.back() : router.replace('/customer/home');
+  const goBack = () => router.canGoBack() ? router.back() : router.replace('/customer/home/home');
 
   useEffect(() => () => {
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -45,7 +45,7 @@ export default function CartScreen() {
       }, ORDER_ERROR_FADE_DELAY_MS);
       return;
     }
-    router.push('/customer/confirm-order');
+    router.push('/customer/checkout/confirm-order');
   };
 
   return (
@@ -59,7 +59,7 @@ export default function CartScreen() {
         {lines.length === 0 ? <View style={styles.empty}>
           <Text style={styles.emptyTitle}>Your cart is empty</Text>
           <Text style={styles.emptyText}>Choose a menu item to start your order.</Text>
-          <TouchableOpacity accessibilityRole="button" onPress={() => router.replace('/customer/home')} style={styles.browseButton}><Text style={styles.browseText}>Browse restaurants</Text></TouchableOpacity>
+          <TouchableOpacity accessibilityRole="button" onPress={() => router.replace('/customer/home/home')} style={styles.browseButton}><Text style={styles.browseText}>Browse restaurants</Text></TouchableOpacity>
         </View> : <>
           <Text style={styles.count}>{count} {count === 1 ? 'item' : 'items'} in your cart</Text>
           {groups.map((group) => {

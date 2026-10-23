@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { menuItemsMock } from '../../mocks/menus.mock.ts';
-import { addCartLine, cartTotal, changeCartLineQuantity, groupCartLinesByRestaurant } from '../../app/customer/cartStore.ts';
+import { addCartLine, cartTotal, changeCartLineQuantity, groupCartLinesByRestaurant } from '../../app/customer/cart/cartStore.ts';
 
 describe('cart draft', () => {
   it('adds selected extras and quantity to the total', () => {

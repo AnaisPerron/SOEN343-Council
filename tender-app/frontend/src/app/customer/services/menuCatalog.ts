@@ -1,4 +1,4 @@
-import type { Menu, MenuItem } from '../../mocks/types';
+import type { Menu, MenuItem } from '@/mocks/types';
 
 export function getMenuItemsForRestaurant(
   restaurantId: number,

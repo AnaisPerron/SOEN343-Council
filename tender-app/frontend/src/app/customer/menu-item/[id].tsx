@@ -9,7 +9,7 @@ import { useCart } from '../../../context/CartContext';
 import { useItemCustomization } from '../../../context/ItemCustomizationContext';
 import { DetailBackButton, DetailPage } from '../components/DetailPage';
 import CartIconButton from '../components/CartIconButton';
-import { getMenuItemOrderRestriction, getRestaurantOrderRestriction, ORDER_ERROR_FADE_DELAY_MS, ORDER_ERROR_FADE_DURATION_MS, type RestaurantOrderRestriction } from '../restaurantOrderRules';
+import { getMenuItemOrderRestriction, getRestaurantOrderRestriction, ORDER_ERROR_FADE_DELAY_MS, ORDER_ERROR_FADE_DURATION_MS, type RestaurantOrderRestriction } from '../services/restaurantOrderRules';
 import { styles } from './item.styles';
 
 export default function MenuItemDetails() {
@@ -49,7 +49,7 @@ export default function MenuItemDetails() {
   if (!item || !restaurant) {
     return <View style={styles.notFound}>
       <Text style={styles.title}>Menu item not found</Text>
-      <TouchableOpacity onPress={() => router.replace('/customer/home')} accessibilityRole="button">
+      <TouchableOpacity onPress={() => router.replace('/customer/home/home')} accessibilityRole="button">
         <Text style={styles.backLink}>Back to restaurants</Text>
       </TouchableOpacity>
     </View>;
@@ -106,12 +106,12 @@ export default function MenuItemDetails() {
       foreground={<>
         {!stickyVisible && <View style={[styles.coverControls, { top: insets.top + 12 }]}>
           <DetailBackButton onPress={goBack} />
-          <CartIconButton count={cartCount} tone="dark" onPress={() => router.push('/customer/cart')} />
+          <CartIconButton count={cartCount} tone="dark" onPress={() => router.push('/customer/cart/cart')} />
         </View>}
         {stickyVisible && <View style={[styles.stickyHeader, { paddingTop: insets.top }]}>
           <DetailBackButton onPress={goBack} />
           <Text numberOfLines={1} style={styles.stickyTitle}>{item.name}</Text>
-          <CartIconButton count={cartCount} onPress={() => router.push('/customer/cart')} />
+          <CartIconButton count={cartCount} onPress={() => router.push('/customer/cart/cart')} />
         </View>}
         <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
           <TouchableOpacity style={[styles.addToCart, (!item.available || restaurant.status !== 'open') && styles.addToCartUnavailable]} accessibilityRole="button" accessibilityLabel={`Add ${quantity} ${item.name} to cart for $${total.toFixed(2)}`} accessibilityState={{ disabled: isAdding }} disabled={isAdding} onPress={addToCart}>

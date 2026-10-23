@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { addCartLine, groupCartLinesByRestaurant } from '../../app/customer/cartStore.ts';
-import { cancelPlacedOrder, createPlacedOrders } from '../../app/customer/orderLifecycle.ts';
+import { addCartLine, groupCartLinesByRestaurant } from '../../app/customer/cart/cartStore.ts';
+import { cancelPlacedOrder, createPlacedOrders } from '../../app/customer/services/orderLifecycle.ts';
 import { menuItemsMock } from '../../mocks/menus.mock.ts';
 
 describe('local order lifecycle', () => {

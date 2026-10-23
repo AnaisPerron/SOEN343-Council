@@ -1,5 +1,5 @@
-import type { Restaurant } from '../../types/restaurant';
-import type { MenuItem } from '../../mocks/types';
+import type { Restaurant } from '@/types/restaurant';
+import type { MenuItem } from '@/mocks/types';
 
 export const ORDER_RESTRICTION_CODE = 'R-ORD-02 - ORD';
 export const ORDER_ERROR_FADE_DELAY_MS = 1500;

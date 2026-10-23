@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useCart } from '../../context/CartContext';
-import { useOrders } from '../../context/OrdersContext';
-import { menuItemsMock } from '../../mocks/menus.mock';
-import { restaurantsMock } from '../../mocks/restaurants.mock';
-import { groupCartLinesByRestaurant } from './cartStore';
-import { getCartOrderRestriction, type RestaurantOrderRestriction } from './restaurantOrderRules';
+import { useCart } from '@/context/CartContext';
+import { useOrders } from '@/context/OrdersContext';
+import { menuItemsMock } from '@/mocks/menus.mock';
+import { restaurantsMock } from '@/mocks/restaurants.mock';
+import { groupCartLinesByRestaurant } from '../cart/cartStore';
+import { getCartOrderRestriction, type RestaurantOrderRestriction } from '../services/restaurantOrderRules';
 import { styles } from './confirm-order.styles';
 
 type OrderPhase = 'review' | 'submitting' | 'success';
@@ -34,8 +34,8 @@ export default function ConfirmOrderScreen() {
   }, [successOpacity, successScale]);
 
   const goBack = () => phase === 'success'
-    ? router.replace('/customer/home')
-    : router.canGoBack() ? router.back() : router.replace('/customer/cart');
+    ? router.replace('/customer/home/home')
+    : router.canGoBack() ? router.back() : router.replace('/customer/cart/cart');
 
   const sendOrders = () => {
     if (sending.current || phase !== 'review' || lines.length === 0) return;
@@ -133,7 +133,7 @@ export default function ConfirmOrderScreen() {
 
       <View style={styles.footer}>
         {phase === 'success' ? (
-          <TouchableOpacity style={styles.sendButton} accessibilityRole="button" onPress={() => router.replace('/customer/home')}><Text style={styles.sendButtonText}>Browse restaurants</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.sendButton} accessibilityRole="button" onPress={() => router.replace('/customer/home/home')}><Text style={styles.sendButtonText}>Browse restaurants</Text></TouchableOpacity>
         ) : (
           <TouchableOpacity style={[styles.sendButton, (phase === 'submitting' || lines.length === 0) && styles.sendButtonDisabled]} accessibilityRole="button" accessibilityLabel="Send orders" accessibilityState={{ disabled: phase === 'submitting' || lines.length === 0, busy: phase === 'submitting' }} disabled={phase === 'submitting' || lines.length === 0} onPress={sendOrders}>
             {phase === 'submitting' ? <><ActivityIndicator color="#FFFFFF" size="small" /><Text style={styles.sendButtonText}>Placing orders...</Text></> : <Text style={styles.sendButtonText}>Send orders</Text>}

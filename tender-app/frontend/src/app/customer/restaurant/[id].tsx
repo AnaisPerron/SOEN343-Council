@@ -20,7 +20,7 @@ import { DetailPage } from '../components/DetailPage';
 import CartIconButton from '../components/CartIconButton';
 import { useCart } from '../../../context/CartContext';
 import { styles } from './restaurant.styles';
-import { getMenuItemsForRestaurant } from '../menuCatalog';
+import { getMenuItemsForRestaurant } from '../services/menuCatalog';
 
 const PANEL_OVERLAP = 30;
 const STICKY_HEIGHT = 106;
@@ -106,7 +106,7 @@ export default function RestaurantDetails() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
   const restaurant = restaurantsMock.find((entry) => entry.id === Number(id));
-  const goToRestaurants = () => router.replace('/customer/home');
+  const goToRestaurants = () => router.replace('/customer/home/home');
   const coverHeight = Math.max(290, Math.min(windowHeight * 0.39, 390));
   const items = useMemo(() => getMenuItemsForRestaurant(restaurant?.id ?? -1, menusMock, menuItemsMock), [restaurant?.id]);
   const categories = useMemo(() => [...new Set(items.map((item) => menuItemDisplayMock[item.id]?.category ?? 'Menu'))], [items]);
@@ -137,7 +137,7 @@ export default function RestaurantDetails() {
       {coverControlsVisible && !stickyVisible && <View pointerEvents="box-none" style={[styles.coverControls, { top: insets.top + 12 }]}>
         <IconButton label="Back to restaurants" symbol="‹" onPress={goToRestaurants} />
         <View style={styles.controlGroup}>
-          <CartIconButton count={cartCount} tone="dark" onPress={() => router.push('/customer/cart')} />
+          <CartIconButton count={cartCount} tone="dark" onPress={() => router.push('/customer/cart/cart')} />
           <IconButton label="Search menu" symbol="⌕" onPress={() => setSearchOpen(true)} />
           <IconButton label={favorite ? 'Remove from favorites' : 'Add to favorites'} symbol={favorite ? '♥' : '♡'} onPress={() => setFavorite((value) => !value)} />
           <IconButton label="More restaurant information" symbol="⋯" onPress={() => setMoreOpen((value) => !value)} />
@@ -148,7 +148,7 @@ export default function RestaurantDetails() {
           <IconButton label="Back to restaurants" symbol="‹" onPress={goToRestaurants} light />
           {searchOpen ? <TextInput autoFocus value={query} onChangeText={setQuery} placeholder="Search menu" placeholderTextColor="#9F9092" style={styles.searchInput} returnKeyType="search" /> : <Text numberOfLines={1} style={styles.stickyName}>{restaurant.name}</Text>}
           <IconButton label={searchOpen ? 'Close search' : 'Search menu'} symbol={searchOpen ? '×' : '⌕'} onPress={() => { setSearchOpen((value) => !value); setQuery(''); }} light />
-          <CartIconButton count={cartCount} onPress={() => router.push('/customer/cart')} />
+          <CartIconButton count={cartCount} onPress={() => router.push('/customer/cart/cart')} />
           <IconButton label={favorite ? 'Remove from favorites' : 'Add to favorites'} symbol={favorite ? '♥' : '♡'} onPress={() => setFavorite((value) => !value)} light />
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryNav} contentContainerStyle={styles.categoryNavContent}>
