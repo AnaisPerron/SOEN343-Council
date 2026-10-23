@@ -43,12 +43,12 @@ public class SecurityConfig
     }
 
     @Bean 
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, CorsConfigurationSource corsConfigSource) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-        .cors(cors -> cors.configurationSource(corsConfigSource))
+        .cors(cors -> cors.configurationSource(corsConfigurationSource()))
         .csrf(csrf -> csrf.disable())
         .authorizeHttpRequests(auth -> auth
-            .requestMatchers("api/auth/**", "/error").permitAll()
+            .requestMatchers("/api/auth/**", "/error").permitAll()
             .anyRequest().authenticated()
         )
         // forces 401 response in authentication is invalid
