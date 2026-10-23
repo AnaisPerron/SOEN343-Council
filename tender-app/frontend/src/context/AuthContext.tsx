@@ -1,10 +1,9 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
 
+import { createMockAuthStore } from '@/auth/mockAuthStore';
 import type {
   AuthUser,
-  CustomerProfile,
   RegistrationInput,
-  RestaurantProfile,
   Role,
   SignInInput,
 } from '@/types/auth';
@@ -27,47 +26,17 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-// Temporary client-side store until the authentication API is available.
-const accountsByEmail = new Map<string, CustomerProfile | RestaurantProfile>();
-let nextProfileId = 1;
-
-const normalizeEmail = (email: string) => email.trim().toLowerCase();
+const mockAuthStore = createMockAuthStore();
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function mockRegister(input: RegistrationInput): Promise<void> {
   await wait(400);
-  const email = normalizeEmail(input.email);
-  if (accountsByEmail.has(email)) {
-    throw new Error('An account with this email already exists');
-  }
-
-  const profile = { ...input, id: nextProfileId++, email };
-  accountsByEmail.set(email, profile);
+  mockAuthStore.register(input);
 }
 
 async function mockLogin(input: SignInInput): Promise<AuthUser> {
   await wait(400);
-  if (input.role === 'Operator') {
-    if (!Number.isSafeInteger(input.id) || input.id < 1 || !input.password) {
-      throw new Error('Invalid operator ID or password');
-    }
-    return { role: 'Operator', id: input.id };
-  }
-
-  const account = accountsByEmail.get(normalizeEmail(input.email));
-  if (!account || account.role !== input.role || account.password !== input.password) {
-    throw new Error('Invalid email or password');
-  }
-  const shared = {
-    id: account.id,
-    email: account.email,
-    phoneNumber: account.phoneNumber,
-    address: account.address,
-  };
-  if (account.role === 'restaurant') {
-    return { ...shared, role: 'restaurant', restaurantName: account.restaurantName };
-  }
-  return { ...shared, role: 'customer', name: account.name };
+  return mockAuthStore.signIn(input);
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
