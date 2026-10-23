@@ -6,20 +6,12 @@ const accent = '#D42F50';
 const font = 'Gotham Rounded';
 
 export const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: '#FFFFFF' },
-  scroll: { flex: 1 },
-  scrollContent: { paddingBottom: 88 },
-  cover: { position: 'absolute', top: 0, left: 0, right: 0, backgroundColor: '#EBD9D8' },
-  coverImage: { width: '100%', height: '100%' },
-  coverFallback: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F7DFE2' },
-  coverFallbackText: { fontFamily: font, fontSize: 32, fontWeight: '800', color: accent },
   coverControls: { position: 'absolute', left: 18, right: 18, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   controlGroup: { flexDirection: 'row', gap: 9 },
   iconButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(30,25,26,0.66)', alignItems: 'center', justifyContent: 'center' },
   iconText: { color: '#FFFFFF', fontSize: 27, fontWeight: '500', lineHeight: 32, marginTop: -2 },
   lightIconButton: { backgroundColor: '#F7F3F3', width: 36, height: 36, borderRadius: 18 },
   lightIconText: { color: ink, fontSize: 24, lineHeight: 29 },
-  panel: { marginTop: -30, borderTopLeftRadius: 28, borderTopRightRadius: 28, backgroundColor: '#FFFFFF', minHeight: 600, shadowColor: '#20191A', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.08, shadowRadius: 16, elevation: 6 },
   info: { paddingTop: 25, paddingHorizontal: 22, paddingBottom: 24, borderBottomWidth: 1, borderBottomColor: '#F0EAEA' },
   restaurantName: { fontFamily: font, color: ink, fontSize: 29, fontWeight: '900', lineHeight: 35, letterSpacing: -0.8 },
   ratingLine: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, alignItems: 'center', marginTop: 10 },

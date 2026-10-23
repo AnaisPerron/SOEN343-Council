@@ -9,7 +9,6 @@ import {
   TouchableOpacity,
   useWindowDimensions,
   View,
-  type ImageSourcePropType,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,6 +17,7 @@ import { menusMock, menuItemsMock } from '../../../mocks/menus.mock';
 import { menuItemDisplayMock, menuItemPhotos, restaurantDisplayMock } from '../../../mocks/restaurantDisplay.mock';
 import type { MenuItem } from '../../../mocks/types';
 import type { Restaurant } from '../../../types/restaurant';
+import { DetailPage } from '../components/DetailPage';
 import {
   getMenuItemOrderRestriction,
   ORDER_ERROR_FADE_DELAY_MS,
@@ -44,20 +44,6 @@ function IconButton({ label, symbol, onPress, light = false }: {
     >
       <Text style={[styles.iconText, light && styles.lightIconText]}>{symbol}</Text>
     </TouchableOpacity>
-  );
-}
-
-function RestaurantCover({ restaurant, source, height }: {
-  restaurant: Restaurant;
-  source?: ImageSourcePropType;
-  height: number;
-}) {
-  return (
-    <View pointerEvents="none" style={[styles.cover, { height }]}>
-      {source ? <Image source={source} style={styles.coverImage} resizeMode="cover" accessibilityLabel={`${restaurant.name} cover`} /> : (
-        <View style={styles.coverFallback}><Text style={styles.coverFallbackText}>{restaurant.name}</Text></View>
-      )}
-    </View>
   );
 }
 
@@ -89,23 +75,23 @@ function RestaurantInfoPanel({ restaurant, showMore }: {
   );
 }
 
-function MenuItemCard({ item, onAdd }: { item: MenuItem; onAdd: (item: MenuItem) => void }) {
+function MenuItemCard({ item, onAdd, onOpen }: { item: MenuItem; onAdd: (item: MenuItem) => void; onOpen: (item: MenuItem) => void }) {
   const photo = item.photURL ? { uri: item.photURL } : menuItemPhotos[item.id];
   return (
-    <View style={styles.menuCard}>
+    <TouchableOpacity style={styles.menuCard} accessibilityRole="button" accessibilityLabel={`View ${item.name} details`} onPress={() => onOpen(item)} activeOpacity={0.85}>
       <View style={styles.itemImageWrap}>
         {photo ? <Image source={photo} style={styles.itemImage} resizeMode="cover" accessibilityLabel={item.name} /> : <View style={styles.itemImageFallback}><Text style={styles.itemImageFallbackText}>Tender</Text></View>}
       </View>
       <View style={styles.itemTitleRow}>
         <Text style={styles.itemName}>{item.name}</Text>
-        <TouchableOpacity style={[styles.addButton, !item.available && styles.addButtonDisabled]} accessibilityRole="button" accessibilityLabel={item.available ? `Add ${item.name}` : `${item.name} is not available right now`} onPress={() => onAdd(item)}>
+        <TouchableOpacity style={[styles.addButton, !item.available && styles.addButtonDisabled]} accessibilityRole="button" accessibilityLabel={item.available ? `Add ${item.name}` : `${item.name} is not available right now`} onPress={(event) => { event.stopPropagation(); onAdd(item); }}>
           <Text style={styles.addButtonText}>+</Text>
         </TouchableOpacity>
       </View>
       {item.description && <Text style={styles.itemDescription} numberOfLines={2}>{item.description}</Text>}
       {!item.available && <Text style={styles.itemAvailability}>Not available right now</Text>}
       <Text style={styles.itemPrice}>${item.price.toFixed(2)}</Text>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -124,7 +110,7 @@ export default function RestaurantDetails() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [orderError, setOrderError] = useState<RestaurantOrderRestriction | null>(null);
-  const toastOpacity = useRef(new Animated.Value(0)).current;
+  const [toastOpacity] = useState(() => new Animated.Value(0));
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const restaurant = restaurantsMock.find((entry) => entry.id === Number(id));
   const goToRestaurants = () => router.replace('/customer/home');
@@ -172,33 +158,16 @@ export default function RestaurantDetails() {
     // Cart handling will be connected here.
   };
 
+  const openItem = (item: MenuItem) => {
+    router.push({ pathname: '/customer/menu-item/[id]', params: { id: String(item.id) } });
+  };
+
   return (
-    <View style={styles.page}>
-      <RestaurantCover restaurant={restaurant} source={cover} height={coverHeight} />
-      <ScrollView ref={scrollRef} style={styles.scroll} contentContainerStyle={styles.scrollContent} scrollEventThrottle={16} onScroll={(event) => {
+    <DetailPage title={restaurant.name} cover={cover} coverHeight={coverHeight} scrollRef={scrollRef} onScroll={(event) => {
         const offset = event.nativeEvent.contentOffset.y;
         setStickyVisible(offset >= coverHeight - PANEL_OVERLAP + infoHeight - insets.top);
         setCoverControlsVisible(offset < coverHeight - PANEL_OVERLAP - insets.top - 60);
-      }}>
-        <View pointerEvents="none" style={{ height: coverHeight }} />
-        <View style={styles.panel}>
-          <View onLayout={(event) => setInfoHeight(event.nativeEvent.layout.height)}>
-            <RestaurantInfoPanel restaurant={restaurant} showMore={moreOpen} />
-          </View>
-          <View style={styles.menu}>
-            <Text style={styles.menuHeading}>Menu</Text>
-            {visibleCategories.map((category) => {
-              const categoryItems = filteredItems.filter((item) => (menuItemDisplayMock[item.id]?.category ?? 'Menu') === category);
-              if (categoryItems.length === 0) return null;
-              return <View key={category} style={styles.categorySection} onLayout={(event) => { sectionOffsets.current[category] = event.nativeEvent.layout.y; }}>
-                <Text style={styles.categoryHeading}>{category}</Text>
-                <View style={styles.itemGrid}>{categoryItems.map((item) => <MenuItemCard key={item.id} item={item} onAdd={addItem} />)}</View>
-              </View>;
-            })}
-            {filteredItems.length === 0 && <Text style={styles.emptyText}>No menu items match “{query}”.</Text>}
-          </View>
-        </View>
-      </ScrollView>
+      }} foreground={<>
       {coverControlsVisible && !stickyVisible && <View pointerEvents="box-none" style={[styles.coverControls, { top: insets.top + 12 }]}>
         <IconButton label="Back to restaurants" symbol="‹" onPress={goToRestaurants} />
         <View style={styles.controlGroup}>
@@ -230,6 +199,22 @@ export default function RestaurantDetails() {
           </Animated.View>
         </View>
       )}
-    </View>
+    </>}>
+          <View onLayout={(event) => setInfoHeight(event.nativeEvent.layout.height)}>
+            <RestaurantInfoPanel restaurant={restaurant} showMore={moreOpen} />
+          </View>
+          <View style={styles.menu}>
+            <Text style={styles.menuHeading}>Menu</Text>
+            {visibleCategories.map((category) => {
+              const categoryItems = filteredItems.filter((item) => (menuItemDisplayMock[item.id]?.category ?? 'Menu') === category);
+              if (categoryItems.length === 0) return null;
+              return <View key={category} style={styles.categorySection} onLayout={(event) => { sectionOffsets.current[category] = event.nativeEvent.layout.y; }}>
+                <Text style={styles.categoryHeading}>{category}</Text>
+                <View style={styles.itemGrid}>{categoryItems.map((item) => <MenuItemCard key={item.id} item={item} onAdd={addItem} onOpen={openItem} />)}</View>
+              </View>;
+            })}
+            {filteredItems.length === 0 && <Text style={styles.emptyText}>No menu items match “{query}”.</Text>}
+          </View>
+    </DetailPage>
   );
 }
