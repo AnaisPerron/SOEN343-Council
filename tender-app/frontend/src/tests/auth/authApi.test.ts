@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { afterEach, describe, it, mock } from 'node:test';
 
-import { register, toRegisterRequest } from '../../api/auth.ts';
+import { login, logout, register, toRegisterRequest } from '../../api/auth.ts';
 import { API_URL } from '../../api/client.ts';
 import type { RegistrationInput } from '../../types/auth.ts';
 
@@ -69,5 +69,61 @@ describe('registration api', () => {
       throw new TypeError('fetch failed');
     });
     await assert.rejects(register(customer), /Cannot reach the server/);
+  });
+});
+
+describe('login api', () => {
+  afterEach(() => mock.restoreAll());
+
+  const loginResponse = {
+    token: 'abc123',
+    expiresAt: '2026-01-02T00:00:00Z',
+    id: 1,
+    name: 'Maple & Main',
+    email: 'hello@maple.example',
+    phone: '5145550199',
+    role: 'STAFF',
+  };
+
+  it('posts credentials and maps the backend account to the app user', async () => {
+    const fetchMock = mockFetch(200, loginResponse);
+    const session = await login({ role: 'restaurant', email: 'hello@maple.example', password: 'restaurant-pass' });
+
+    const [url, init] = fetchMock.mock.calls[0].arguments as [string, RequestInit];
+    assert.equal(url, `${API_URL}/api/auth/login`);
+    assert.deepEqual(JSON.parse(init.body as string), { email: 'hello@maple.example', password: 'restaurant-pass' });
+    assert.deepEqual(session, {
+      token: 'abc123',
+      user: { id: 1, role: 'restaurant', name: 'Maple & Main', email: 'hello@maple.example', phoneNumber: '5145550199' },
+    });
+  });
+
+  it('rejects an account of a different role and ends its session', async () => {
+    const fetchMock = mockFetch(200, loginResponse);
+    await assert.rejects(
+      login({ role: 'customer', email: 'hello@maple.example', password: 'restaurant-pass' }),
+      /not a customer account/,
+    );
+
+    const [url, init] = fetchMock.mock.calls[1].arguments as [string, RequestInit];
+    assert.equal(url, `${API_URL}/api/auth/logout`);
+    assert.equal((init.headers as Record<string, string>).Authorization, 'Bearer abc123');
+  });
+
+  it('surfaces invalid credentials', async () => {
+    mockFetch(401, { status: 401, message: 'Invalid email or password', fieldErrors: {} });
+    await assert.rejects(
+      login({ role: 'customer', email: 'alex@example.com', password: 'wrong' }),
+      /Invalid email or password/,
+    );
+  });
+
+  it('sends the session token when logging out', async () => {
+    const fetchMock = mock.method(globalThis, 'fetch', async () => new Response(null, { status: 204 }));
+    await logout('abc123');
+
+    const [url, init] = fetchMock.mock.calls[0].arguments as [string, RequestInit];
+    assert.equal(url, `${API_URL}/api/auth/logout`);
+    assert.equal((init.headers as Record<string, string>).Authorization, 'Bearer abc123');
   });
 });
