@@ -10,7 +10,7 @@ import {
   ORDER_ERROR_FADE_DELAY_MS,
   ORDER_ERROR_FADE_DURATION_MS,
   ORDER_RESTRICTION_CODE,
-} from '../../app/customer/restaurantOrderRules.ts';
+} from '../../app/customer/services/restaurantOrderRules.ts';
 
 describe('R-ORD-02 - ORD restaurant order restriction', () => {
   it('allows an open restaurant without showing a restriction', () => {

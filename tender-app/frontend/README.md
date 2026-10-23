@@ -57,30 +57,20 @@ The iOS App Store version of Expo Go does not support SDK 57. For a physical iPh
 
 ## Project structure
 
+Customer code is grouped under `src/app/customer/`:
+
 ```text
-frontend/
-├── assets/                         # App images and branding
-├── src/
-│   ├── app/                         # Expo Router routes and layouts
-│   │   ├── _layout.tsx              # Root navigation stack and safe area provider
-│   │   ├── index.tsx                # App entry route
-│   │   └── customer/
-│   │       ├── components/
-│   │       │   ├── RestaurantCard.tsx
-│   │       │   ├── RestaurantCard.styles.ts
-│   │       │   ├── RestaurantSection.tsx
-│   │       │   └── RestaurantSection.styles.ts
-│   │       ├── home.tsx             # Customer home screen
-│   │       ├── home.styles.ts       # Customer home styles
-│   │       └── restaurantSearch.ts  # Restaurant name search helper
-│   ├── mocks/                       # Demo data and menu photos
-│   │   └── menu-items-imgs/
-│   ├── tests/                       # Node tests kept outside Expo route discovery
-│   │   └── customer/
-│   │       └── restaurantSearch.test.ts
-│   └── types/
-│       └── restaurant.ts            # Shared restaurant model and status type
-├── app.json                         # Expo configuration
-├── package.json                     # Dependencies and scripts
-└── tsconfig.json                    # TypeScript configuration
+customer/
+├── components/       # Shared customer UI
+├── customize/        # Item customization screen and styles
+├── menu-item/        # Menu item screen and styles
+├── restaurant/       # Restaurant detail screen and styles
+├── cart/             # Cart screen, styles, and cartStore
+├── checkout/         # Confirm order screen and styles
+├── home/             # Customer home screen and styles
+├── services/         # Menu, search, order, and restriction helpers
+├── _layout.tsx       # Customer navigation
+└── index.tsx         # Customer entry redirect
 ```
+
+The root `src/app/_layout.tsx` and `src/app/index.tsx` remain the app entry points for customer and auth routes. Shared demo data is in `src/mocks/`, state providers are in `src/context/`, and tests are in `src/tests/`.

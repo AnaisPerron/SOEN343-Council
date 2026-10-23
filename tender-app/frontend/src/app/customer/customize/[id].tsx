@@ -20,7 +20,7 @@ export default function CustomizeItem() {
 
   if (!item) {
     return <SafeAreaView style={styles.page}>
-      <View style={styles.notFound}><Text style={styles.title}>Item not found</Text><TouchableOpacity onPress={() => router.replace('/customer/home')}><Text style={styles.backLink}>Back to restaurants</Text></TouchableOpacity></View>
+      <View style={styles.notFound}><Text style={styles.title}>Item not found</Text><TouchableOpacity onPress={() => router.replace('/customer/home/home')}><Text style={styles.backLink}>Back to restaurants</Text></TouchableOpacity></View>
     </SafeAreaView>;
   }
 

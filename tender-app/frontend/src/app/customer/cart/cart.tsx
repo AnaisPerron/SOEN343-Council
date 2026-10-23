@@ -2,18 +2,17 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useCart } from '../../context/CartContext';
+import { useCart } from '@/context/CartContext';
 import { groupCartLinesByRestaurant } from './cartStore';
-import { menuItemOptionsMock, menuItemsMock } from '../../mocks/menus.mock';
-import { restaurantsMock } from '../../mocks/restaurants.mock';
-import { restaurantDisplayMock } from '../../mocks/restaurantDisplay.mock';
-import { getCartOrderRestriction, ORDER_ERROR_FADE_DELAY_MS, ORDER_ERROR_FADE_DURATION_MS, type RestaurantOrderRestriction } from './restaurantOrderRules';
+import { menuItemOptionsMock, menuItemsMock } from '@/mocks/menus.mock';
+import { restaurantsMock } from '@/mocks/restaurants.mock';
+import { restaurantDisplayMock } from '@/mocks/restaurantDisplay.mock';
+import { getCartOrderRestriction, ORDER_ERROR_FADE_DELAY_MS, ORDER_ERROR_FADE_DURATION_MS, type RestaurantOrderRestriction } from '../services/restaurantOrderRules';
 import { styles } from './cart.styles';
 
 export default function CartScreen() {
   const router = useRouter();
   const { lines, setQuantity } = useCart();
-  const [orderNotice, setOrderNotice] = useState(false);
   const [orderError, setOrderError] = useState<RestaurantOrderRestriction | null>(null);
   const [toastOpacity] = useState(() => new Animated.Value(0));
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -21,7 +20,7 @@ export default function CartScreen() {
   const count = lines.reduce((total, line) => total + line.quantity, 0);
   const groups = groupCartLinesByRestaurant(lines);
   const grandTotal = groups.reduce((total, group) => total + group.total, 0);
-  const goBack = () => router.canGoBack() ? router.back() : router.replace('/customer/home');
+  const goBack = () => router.canGoBack() ? router.back() : router.replace('/customer/home/home');
 
   useEffect(() => () => {
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -31,7 +30,6 @@ export default function CartScreen() {
   const makeOrder = () => {
     const restriction = getCartOrderRestriction(groups.map((group) => group.restaurantId), restaurantsMock);
     if (restriction) {
-      setOrderNotice(false);
       setOrderError(restriction);
       if (toastTimer.current) clearTimeout(toastTimer.current);
       toastOpacity.stopAnimation();
@@ -47,9 +45,7 @@ export default function CartScreen() {
       }, ORDER_ERROR_FADE_DELAY_MS);
       return;
     }
-    // TODO: Connect checkout to order placement when the order API is implemented.
-    // Keep the cart intact and explain why no order was created.
-    setOrderNotice(true);
+    router.push('/customer/checkout/confirm-order');
   };
 
   return (
@@ -63,7 +59,7 @@ export default function CartScreen() {
         {lines.length === 0 ? <View style={styles.empty}>
           <Text style={styles.emptyTitle}>Your cart is empty</Text>
           <Text style={styles.emptyText}>Choose a menu item to start your order.</Text>
-          <TouchableOpacity accessibilityRole="button" onPress={() => router.replace('/customer/home')} style={styles.browseButton}><Text style={styles.browseText}>Browse restaurants</Text></TouchableOpacity>
+          <TouchableOpacity accessibilityRole="button" onPress={() => router.replace('/customer/home/home')} style={styles.browseButton}><Text style={styles.browseText}>Browse restaurants</Text></TouchableOpacity>
         </View> : <>
           <Text style={styles.count}>{count} {count === 1 ? 'item' : 'items'} in your cart</Text>
           {groups.map((group) => {
@@ -112,7 +108,6 @@ export default function CartScreen() {
         </>}
       </ScrollView>
       <View style={styles.footer}>
-        {orderNotice && <Text style={styles.orderNotice}>Ordering is not available yet. Your cart has been kept.</Text>}
         <TouchableOpacity style={[styles.makeOrderButton, lines.length === 0 && styles.makeOrderButtonDisabled]} accessibilityRole="button" accessibilityState={{ disabled: lines.length === 0 }} disabled={lines.length === 0} onPress={makeOrder}>
           <Text style={styles.makeOrderText}>Make my order</Text>
         </TouchableOpacity>

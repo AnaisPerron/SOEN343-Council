@@ -4,6 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from '@/context/AuthContext';
 import { CartProvider } from '@/context/CartContext';
 import { ItemCustomizationProvider } from '@/context/ItemCustomizationContext';
+import { OrdersProvider } from '@/context/OrdersContext';
 
 function RootNavigator() {
   return (
@@ -14,11 +15,7 @@ function RootNavigator() {
         without an auth guard. Restore protected routes when sign-in is ready.
       */}
       <Stack.Screen name="index" />
-      <Stack.Screen name="customer/home" />
-      <Stack.Screen name="customer/restaurant/[id]" />
-      <Stack.Screen name="customer/menu-item/[id]" />
-      <Stack.Screen name="customer/customize/[id]" />
-      <Stack.Screen name="customer/cart" />
+      <Stack.Screen name="customer" />
       <Stack.Screen name="auth/login" />
       <Stack.Screen name="auth/register" />
     </Stack>
@@ -30,9 +27,11 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <AuthProvider>
         <CartProvider>
-          <ItemCustomizationProvider>
-            <RootNavigator />
-          </ItemCustomizationProvider>
+          <OrdersProvider>
+            <ItemCustomizationProvider>
+              <RootNavigator />
+            </ItemCustomizationProvider>
+          </OrdersProvider>
         </CartProvider>
       </AuthProvider>
     </SafeAreaProvider>

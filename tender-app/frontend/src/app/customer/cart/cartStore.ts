@@ -1,4 +1,4 @@
-import type { MenuItem } from '../../mocks/types';
+import type { MenuItem } from '@/mocks/types';
 
 export interface CartLine {
   // A line represents one item with one specific set of extras.
