@@ -35,6 +35,11 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.CONFLICT, ex.getMessage(), Map.of());
     }
 
+    @ExceptionHandler({InvalidCredentialsException.class, MissingSessionTokenException.class})
+    public ResponseEntity<ErrorResponse> handleUnauthorized(RuntimeException ex) {
+        return build(HttpStatus.UNAUTHORIZED, ex.getMessage(), Map.of());
+    }
+
 
     private ResponseEntity<ErrorResponse> build(HttpStatus status, String message, Map<String, String> fieldErrors) {
         return ResponseEntity.status(status)
