@@ -13,7 +13,6 @@ import { styles } from './cart.styles';
 export default function CartScreen() {
   const router = useRouter();
   const { lines, setQuantity } = useCart();
-  const [orderNotice, setOrderNotice] = useState(false);
   const [orderError, setOrderError] = useState<RestaurantOrderRestriction | null>(null);
   const [toastOpacity] = useState(() => new Animated.Value(0));
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -31,7 +30,6 @@ export default function CartScreen() {
   const makeOrder = () => {
     const restriction = getCartOrderRestriction(groups.map((group) => group.restaurantId), restaurantsMock);
     if (restriction) {
-      setOrderNotice(false);
       setOrderError(restriction);
       if (toastTimer.current) clearTimeout(toastTimer.current);
       toastOpacity.stopAnimation();
@@ -47,9 +45,7 @@ export default function CartScreen() {
       }, ORDER_ERROR_FADE_DELAY_MS);
       return;
     }
-    // TODO: Connect checkout to order placement when the order API is implemented.
-    // Keep the cart intact and explain why no order was created.
-    setOrderNotice(true);
+    router.push('/customer/confirm-order');
   };
 
   return (
@@ -112,7 +108,6 @@ export default function CartScreen() {
         </>}
       </ScrollView>
       <View style={styles.footer}>
-        {orderNotice && <Text style={styles.orderNotice}>Ordering is not available yet. Your cart has been kept.</Text>}
         <TouchableOpacity style={[styles.makeOrderButton, lines.length === 0 && styles.makeOrderButtonDisabled]} accessibilityRole="button" accessibilityState={{ disabled: lines.length === 0 }} disabled={lines.length === 0} onPress={makeOrder}>
           <Text style={styles.makeOrderText}>Make my order</Text>
         </TouchableOpacity>

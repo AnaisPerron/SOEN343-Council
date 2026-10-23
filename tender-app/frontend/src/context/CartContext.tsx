@@ -6,6 +6,7 @@ interface CartContextValue {
   lines: CartLine[];
   addItem: (item: MenuItem, restaurantId: number, optionIds: number[], optionCost: number, quantity: number) => void;
   setQuantity: (key: string, quantity: number) => void;
+  clearCart: () => void;
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -20,7 +21,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const setQuantity: CartContextValue['setQuantity'] = (key, quantity) => {
     setLines((current) => changeCartLineQuantity(current, key, quantity));
   };
-  return <CartContext.Provider value={{ lines, addItem, setQuantity }}>{children}</CartContext.Provider>;
+  const clearCart = () => setLines([]);
+  return <CartContext.Provider value={{ lines, addItem, setQuantity, clearCart }}>{children}</CartContext.Provider>;
 }
 
 export function useCart() {
