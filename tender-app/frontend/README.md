@@ -32,6 +32,16 @@ Install dependencies:
 npm ci
 ```
 
+## Test
+
+Run the frontend unit tests from this directory:
+
+```bash
+npm test
+```
+
+The tests use Node's built-in test runner and TypeScript type stripping. Use Node 24.11.1, the version pinned in `.nvmrc`. The `engines` field in `package.json` also allows Node `^22.13.0`, `^24.3.0`, `^26.0.0`, or `>=27.0.0`; Node 25 is excluded.
+
 Start the app (from phone):
 
 ```bash
@@ -71,8 +81,28 @@ The iOS App Store version of Expo Go does not support SDK 57. For a physical iPh
 
 ```text
 frontend/
-├── src/app/       # Expo Router screens and layout
-├── app.json       # Expo configuration
-├── package.json   # Dependencies and commands
-└── tsconfig.json  # TypeScript configuration
+├── assets/                         # App images and branding
+├── src/
+│   ├── app/                         # Expo Router routes and layouts
+│   │   ├── _layout.tsx              # Root navigation stack and safe area provider
+│   │   ├── index.tsx                # App entry route
+│   │   └── customer/
+│   │       ├── components/
+│   │       │   ├── RestaurantCard.tsx
+│   │       │   ├── RestaurantCard.styles.ts
+│   │       │   ├── RestaurantSection.tsx
+│   │       │   └── RestaurantSection.styles.ts
+│   │       ├── home.tsx             # Customer home screen
+│   │       ├── home.styles.ts       # Customer home styles
+│   │       └── restaurantSearch.ts  # Restaurant name search helper
+│   ├── mocks/                       # Demo data and menu photos
+│   │   └── menu-items-imgs/
+│   ├── tests/                       # Node tests kept outside Expo route discovery
+│   │   └── customer/
+│   │       └── restaurantSearch.test.ts
+│   └── types/
+│       └── restaurant.ts            # Shared restaurant model and status type
+├── app.json                         # Expo configuration
+├── package.json                     # Dependencies and scripts
+└── tsconfig.json                    # TypeScript configuration
 ```

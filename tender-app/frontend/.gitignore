@@ -4,3 +4,5 @@
 
 expo-env.d.ts
 # @end expo-cli
+# local env (EXPO_PUBLIC_API_URL)
+.env

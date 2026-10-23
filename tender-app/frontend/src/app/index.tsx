@@ -1,5 +1,10 @@
-import { Redirect } from 'expo-router';
-
+import Home from './customer/home';
 export default function IndexRoute() {
-  return <Redirect href="/incoming-orders" />;
+  // TODO: Replace these placeholders with the real authentication and user-role state.
+  const isLoggedIn = true;
+  const userType = 'customer';
+  if (isLoggedIn && userType === 'customer') {
+    return <Home />;
+  }
+  return <Home />;
 }
