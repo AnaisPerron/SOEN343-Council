@@ -102,7 +102,7 @@ export default function CustomerHome() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [orderError, setOrderError] = useState<RestaurantOrderRestriction | null>(null);
-  const toastOpacity = useRef(new Animated.Value(0)).current;
+  const [toastOpacity] = useState(() => new Animated.Value(0));
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const normalizedQuery = searchQuery.trim().toLocaleLowerCase();
   const isMobileSearch = Platform.OS !== 'web' && (isSearchFocused || normalizedQuery.length > 0);

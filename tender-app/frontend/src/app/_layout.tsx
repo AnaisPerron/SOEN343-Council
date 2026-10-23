@@ -14,6 +14,7 @@ function RootNavigator() {
       <Stack.Screen name="index" />
       <Stack.Screen name="customer/home" />
       <Stack.Screen name="customer/restaurant/[id]" />
+      <Stack.Screen name="customer/menu-item/[id]" />
       <Stack.Screen name="auth/login" />
       <Stack.Screen name="auth/register" />
     </Stack>

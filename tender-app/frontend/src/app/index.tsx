@@ -1,10 +1,10 @@
+import { Redirect } from 'expo-router';
+import { restaurantsMock } from '../mocks/restaurants.mock';
 import Home from './customer/home';
+
 export default function IndexRoute() {
-  // TODO: Replace these placeholders with the real authentication and user-role state.
-  const isLoggedIn = true;
-  const userType = 'customer';
-  if (isLoggedIn && userType === 'customer') {
-    return <Home />;
-  }
-  return <Home />;
+  const firstRestaurant = restaurantsMock[0];
+  if (!firstRestaurant) return <Home />;
+
+  return <Redirect href={{ pathname: '/customer/restaurant/[id]', params: { id: String(firstRestaurant.id) } }} />;
 }
