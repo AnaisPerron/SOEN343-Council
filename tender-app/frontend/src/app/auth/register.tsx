@@ -16,7 +16,6 @@ import { ROLE_OPTIONS, useAuth, type Role } from '@/context/AuthContext';
 import { authStyles as styles } from './auth.styles';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const SIGNUP_ROLES = ROLE_OPTIONS.filter((option) => option.value !== 'Operator');
 
 type FormErrors = {
   name?: string;
@@ -59,7 +58,6 @@ export default function RegisterScreen() {
     if (Object.keys(next).length) return;
 
     const details = {
-      name: name.trim(),
       email: email.trim(),
       phoneNumber: phone.trim(),
       password,
@@ -71,8 +69,8 @@ export default function RegisterScreen() {
     };
     setLoading(true);
     try {
-      if (role === 'customer') await signUp({ ...details, role: 'customer' });
-      else await signUp({ ...details, role: 'restaurant' });
+      if (role === 'customer') await signUp({ ...details, role: 'customer', name: name.trim() });
+      else await signUp({ ...details, role: 'restaurant', restaurantName: name.trim() });
       router.replace('/auth/login');
     } catch (error) {
       setErrors({ form: error instanceof Error ? error.message : 'Something went wrong' });
@@ -84,21 +82,32 @@ export default function RegisterScreen() {
     <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+          <Pressable
+            style={styles.backButton}
+            onPress={() => router.replace('/auth/login')}
+            accessibilityRole="button"
+            accessibilityLabel="Back to sign in"
+          >
+            <Text style={styles.backArrow}>←</Text>
+            <Text style={styles.backLabel}>Sign in</Text>
+          </Pressable>
           <Text style={styles.title}>Tender</Text>
           <Text style={styles.subtitle}>Create your account</Text>
 
           <View style={styles.roleRow}>
-            {SIGNUP_ROLES.map((option) => {
+            {ROLE_OPTIONS.map((option) => {
               const selected = option.value === role;
+              const disabled = option.value === 'Operator';
               return (
                 <Pressable
                   key={option.value}
-                  style={[styles.roleButton, selected && styles.roleButtonSelected]}
+                  style={[styles.roleButton, selected && styles.roleButtonSelected, disabled && styles.roleButtonDisabled]}
                   onPress={() => setRole(option.value)}
+                  disabled={disabled}
                   accessibilityRole="button"
-                  accessibilityState={{ selected }}
+                  accessibilityState={{ selected, disabled }}
                 >
-                  <Text style={[styles.roleText, selected && styles.roleTextSelected]}>{option.label}</Text>
+                  <Text style={[styles.roleText, selected && styles.roleTextSelected, disabled && styles.roleTextDisabled]}>{option.label}</Text>
                 </Pressable>
               );
             })}
@@ -108,8 +117,8 @@ export default function RegisterScreen() {
             <Text style={styles.notice}>Courier accounts are not supported yet. Registration is unavailable.</Text>
           ) : (
             <>
-              <Text style={styles.label}>Name</Text>
-              <TextInput style={[styles.input, errors.name && styles.inputError]} value={name} onChangeText={setName} placeholder="Your name" placeholderTextColor="#9ca3af" autoComplete="name" textContentType="name" />
+              <Text style={styles.label}>{role === 'restaurant' ? 'Restaurant name' : 'Name'}</Text>
+              <TextInput style={[styles.input, errors.name && styles.inputError]} value={name} onChangeText={setName} placeholder={role === 'restaurant' ? 'Restaurant name' : 'Your name'} placeholderTextColor="#9ca3af" autoComplete={role === 'restaurant' ? 'off' : 'name'} textContentType={role === 'restaurant' ? 'none' : 'name'} />
               {errors.name && <Text style={styles.error}>{errors.name}</Text>}
 
               <Text style={styles.label}>Email</Text>

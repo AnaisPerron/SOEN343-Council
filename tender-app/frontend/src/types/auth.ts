@@ -9,7 +9,6 @@ export interface Address {
 
 export interface Profile {
   id: number;
-  name: string;
   email: string;
   password: string;
   phoneNumber: string;
@@ -17,18 +16,22 @@ export interface Profile {
 
 export interface CustomerProfile extends Profile {
   role: 'customer';
+  name: string;
   address: Address;
 }
 
 export interface RestaurantProfile extends Profile {
   role: 'restaurant';
+  restaurantName: string;
   address: Address;
 }
 
 export interface CourierProfile extends Profile {
   role: 'courier';
+  name: string;
 }
 
+//Design desicion: should it be considered as a profile? then the Profile superclass would have a way more minimalistic aspect
 export interface OperatorAccount {
   role: 'Operator';
   id: number;

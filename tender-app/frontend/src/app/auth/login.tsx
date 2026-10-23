@@ -3,7 +3,6 @@ import { useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
-  LayoutAnimation,
   Platform,
   Pressable,
   ScrollView,
@@ -98,72 +97,46 @@ function LoginForm({ role }: { role: SupportedRole }) {
 }
 
 export default function LoginScreen() {
-  const [menuOpen, setMenuOpen] = useState(false);
   const [role, setRole] = useState<Role>('customer');
-
-  const toggleMenu = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setMenuOpen((open) => !open);
-  };
 
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.topBar}>
-        <Text style={styles.brand}>Tender</Text>
-        <Pressable
-          style={[styles.topBarButton, menuOpen && styles.topBarButtonActive]}
-          onPress={toggleMenu}
-          accessibilityRole="button"
-          accessibilityLabel={menuOpen ? 'Close log in menu' : 'Open log in menu'}
-          accessibilityState={{ expanded: menuOpen }}
-        >
-          <Text style={[styles.topBarLabel, menuOpen && styles.topBarLabelActive]}>Log in</Text>
-        </Pressable>
-      </View>
-
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-          {!menuOpen && (
-            <View style={styles.hero}>
-              <Text style={styles.heroTitle}>Tender</Text>
-            </View>
+          <Text style={styles.title}>Tender</Text>
+          <Text style={styles.subtitle}>Sign in to your account</Text>
+
+          <View style={styles.roleRow}>
+            {ROLE_OPTIONS.map((option) => {
+              const selected = option.value === role;
+              return (
+                <Pressable
+                  key={option.value}
+                  style={[styles.roleButton, selected && styles.roleButtonSelected]}
+                  onPress={() => setRole(option.value)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                >
+                  <Text style={[styles.roleText, selected && styles.roleTextSelected]}>{option.label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {role === 'courier' ? (
+            <Text style={styles.notice}>Courier accounts are not supported yet.</Text>
+          ) : (
+            <LoginForm key={role} role={role} />
           )}
 
-          {menuOpen && (
-            <View>
-              <View style={styles.roleRow}>
-                {ROLE_OPTIONS.map((option) => {
-                  const selected = option.value === role;
-                  return (
-                    <Pressable
-                      key={option.value}
-                      style={[styles.roleButton, selected && styles.roleButtonSelected]}
-                      onPress={() => setRole(option.value)}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected }}
-                    >
-                      <Text style={[styles.roleText, selected && styles.roleTextSelected]}>{option.label}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-
-              {role === 'courier' ? (
-                <Text style={styles.notice}>Courier accounts are not supported yet.</Text>
-              ) : (
-                <LoginForm key={role} role={role} />
-              )}
-
-              {role === 'Operator' ? (
-                <Text style={styles.notice}>Operator accounts are assigned. Registration is unavailable.</Text>
-              ) : role !== 'courier' ? (
-                <View style={styles.switchRow}>
-                  <Text style={styles.switchText}>Don&apos;t have an account?</Text>
-                  <Link href="/auth/register" style={styles.switchLink}>Register</Link>
-                </View>
-              ) : null}
+          {role === 'Operator' ? (
+            <Text style={styles.notice}>Operator accounts are assigned. Registration is unavailable.</Text>
+          ) : role !== 'courier' ? (
+            <View style={styles.switchRow}>
+              <Text style={styles.switchText}>Don&apos;t have an account?</Text>
+              <Link href="/auth/register" style={styles.switchLink}>Register</Link>
             </View>
-          )}
+          ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

@@ -58,14 +58,16 @@ async function mockLogin(input: SignInInput): Promise<AuthUser> {
   if (!account || account.role !== input.role || account.password !== input.password) {
     throw new Error('Invalid email or password');
   }
-  return {
-    role: account.role,
+  const shared = {
     id: account.id,
-    name: account.name,
     email: account.email,
     phoneNumber: account.phoneNumber,
     address: account.address,
   };
+  if (account.role === 'restaurant') {
+    return { ...shared, role: 'restaurant', restaurantName: account.restaurantName };
+  }
+  return { ...shared, role: 'customer', name: account.name };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
