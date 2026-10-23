@@ -4,7 +4,7 @@ import java.time.Instant;
 
 import com.council.tenderapp.reg.entities.Profile;
 import com.council.tenderapp.reg.entities.Role;
-import com.council.tenderapp.reg.models.Session;
+import com.council.tenderapp.reg.security.Session;
 
 public record LoginResponse(String token, Instant expiresAt, Long id, String name, String email, String phone, Role role) {
 

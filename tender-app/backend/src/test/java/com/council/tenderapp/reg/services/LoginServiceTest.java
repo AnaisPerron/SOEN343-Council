@@ -21,8 +21,8 @@ import com.council.tenderapp.reg.dtos.LoginResponse;
 import com.council.tenderapp.reg.entities.Profile;
 import com.council.tenderapp.reg.entities.Role;
 import com.council.tenderapp.reg.exceptions.InvalidCredentialsException;
-import com.council.tenderapp.reg.models.Session;
 import com.council.tenderapp.reg.repositories.ProfileRepository;
+import com.council.tenderapp.reg.security.Session;
 
 @ExtendWith(MockitoExtension.class)
 class LoginServiceTest {

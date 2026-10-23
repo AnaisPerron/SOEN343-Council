@@ -1,4 +1,4 @@
-package com.council.tenderapp.reg.models;
+package com.council.tenderapp.reg.security;
 
 import java.time.Instant;
 

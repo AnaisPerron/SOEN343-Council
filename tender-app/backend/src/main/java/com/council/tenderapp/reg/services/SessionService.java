@@ -14,7 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.council.tenderapp.reg.entities.Role;
-import com.council.tenderapp.reg.models.Session;
+import com.council.tenderapp.reg.security.Session;
 
 // Sessions are kept in memory, so a backend restart signs everyone out
 @Service
