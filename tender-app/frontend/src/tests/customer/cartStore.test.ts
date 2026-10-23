@@ -34,4 +34,21 @@ describe('cart draft', () => {
       { restaurantId: 2, subtotal: 15.75, deliveryFee: 0, serviceFee: 0, total: 15.75 },
     ]);
   });
+
+  it('updates only the selected line and keeps its chosen unit price', () => {
+    const first = addCartLine([], menuItemsMock[0], 1, [5001], 2, 1);
+    const lines = addCartLine(first, menuItemsMock[0], 1, [], 0, 1);
+    const updated = changeCartLineQuantity(lines, first[0].key, 3);
+    assert.equal(updated[0].unitPrice, 16.5);
+    assert.equal(updated[0].quantity, 3);
+    assert.equal(updated[1].quantity, 1);
+    assert.equal(lines[0].quantity, 1);
+    assert.equal(cartTotal(updated), 64);
+  });
+
+  it('rejects nonpositive additions without changing the cart', () => {
+    const lines = addCartLine([], menuItemsMock[0], 1, [], 0, 1);
+    assert.strictEqual(addCartLine(lines, menuItemsMock[0], 1, [], 0, 0), lines);
+    assert.strictEqual(addCartLine(lines, menuItemsMock[0], 1, [], 0, -1), lines);
+  });
 });

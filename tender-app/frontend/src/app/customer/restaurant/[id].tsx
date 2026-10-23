@@ -20,6 +20,7 @@ import { DetailPage } from '../components/DetailPage';
 import CartIconButton from '../components/CartIconButton';
 import { useCart } from '../../../context/CartContext';
 import { styles } from './restaurant.styles';
+import { getMenuItemsForRestaurant } from '../menuCatalog';
 
 const PANEL_OVERLAP = 30;
 const STICKY_HEIGHT = 106;
@@ -107,8 +108,7 @@ export default function RestaurantDetails() {
   const restaurant = restaurantsMock.find((entry) => entry.id === Number(id));
   const goToRestaurants = () => router.replace('/customer/home');
   const coverHeight = Math.max(290, Math.min(windowHeight * 0.39, 390));
-  const restaurantMenus = useMemo(() => menusMock.filter((menu) => menu.restaurant_id === restaurant?.id), [restaurant?.id]);
-  const items = useMemo(() => menuItemsMock.filter((item) => restaurantMenus.some((menu) => menu.id === item.menu_id)), [restaurantMenus]);
+  const items = useMemo(() => getMenuItemsForRestaurant(restaurant?.id ?? -1, menusMock, menuItemsMock), [restaurant?.id]);
   const categories = useMemo(() => [...new Set(items.map((item) => menuItemDisplayMock[item.id]?.category ?? 'Menu'))], [items]);
   const filteredItems = items.filter((item) => item.name.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
   const visibleCategories = categories.filter((category) => filteredItems.some((item) => (menuItemDisplayMock[item.id]?.category ?? 'Menu') === category));
