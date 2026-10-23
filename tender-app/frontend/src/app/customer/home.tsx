@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'expo-router';
 import {
   Animated,
   Image,
@@ -14,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { restaurantsMock } from '../../mocks/restaurants.mock';
 import { menusMock, menuItemsMock } from '../../mocks/menus.mock';
+import { restaurantDisplayMock } from '../../mocks/restaurantDisplay.mock';
 import type { Restaurant } from '../../types/restaurant';
 import { styles } from './home.styles';
 import { searchRestaurants } from './restaurantSearch';
@@ -82,6 +84,7 @@ const restaurantCardsById = new Map<number, RestaurantCardData>(
     {
       restaurant,
       rating: mockRatings[restaurant.id],
+      reviewCount: restaurantDisplayMock[restaurant.id]?.reviewCount ?? 0,
       coverOptions: menuItemsMock
         .filter((menuItem) => menusMock.some((menu) =>
           menu.id === menuItem.menu_id && menu.restaurant_id === restaurant.id,
@@ -93,6 +96,7 @@ const restaurantCardsById = new Map<number, RestaurantCardData>(
 );
 
 export default function CustomerHome() {
+  const router = useRouter();
   const { width } = useWindowDimensions();
   const compact = width < 600;
   const [searchQuery, setSearchQuery] = useState('');
@@ -113,7 +117,10 @@ export default function CustomerHome() {
 
   const handleRestaurantPress = (restaurant: Restaurant) => {
     const restriction = getRestaurantOrderRestriction(restaurant);
-    if (!restriction) return;
+    if (!restriction) {
+      router.push({ pathname: '/customer/restaurant/[id]', params: { id: String(restaurant.id) } });
+      return;
+    }
 
     setOrderError(restriction);
     if (toastTimer.current) clearTimeout(toastTimer.current);

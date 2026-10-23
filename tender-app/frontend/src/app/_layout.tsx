@@ -1,21 +1,21 @@
 import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { AuthProvider } from '@/context/AuthContext';
 
 function RootNavigator() {
-  const { user } = useAuth();
-
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Protected guard={!user}>
-        <Stack.Screen name="auth/login" />
-        <Stack.Screen name="auth/register" />
-      </Stack.Protected>
-
-      <Stack.Protected guard={!!user}>
-        <Stack.Screen name="index" />
-      </Stack.Protected>
+      {/*
+        TODO: Route through the actual sign-in flow before exposing customer pages.
+        For the current restaurant demo, index opens the restaurant display directly
+        without an auth guard. Restore protected routes when sign-in is ready.
+      */}
+      <Stack.Screen name="index" />
+      <Stack.Screen name="customer/home" />
+      <Stack.Screen name="customer/restaurant/[id]" />
+      <Stack.Screen name="auth/login" />
+      <Stack.Screen name="auth/register" />
     </Stack>
   );
 }

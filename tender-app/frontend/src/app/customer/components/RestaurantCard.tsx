@@ -12,6 +12,7 @@ import { styles } from './RestaurantCard.styles';
 export interface RestaurantCardData {
   restaurant: Restaurant;
   rating: number;
+  reviewCount: number;
   coverOptions: ImageSourcePropType[];
 }
 
@@ -22,6 +23,7 @@ interface RestaurantCardProps extends RestaurantCardData {
 export default function RestaurantCard({
   restaurant,
   rating,
+  reviewCount,
   coverOptions,
   onPress,
 }: RestaurantCardProps) {
@@ -77,8 +79,7 @@ export default function RestaurantCard({
         <View style={styles.ratingRow}>
           <Text style={styles.ratingStar}>★</Text>
           <Text style={styles.ratingValue}>{rating.toFixed(1)}</Text>
-          {/* Review totals stay at zero until the mock data includes them. */}
-          <Text style={styles.reviewCount}>(0 reviews)</Text>
+          <Text style={styles.reviewCount}>({reviewCount} reviews)</Text>
         </View>
       </View>
     </TouchableOpacity>
