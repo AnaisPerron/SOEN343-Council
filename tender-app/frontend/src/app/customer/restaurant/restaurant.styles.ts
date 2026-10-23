@@ -58,6 +58,7 @@ export const styles = StyleSheet.create({
   addButtonDisabled: { backgroundColor: '#BFB5B7' },
   addButtonText: { color: '#FFFFFF', fontSize: 21, lineHeight: 25 },
   itemDescription: { fontFamily: font, color: muted, fontSize: 11, lineHeight: 16, marginTop: 3 },
+  itemAvailability: { fontFamily: font, color: '#A92140', fontSize: 11, fontWeight: '800', marginTop: 5 },
   itemPrice: { fontFamily: font, color: ink, fontSize: 12, fontWeight: '800', marginTop: 7 },
   emptyText: { fontFamily: font, color: muted, fontSize: 14, marginTop: 20 },
   sticky: { position: 'absolute', left: 0, right: 0, top: 0, backgroundColor: '#FFFFFF', shadowColor: '#372B2E', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 8 },
@@ -70,6 +71,10 @@ export const styles = StyleSheet.create({
   categoryTabText: { fontFamily: font, color: ink, fontSize: 11, fontWeight: '700' },
   bottomNotice: { position: 'absolute', left: 16, right: 16, backgroundColor: ink, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 14 },
   bottomNoticeText: { fontFamily: font, color: '#FFFFFF', fontSize: 12, fontWeight: '700', textAlign: 'center' },
+  orderErrorOverlay: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, zIndex: 10 },
+  orderErrorToast: { width: '100%', maxWidth: 420, paddingVertical: 18, paddingHorizontal: 22, backgroundColor: '#FFE6EB', borderColor: '#EF9AAA', borderWidth: 1, borderRadius: 18, shadowColor: '#852B3F', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.18, shadowRadius: 12, elevation: 8 },
+  orderErrorCode: { fontFamily: font, color: '#A92140', fontSize: 15, fontWeight: '900', textAlign: 'center' },
+  orderErrorMessage: { fontFamily: font, color: '#5C343B', fontSize: 14, lineHeight: 20, marginTop: 6, textAlign: 'center' },
   notFound: { flex: 1, padding: 24, justifyContent: 'center', alignItems: 'center' },
   backLink: { fontFamily: font, color: accent, marginTop: 16, fontSize: 15 },
 });

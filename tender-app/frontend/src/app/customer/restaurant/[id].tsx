@@ -1,6 +1,7 @@
 //I, Anais Perron, certify that Codex helped me in generating the Template of this display. However, it has been heavily modified by myself
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Animated,
   Image,
   ScrollView,
   Text,
@@ -17,6 +18,12 @@ import { menusMock, menuItemsMock } from '../../../mocks/menus.mock';
 import { menuItemDisplayMock, menuItemPhotos, restaurantDisplayMock } from '../../../mocks/restaurantDisplay.mock';
 import type { MenuItem } from '../../../mocks/types';
 import type { Restaurant } from '../../../types/restaurant';
+import {
+  getMenuItemOrderRestriction,
+  ORDER_ERROR_FADE_DELAY_MS,
+  ORDER_ERROR_FADE_DURATION_MS,
+  type RestaurantOrderRestriction,
+} from '../restaurantOrderRules';
 import { styles } from './restaurant.styles';
 
 const PANEL_OVERLAP = 30;
@@ -91,12 +98,13 @@ function MenuItemCard({ item, onAdd }: { item: MenuItem; onAdd: (item: MenuItem)
       </View>
       <View style={styles.itemTitleRow}>
         <Text style={styles.itemName}>{item.name}</Text>
-        <TouchableOpacity style={[styles.addButton, !item.available && styles.addButtonDisabled]} accessibilityRole="button" accessibilityLabel={`Add ${item.name}`} accessibilityState={{ disabled: !item.available }} disabled={!item.available} onPress={() => onAdd(item)}>
+        <TouchableOpacity style={[styles.addButton, !item.available && styles.addButtonDisabled]} accessibilityRole="button" accessibilityLabel={item.available ? `Add ${item.name}` : `${item.name} is not available right now`} onPress={() => onAdd(item)}>
           <Text style={styles.addButtonText}>+</Text>
         </TouchableOpacity>
       </View>
       {item.description && <Text style={styles.itemDescription} numberOfLines={2}>{item.description}</Text>}
-      <Text style={styles.itemPrice}>{!item.available ? 'Sold out · ' : ''}${item.price.toFixed(2)}</Text>
+      {!item.available && <Text style={styles.itemAvailability}>Not available right now</Text>}
+      <Text style={styles.itemPrice}>${item.price.toFixed(2)}</Text>
     </View>
   );
 }
@@ -115,6 +123,9 @@ export default function RestaurantDetails() {
   const [moreOpen, setMoreOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [orderError, setOrderError] = useState<RestaurantOrderRestriction | null>(null);
+  const toastOpacity = useRef(new Animated.Value(0)).current;
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const restaurant = restaurantsMock.find((entry) => entry.id === Number(id));
   const goToRestaurants = () => router.replace('/customer/home');
   const coverHeight = Math.max(290, Math.min(windowHeight * 0.39, 390));
@@ -126,6 +137,10 @@ export default function RestaurantDetails() {
   const coverItemId = restaurant && restaurantDisplayMock[restaurant.id]?.coverItemId;
   const cover = coverItemId ? menuItemPhotos[coverItemId] : menuItemPhotos[items[0]?.id];
 
+  useEffect(() => () => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+  }, []);
+
   if (!restaurant) {
     return <View style={styles.notFound}><Text style={styles.restaurantName}>Restaurant not found</Text><TouchableOpacity onPress={goToRestaurants}><Text style={styles.backLink}>Back to restaurants</Text></TouchableOpacity></View>;
   }
@@ -136,7 +151,24 @@ export default function RestaurantDetails() {
   };
 
   //TODO: IMPLEMENT CART LOGIC
-  const addItem = (_item: MenuItem) => {
+  const addItem = (item: MenuItem) => {
+    const restriction = getMenuItemOrderRestriction(item);
+    if (restriction) {
+      setOrderError(restriction);
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+      toastOpacity.stopAnimation();
+      toastOpacity.setValue(1);
+      toastTimer.current = setTimeout(() => {
+        Animated.timing(toastOpacity, {
+          toValue: 0,
+          duration: ORDER_ERROR_FADE_DURATION_MS,
+          useNativeDriver: true,
+        }).start(({ finished }) => {
+          if (finished) setOrderError(null);
+        });
+      }, ORDER_ERROR_FADE_DELAY_MS);
+      return;
+    }
     // Cart handling will be connected here.
   };
 
@@ -186,6 +218,18 @@ export default function RestaurantDetails() {
           {visibleCategories.map((category) => <TouchableOpacity key={category} onPress={() => goToCategory(category)} style={styles.categoryTab} accessibilityRole="button"><Text style={styles.categoryTabText}>{category}</Text></TouchableOpacity>)}
         </ScrollView>
       </View>}
+      {orderError && (
+        <View style={styles.orderErrorOverlay} pointerEvents="none">
+          <Animated.View
+            style={[styles.orderErrorToast, { opacity: toastOpacity }]}
+            accessibilityRole="alert"
+            accessibilityLiveRegion="assertive"
+          >
+            <Text style={styles.orderErrorCode}>{orderError.code}</Text>
+            <Text style={styles.orderErrorMessage}>{orderError.message}</Text>
+          </Animated.View>
+        </View>
+      )}
     </View>
   );
 }

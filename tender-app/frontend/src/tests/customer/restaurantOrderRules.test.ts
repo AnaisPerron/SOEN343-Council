@@ -2,7 +2,9 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { restaurantsMock } from '../../mocks/restaurants.mock.ts';
+import { menuItemsMock } from '../../mocks/menus.mock.ts';
 import {
+  getMenuItemOrderRestriction,
   getRestaurantOrderRestriction,
   ORDER_ERROR_FADE_DELAY_MS,
   ORDER_ERROR_FADE_DURATION_MS,
@@ -41,5 +43,15 @@ describe('R-ORD-02 - ORD restaurant order restriction', () => {
 
   it('configures the alert to disappear after two seconds total', () => {
     assert.equal(ORDER_ERROR_FADE_DELAY_MS + ORDER_ERROR_FADE_DURATION_MS, 2000);
+  });
+});
+
+describe('menu item availability restriction', () => {
+  it('allows an available item and rejects an unavailable item', () => {
+    assert.equal(getMenuItemOrderRestriction(menuItemsMock[0]), null);
+    assert.deepEqual(getMenuItemOrderRestriction(menuItemsMock[2]), {
+      code: ORDER_RESTRICTION_CODE,
+      message: 'Apple crumble is not available right now and cannot be added to your cart.',
+    });
   });
 });
