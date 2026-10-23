@@ -1,7 +1,6 @@
 //I, Anais Perron, certify that Codex helped me in generating the Template of this display. However, it has been heavily modified by myself
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
-  Animated,
   Image,
   ScrollView,
   Text,
@@ -18,12 +17,7 @@ import { menuItemDisplayMock, menuItemPhotos, restaurantDisplayMock } from '../.
 import type { MenuItem } from '../../../mocks/types';
 import type { Restaurant } from '../../../types/restaurant';
 import { DetailPage } from '../components/DetailPage';
-import {
-  getMenuItemOrderRestriction,
-  ORDER_ERROR_FADE_DELAY_MS,
-  ORDER_ERROR_FADE_DURATION_MS,
-  type RestaurantOrderRestriction,
-} from '../restaurantOrderRules';
+import { useCart } from '../../../context/CartContext';
 import { styles } from './restaurant.styles';
 
 const PANEL_OVERLAP = 30;
@@ -75,18 +69,16 @@ function RestaurantInfoPanel({ restaurant, showMore }: {
   );
 }
 
-function MenuItemCard({ item, onAdd, onOpen }: { item: MenuItem; onAdd: (item: MenuItem) => void; onOpen: (item: MenuItem) => void }) {
+function MenuItemCard({ item, onOpen }: { item: MenuItem; onOpen: (item: MenuItem) => void }) {
   const photo = item.photURL ? { uri: item.photURL } : menuItemPhotos[item.id];
   return (
+    // Open the item detail first; quantity, extras, and adding to cart live there.
     <TouchableOpacity style={styles.menuCard} accessibilityRole="button" accessibilityLabel={`View ${item.name} details`} onPress={() => onOpen(item)} activeOpacity={0.85}>
       <View style={styles.itemImageWrap}>
         {photo ? <Image source={photo} style={styles.itemImage} resizeMode="cover" accessibilityLabel={item.name} /> : <View style={styles.itemImageFallback}><Text style={styles.itemImageFallbackText}>Tender</Text></View>}
       </View>
       <View style={styles.itemTitleRow}>
         <Text style={styles.itemName}>{item.name}</Text>
-        <TouchableOpacity style={[styles.addButton, !item.available && styles.addButtonDisabled]} accessibilityRole="button" accessibilityLabel={item.available ? `Add ${item.name}` : `${item.name} is not available right now`} onPress={(event) => { event.stopPropagation(); onAdd(item); }}>
-          <Text style={styles.addButtonText}>+</Text>
-        </TouchableOpacity>
       </View>
       {item.description && <Text style={styles.itemDescription} numberOfLines={2}>{item.description}</Text>}
       {!item.available && <Text style={styles.itemAvailability}>Not available right now</Text>}
@@ -98,6 +90,8 @@ function MenuItemCard({ item, onAdd, onOpen }: { item: MenuItem; onAdd: (item: M
 export default function RestaurantDetails() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { lines } = useCart();
+  const cartCount = lines.reduce((count, line) => count + line.quantity, 0);
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
   const scrollRef = useRef<ScrollView>(null);
@@ -109,9 +103,6 @@ export default function RestaurantDetails() {
   const [moreOpen, setMoreOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [orderError, setOrderError] = useState<RestaurantOrderRestriction | null>(null);
-  const [toastOpacity] = useState(() => new Animated.Value(0));
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const restaurant = restaurantsMock.find((entry) => entry.id === Number(id));
   const goToRestaurants = () => router.replace('/customer/home');
   const coverHeight = Math.max(290, Math.min(windowHeight * 0.39, 390));
@@ -123,10 +114,6 @@ export default function RestaurantDetails() {
   const coverItemId = restaurant && restaurantDisplayMock[restaurant.id]?.coverItemId;
   const cover = coverItemId ? menuItemPhotos[coverItemId] : menuItemPhotos[items[0]?.id];
 
-  useEffect(() => () => {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-  }, []);
-
   if (!restaurant) {
     return <View style={styles.notFound}><Text style={styles.restaurantName}>Restaurant not found</Text><TouchableOpacity onPress={goToRestaurants}><Text style={styles.backLink}>Back to restaurants</Text></TouchableOpacity></View>;
   }
@@ -134,28 +121,6 @@ export default function RestaurantDetails() {
   const goToCategory = (category: string) => {
     const sectionY = sectionOffsets.current[category];
     if (sectionY != null) scrollRef.current?.scrollTo({ y: Math.max(0, coverHeight - PANEL_OVERLAP + infoHeight + sectionY - insets.top - STICKY_HEIGHT - 12), animated: true });
-  };
-
-  //TODO: IMPLEMENT CART LOGIC
-  const addItem = (item: MenuItem) => {
-    const restriction = getMenuItemOrderRestriction(item);
-    if (restriction) {
-      setOrderError(restriction);
-      if (toastTimer.current) clearTimeout(toastTimer.current);
-      toastOpacity.stopAnimation();
-      toastOpacity.setValue(1);
-      toastTimer.current = setTimeout(() => {
-        Animated.timing(toastOpacity, {
-          toValue: 0,
-          duration: ORDER_ERROR_FADE_DURATION_MS,
-          useNativeDriver: true,
-        }).start(({ finished }) => {
-          if (finished) setOrderError(null);
-        });
-      }, ORDER_ERROR_FADE_DELAY_MS);
-      return;
-    }
-    // Cart handling will be connected here.
   };
 
   const openItem = (item: MenuItem) => {
@@ -171,6 +136,7 @@ export default function RestaurantDetails() {
       {coverControlsVisible && !stickyVisible && <View pointerEvents="box-none" style={[styles.coverControls, { top: insets.top + 12 }]}>
         <IconButton label="Back to restaurants" symbol="‹" onPress={goToRestaurants} />
         <View style={styles.controlGroup}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Cart, ${cartCount} items`} style={styles.cartButton} onPress={() => router.push('/customer/cart')}><Text style={styles.cartButtonText}>Cart{cartCount > 0 ? ` (${cartCount})` : ''}</Text></TouchableOpacity>
           <IconButton label="Search menu" symbol="⌕" onPress={() => setSearchOpen(true)} />
           <IconButton label={favorite ? 'Remove from favorites' : 'Add to favorites'} symbol={favorite ? '♥' : '♡'} onPress={() => setFavorite((value) => !value)} />
           <IconButton label="More restaurant information" symbol="⋯" onPress={() => setMoreOpen((value) => !value)} />
@@ -181,24 +147,13 @@ export default function RestaurantDetails() {
           <IconButton label="Back to restaurants" symbol="‹" onPress={goToRestaurants} light />
           {searchOpen ? <TextInput autoFocus value={query} onChangeText={setQuery} placeholder="Search menu" placeholderTextColor="#9F9092" style={styles.searchInput} returnKeyType="search" /> : <Text numberOfLines={1} style={styles.stickyName}>{restaurant.name}</Text>}
           <IconButton label={searchOpen ? 'Close search' : 'Search menu'} symbol={searchOpen ? '×' : '⌕'} onPress={() => { setSearchOpen((value) => !value); setQuery(''); }} light />
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Cart, ${cartCount} items`} style={styles.stickyCartButton} onPress={() => router.push('/customer/cart')}><Text style={styles.stickyCartText}>Cart{cartCount > 0 ? ` (${cartCount})` : ''}</Text></TouchableOpacity>
           <IconButton label={favorite ? 'Remove from favorites' : 'Add to favorites'} symbol={favorite ? '♥' : '♡'} onPress={() => setFavorite((value) => !value)} light />
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryNav} contentContainerStyle={styles.categoryNavContent}>
           {visibleCategories.map((category) => <TouchableOpacity key={category} onPress={() => goToCategory(category)} style={styles.categoryTab} accessibilityRole="button"><Text style={styles.categoryTabText}>{category}</Text></TouchableOpacity>)}
         </ScrollView>
       </View>}
-      {orderError && (
-        <View style={styles.orderErrorOverlay} pointerEvents="none">
-          <Animated.View
-            style={[styles.orderErrorToast, { opacity: toastOpacity }]}
-            accessibilityRole="alert"
-            accessibilityLiveRegion="assertive"
-          >
-            <Text style={styles.orderErrorCode}>{orderError.code}</Text>
-            <Text style={styles.orderErrorMessage}>{orderError.message}</Text>
-          </Animated.View>
-        </View>
-      )}
     </>}>
           <View onLayout={(event) => setInfoHeight(event.nativeEvent.layout.height)}>
             <RestaurantInfoPanel restaurant={restaurant} showMore={moreOpen} />
@@ -210,7 +165,7 @@ export default function RestaurantDetails() {
               if (categoryItems.length === 0) return null;
               return <View key={category} style={styles.categorySection} onLayout={(event) => { sectionOffsets.current[category] = event.nativeEvent.layout.y; }}>
                 <Text style={styles.categoryHeading}>{category}</Text>
-                <View style={styles.itemGrid}>{categoryItems.map((item) => <MenuItemCard key={item.id} item={item} onAdd={addItem} onOpen={openItem} />)}</View>
+                <View style={styles.itemGrid}>{categoryItems.map((item) => <MenuItemCard key={item.id} item={item} onOpen={openItem} />)}</View>
               </View>;
             })}
             {filteredItems.length === 0 && <Text style={styles.emptyText}>No menu items match “{query}”.</Text>}

@@ -18,10 +18,13 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
+    gap: 10,
     marginBottom: 28,
   },
   // Collapse the unused mobile top bar so the content below moves up into its space.
-  mobileTopbar: { height: 0, marginBottom: 8 },
+  mobileTopbar: { height: 44, marginBottom: 8 },
+  cartButton: { borderRadius: 20, backgroundColor: '#FCE7EB', paddingHorizontal: 17, paddingVertical: 10 },
+  cartButtonText: { fontFamily: roundedFont, color: '#A92140', fontSize: 12, fontWeight: '800' },
   locationPill: {
     flexDirection: 'row',
     alignItems: 'center',
