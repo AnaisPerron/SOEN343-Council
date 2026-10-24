@@ -1,6 +1,5 @@
-package com.council.tenderapp.ORD.observers;
+package com.council.tenderapp.ord.observers;
 
-import com.council.tenderapp.ORD.events.OrderStatusEvent;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -9,6 +8,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import com.council.tenderapp.ord.events.OrderStatusEvent;
 
 @Component
 public class DashboardObserver implements OrderObserver {

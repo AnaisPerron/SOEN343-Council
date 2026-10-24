@@ -1,7 +1,8 @@
-package com.council.tenderapp.ORD.events;
+package com.council.tenderapp.ord.events;
 
-import com.council.tenderapp.ORD.entities.OrderStatus;
 import java.time.Instant;
+
+import com.council.tenderapp.ord.entities.OrderStatus;
 
 public record OrderStatusEvent(
     String eventId,

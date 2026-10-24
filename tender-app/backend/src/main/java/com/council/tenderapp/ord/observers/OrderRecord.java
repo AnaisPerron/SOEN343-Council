@@ -1,9 +1,10 @@
-package com.council.tenderapp.ORD.observers;
+package com.council.tenderapp.ord.observers;
 
-import com.council.tenderapp.ORD.events.OrderStatusEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+
+import com.council.tenderapp.ord.events.OrderStatusEvent;
 
 @Component
 public class OrderRecord implements OrderObserver {

@@ -1,4 +1,4 @@
-package com.council.tenderapp.ORD.entities;
+package com.council.tenderapp.ord.entities;
 
 public enum OrderStatus {
     PLACED {

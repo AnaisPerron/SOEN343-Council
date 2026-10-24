@@ -1,9 +1,5 @@
-package com.council.tenderapp.ORD.controllers;
+package com.council.tenderapp.ord.controllers;
 
-import com.council.tenderapp.ORD.dto.request.RejectOrderRequest;
-import com.council.tenderapp.ORD.dto.response.OrderResponse;
-import com.council.tenderapp.ORD.observers.DashboardObserver;
-import com.council.tenderapp.ORD.services.OrderService;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -14,6 +10,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import com.council.tenderapp.ord.dto.request.RejectOrderRequest;
+import com.council.tenderapp.ord.dto.response.OrderResponse;
+import com.council.tenderapp.ord.observers.DashboardObserver;
+import com.council.tenderapp.ord.services.OrderService;
 
 @RestController
 @CrossOrigin(origins = "${app.cors.allowed-origin:http://localhost:8081}")

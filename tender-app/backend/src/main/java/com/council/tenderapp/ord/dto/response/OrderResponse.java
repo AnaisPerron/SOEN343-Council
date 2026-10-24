@@ -1,9 +1,10 @@
-package com.council.tenderapp.ORD.dto.response;
+package com.council.tenderapp.ord.dto.response;
 
-import com.council.tenderapp.ORD.entities.OrderStatus;
 import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
+
+import com.council.tenderapp.ord.entities.OrderStatus;
 
 public class OrderResponse {
 

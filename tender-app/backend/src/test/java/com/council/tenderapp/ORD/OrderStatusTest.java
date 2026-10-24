@@ -3,8 +3,9 @@ package com.council.tenderapp.ORD;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.council.tenderapp.ORD.entities.OrderStatus;
 import org.junit.jupiter.api.Test;
+
+import com.council.tenderapp.ord.entities.OrderStatus;
 
 class OrderStatusTest {
 

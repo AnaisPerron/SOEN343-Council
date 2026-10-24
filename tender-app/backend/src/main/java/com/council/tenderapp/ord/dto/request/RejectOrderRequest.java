@@ -1,4 +1,4 @@
-package com.council.tenderapp.ORD.dto.request;
+package com.council.tenderapp.ord.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 

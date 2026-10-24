@@ -1,7 +1,5 @@
-package com.council.tenderapp.ORD.repositories;
+package com.council.tenderapp.ord.repositories;
 
-import com.council.tenderapp.ORD.entities.Order;
-import com.council.tenderapp.ORD.entities.OrderStatus;
 import jakarta.persistence.LockModeType;
 import java.util.Collection;
 import java.util.List;
@@ -10,6 +8,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import com.council.tenderapp.ord.entities.Order;
+import com.council.tenderapp.ord.entities.OrderStatus;
 
 public interface OrderRepository extends JpaRepository<Order, Long> {
 

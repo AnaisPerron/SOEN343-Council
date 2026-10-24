@@ -1,4 +1,4 @@
-package com.council.tenderapp.ORD.entities;
+package com.council.tenderapp.ord.entities;
 
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;

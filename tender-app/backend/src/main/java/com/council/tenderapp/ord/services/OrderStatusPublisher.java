@@ -1,9 +1,5 @@
-package com.council.tenderapp.ORD.services;
+package com.council.tenderapp.ord.services;
 
-import com.council.tenderapp.ORD.entities.Order;
-import com.council.tenderapp.ORD.entities.OrderStatus;
-import com.council.tenderapp.ORD.events.OrderStatusEvent;
-import com.council.tenderapp.ORD.observers.OrderObserver;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
@@ -11,6 +7,11 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+
+import com.council.tenderapp.ord.entities.Order;
+import com.council.tenderapp.ord.entities.OrderStatus;
+import com.council.tenderapp.ord.events.OrderStatusEvent;
+import com.council.tenderapp.ord.observers.OrderObserver;
 
 @Component
 public class OrderStatusPublisher {
