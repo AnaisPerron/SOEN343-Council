@@ -80,6 +80,18 @@
 	</dependencies>
 
 	<build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <resource>
+                <directory>${project.basedir}/../frontend/src/mocks/menu-items-imgs</directory>
+                <targetPath>static/menu-items-imgs</targetPath>
+                <includes>
+                    <include>*.jpg</include>
+                </includes>
+            </resource>
+        </resources>
 		<plugins>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
