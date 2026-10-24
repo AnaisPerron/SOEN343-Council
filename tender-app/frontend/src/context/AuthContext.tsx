@@ -1,6 +1,7 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
 
 import { login, logout, register } from '@/api/auth';
+import { loadSession, saveSession } from '@/lib/storedSession';
 import type { AuthSession, AuthUser, RegistrationInput, Role, SignInInput } from '@/types/auth';
 
 export type { Role } from '@/types/auth';
@@ -22,7 +23,13 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<AuthSession | null>(null);
+  // Restore the saved session so a page reload doesn't sign the user out
+  const [session, setSessionState] = useState<AuthSession | null>(loadSession);
+
+  const setSession = (next: AuthSession | null) => {
+    saveSession(next);
+    setSessionState(next);
+  };
 
   const value = useMemo<AuthContextValue>(
     () => ({
