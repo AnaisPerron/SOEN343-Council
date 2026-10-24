@@ -10,11 +10,18 @@ From this directory, start the backend with:
 ./mvnw spring-boot:run
 ```
 
-The default `local` profile uses an in-memory H2 database and seeds a demo
+By default the backend connects to the PostgreSQL database configured by
+`DB_URL`, `DB_USER`, and `DB_PASSWORD`.
+
+To work offline, run with the `local` profile instead:
+
+```bash
+./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+```
+
+The `local` profile uses an in-memory H2 database and seeds a demo
 restaurant (`restaurantId=1`) with orders in `PLACED`, `ACCEPTED`, and
-`PREPARING` states. Data is reset when the backend restarts. To use the
-configured PostgreSQL database instead, provide `DB_URL`, `DB_USER`, and
-`DB_PASSWORD`, then start with `SPRING_PROFILES_ACTIVE=prod`.
+`PREPARING` states. Data (including accounts) is reset when the backend restarts.
 
 ## Restaurant order queues
 
