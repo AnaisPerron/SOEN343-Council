@@ -1,6 +1,6 @@
-import { API_URL, ApiError } from './client';
-import { isDemoRestaurantToken } from '../mocks/restaurantAccount';
-import { loadDemoRestaurantMenu, saveDemoRestaurantMenu } from '../mocks/restaurantMenu';
+import { API_URL, ApiError } from './client.ts';
+import { isDemoRestaurantToken } from '../mocks/restaurantAccount.ts';
+import { loadDemoRestaurantMenu, saveDemoRestaurantMenu } from '../mocks/restaurantMenu.ts';
 
 export type MenuOption = { id: number | null; name: string; additionalCost: number };
 export type MenuItem = { id: number | null; name: string; description: string; category: string; price: number; status: 'available' | 'sold_out'; photoUrl: string | null; options: MenuOption[] };

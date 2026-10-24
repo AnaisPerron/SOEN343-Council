@@ -1,5 +1,5 @@
 import type { RestaurantOrder } from '../services/restaurant/orderQueue';
-import { restaurantOrdersMock } from '../mocks/restaurantOrders';
+import { restaurantOrdersMock } from '../mocks/restaurantOrders.ts';
 
 const PREFIX = 'tender-restaurant-orders-v1:';
 const sessionOrders = new Map<number, RestaurantOrder[]>();
