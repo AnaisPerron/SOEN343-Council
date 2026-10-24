@@ -21,9 +21,12 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import com.council.tenderapp.ord.exceptions.InvalidOrderException;
+import com.council.tenderapp.ord.exceptions.MenuItemUnavailableException;
 import com.council.tenderapp.ord.exceptions.RestaurantClosedException;
 import com.council.tenderapp.ord.exceptions.RestaurantNotFoundException;
 import com.council.tenderapp.reg.dtos.ErrorResponse;
+import com.council.tenderapp.technicalservices.payment.PaymentDeclinedException;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -120,5 +123,23 @@ public class GlobalExceptionHandler {
             ex.getMessage()
         );
         return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(InvalidOrderException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidOrder(InvalidOrderException ex) {
+        log.warn("Invalid order: {}", ex.getMessage());
+        return build(HttpStatus.BAD_REQUEST, ex.getMessage(), Map.of());
+    }
+
+    @ExceptionHandler(MenuItemUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleMenuItemUnavailable(MenuItemUnavailableException ex) {
+        log.warn("Menu item unavailable: {}", ex.getMessage());
+        return build(HttpStatus.CONFLICT, ex.getMessage(), Map.of());
+    }
+
+    @ExceptionHandler(PaymentDeclinedException.class)
+    public ResponseEntity<ErrorResponse> handlePaymentDeclined(PaymentDeclinedException ex) {
+        log.warn("Payment declined: {}", ex.getMessage());
+        return build(HttpStatus.PAYMENT_REQUIRED, ex.getMessage(), Map.of());
     }
 }
