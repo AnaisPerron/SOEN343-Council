@@ -1,4 +1,4 @@
-import type { CourierProfile, CustomerProfile, RestaurantStaff, User } from '../types/users';
+import type { CourierProfile, CustomerProfile, RestaurantStaff, User } from './types/users';
 
 export const usersMock: User[] = [
   { id: 1, role: 'customer', name: 'Alex Morgan', email: 'alex@example.test', password_hash: 'demo-only' },

@@ -40,15 +40,22 @@ export interface OperatorAccount {
 
 export type Account = CustomerProfile | RestaurantProfile | CourierProfile | OperatorAccount;
 export type RegistrationInput = Omit<CustomerProfile, 'id'> | Omit<RestaurantProfile, 'id'>;
-export type ProfileSignIn = {
-  role: 'customer' | 'restaurant';
+export type SignInInput = {
+  role: Role;
   email: string;
   password: string;
 };
-export type SignInInput = ProfileSignIn | OperatorAccount;
 
-export type AuthUser =
-  | Omit<OperatorAccount, 'password'>
-  | Omit<CustomerProfile, 'password'>
-  | Omit<RestaurantProfile, 'password'>
-  | Omit<CourierProfile, 'password'>;
+/** The signed-in account as returned by the backend's login endpoint. */
+export interface AuthUser {
+  id: number;
+  role: Role;
+  name: string;
+  email: string;
+  phoneNumber: string;
+}
+
+export interface AuthSession {
+  user: AuthUser;
+  token: string;
+}
