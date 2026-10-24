@@ -4,6 +4,7 @@ import { afterEach, describe, it, mock } from 'node:test';
 import { login, logout, register, toRegisterRequest } from '../../api/auth.ts';
 import { API_URL } from '../../api/client.ts';
 import type { RegistrationInput } from '../../types/auth.ts';
+import { loadDemoRestaurantMenu } from '../../mocks/restaurantMenu.ts';
 
 const address = { country: 'Canada', city: 'Montreal', addressLine: '123 Main St' };
 const customer: RegistrationInput = {
@@ -98,12 +99,15 @@ describe('login api', () => {
     });
   });
 
-  it('signs in both Little Italy Pizza demo staff without contacting the backend', async () => {
+  it('signs in a restaurant with a menu and one without contacting the backend', async () => {
     const fetchMock = mock.method(globalThis, 'fetch', async () => { throw new Error('Unexpected backend request'); });
-    for (const email of ['littleitaly@demo.test', 'littleitaly.manager@demo.test']) {
+    for (const [email, restaurant] of [['greenbowl@demo.test', 'Green Bowl Kitchen'], ['littleitaly@demo.test', 'Little Italy Pizza']]) {
       const session = await login({ role: 'restaurant', email, password: 'DemoPass123!' });
-      assert.equal(session.user.name, 'Little Italy Pizza');
+      assert.equal(session.user.name, restaurant);
       assert.equal(session.user.role, 'restaurant');
+      const menu = loadDemoRestaurantMenu(session.token);
+      if (restaurant === 'Green Bowl Kitchen') assert.equal(menu?.items.length, 3);
+      else assert.equal(menu, null);
       await logout(session.token);
     }
     assert.equal(fetchMock.mock.callCount(), 0);

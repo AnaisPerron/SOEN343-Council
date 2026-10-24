@@ -8,8 +8,8 @@ export type RestaurantMenu = { restaurantId: number; name: string; status: 'open
 
 async function request(method: 'GET' | 'PUT', token: string, body?: RestaurantMenu): Promise<RestaurantMenu> {
   if (isDemoRestaurantToken(token)) {
-    if (method === 'PUT' && body) return saveDemoRestaurantMenu(body);
-    const menu = loadDemoRestaurantMenu();
+    if (method === 'PUT' && body) return saveDemoRestaurantMenu(token, body);
+    const menu = loadDemoRestaurantMenu(token);
     if (!menu) throw new ApiError(404, 'No menu has been created yet');
     return menu;
   }

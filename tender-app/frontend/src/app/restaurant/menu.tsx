@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -6,8 +6,10 @@ import { DetailPage } from '../customer/components/DetailPage';
 import { styles as customerStyles } from '../customer/restaurant/restaurant.styles';
 import { useAuth } from '@/context/AuthContext';
 import { loadRestaurantMenu, saveRestaurantMenu, type MenuItem, type RestaurantMenu } from '@/api/restaurantMenu';
-import { emptyDemoRestaurantMenu } from '@/mocks/restaurantMenu';
-import { isDemoRestaurantToken } from '@/mocks/restaurantAccount';
+import { emptyRestaurantMenu } from '@/mocks/restaurantMenu';
+import { demoRestaurantForToken, isDemoRestaurantToken } from '@/mocks/restaurantAccount';
+import { CoverImagePicker } from '@/components/restaurant/CoverImagePicker';
+import { readRestaurantCover, writeRestaurantCover } from '@/storage/restaurantCover';
 
 const newItem = (): MenuItem => ({ id: null, name: '', description: '', category: '', price: 0, status: 'available', photoUrl: null, options: [] });
 const money = (value: number) => Number.isFinite(value) ? value.toFixed(2) : '0.00';
@@ -22,33 +24,63 @@ export default function EditMenu() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [expanded, setExpanded] = useState<number | null>(null);
+  const backendCover = useRef<string | null>(null);
 
   const createMenu = () => {
-    const draft = emptyDemoRestaurantMenu();
-    if (!token || !isDemoRestaurantToken(token)) {
-      draft.restaurantId = 0;
-      draft.name = user?.name ?? '';
-    }
+    const demo = token ? demoRestaurantForToken(token) : null;
+    const draft = emptyRestaurantMenu(demo?.restaurantId ?? 0, demo?.name ?? user?.name ?? '');
     setMenu(draft);
     setMessage('');
   };
 
   useEffect(() => {
     if (!token || user?.role !== 'restaurant') { router.replace('/auth/login'); return; }
-    loadRestaurantMenu(token).then(setMenu).catch((error) => setMessage(error.message)).finally(() => setLoading(false));
-  }, [token, user?.role, router]);
+    loadRestaurantMenu(token).then((loaded) => {
+      backendCover.current = loaded.coverUrl;
+      const localCover = isDemoRestaurantToken(token) ? undefined : readRestaurantCover(user.id);
+      setMenu(localCover === undefined ? loaded : { ...loaded, coverUrl: localCover });
+    }).catch((error) => setMessage(error.message)).finally(() => setLoading(false));
+  }, [token, user?.role, user?.id, router]);
 
   const update = (changes: Partial<RestaurantMenu>) => setMenu((current) => current && { ...current, ...changes });
   const updateItem = (index: number, changes: Partial<MenuItem>) => setMenu((current) => current && {
     ...current, items: current.items.map((item, position) => position === index ? { ...item, ...changes } : item),
   });
+  const selectCover = (dataUri: string) => {
+    if (!token || !user) return;
+    setMessage('');
+    if (!isDemoRestaurantToken(token)) {
+      try { writeRestaurantCover(user.id, dataUri); }
+      catch { setMessage('Image selected for this session, but browser storage is full.'); }
+    }
+    update({ coverUrl: dataUri });
+  };
+  const removeCover = () => {
+    if (!token || !user) return;
+    if (!isDemoRestaurantToken(token)) {
+      try { writeRestaurantCover(user.id, null); }
+      catch { setMessage('Cover removed for this session, but browser storage is full.'); }
+    }
+    update({ coverUrl: null });
+  };
   const save = async () => {
     if (!menu || !token || saving) return;
     if (!menu.name.trim() || !menu.menuName.trim() || menu.items.some((item) => !item.name.trim() || !item.category.trim() || item.price < 0 || item.options.some((option) => !option.name.trim() || option.additionalCost < 0))) {
       setMessage('Complete each name, category, and nonnegative price before saving.'); return;
     }
     setSaving(true); setMessage('');
-    try { setMenu(await saveRestaurantMenu(token, menu)); setMessage(isDemoRestaurantToken(token) ? 'Demo menu saved locally.' : 'Menu saved and published.'); }
+    try {
+      if (isDemoRestaurantToken(token)) {
+        setMenu(await saveRestaurantMenu(token, menu));
+        setMessage('Demo menu saved locally.');
+      } else {
+        const saved = await saveRestaurantMenu(token, { ...menu, coverUrl: backendCover.current });
+        backendCover.current = saved.coverUrl;
+        const localCover = user ? readRestaurantCover(user.id) : undefined;
+        setMenu(localCover === undefined ? saved : { ...saved, coverUrl: localCover });
+        setMessage('Menu saved. Cover image stays on this device.');
+      }
+    }
     catch (error) { setMessage(error instanceof Error ? error.message : 'Could not save menu.'); }
     finally { setSaving(false); }
   };
@@ -72,6 +104,9 @@ export default function EditMenu() {
       <View style={local.chips}>{(['open', 'paused', 'closed'] as const).map((status) => <Chip key={status} label={status} selected={menu.status === status} onPress={() => update({ status })} />)}</View>
       <Field label="Address" value={menu.address ?? ''} placeholder="Street address" onChangeText={(address) => update({ address })} />
       <Field label="Delivery fee ($)" value={menu.deliveryFee ? String(menu.deliveryFee) : ''} placeholder="0.00" onChangeText={(value) => update({ deliveryFee: Number(value) || 0 })} keyboardType="decimal-pad" />
+      <CoverImagePicker onSelect={selectCover} onError={setMessage} />
+      <Text style={local.coverNote}>Cover images stay on this device.</Text>
+      {!!menu.coverUrl && <Pressable accessibilityRole="button" onPress={removeCover}><Text style={local.link}>Remove cover image</Text></Pressable>}
 
     </View>
     <View style={customerStyles.menu}>
@@ -118,5 +153,5 @@ function Chip({ label, selected, onPress }: { label: string; selected: boolean; 
   return <Pressable accessibilityRole="button" accessibilityState={{ selected }} onPress={onPress} style={[local.chip, selected && local.selectedChip]}><Text style={[local.chipText, selected && local.selectedChipText]}>{label}</Text></Pressable>;
 }
 const local = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, paddingHorizontal: 24, backgroundColor: '#FFF' }, emptyTitle: { color: '#302629', fontSize: 22, fontWeight: '800', textAlign: 'center' }, emptyDetail: { color: '#887B7E', textAlign: 'center' }, emptyItems: { color: '#887B7E', marginTop: 20 }, topBar: { position: 'absolute', left: 18, right: 18, flexDirection: 'row', justifyContent: 'space-between' }, topButton: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#302629', alignItems: 'center', justifyContent: 'center' }, topButtonText: { color: '#FFF', fontSize: 30 }, saveButton: { backgroundColor: '#D42F50', paddingHorizontal: 18, justifyContent: 'center', borderRadius: 21 }, saveText: { color: '#FFF', fontWeight: '800' }, field: { marginTop: 15 }, label: { color: '#887B7E', fontSize: 11, fontWeight: '700', marginBottom: 6 }, input: { borderWidth: 1, borderColor: '#EDE6E6', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, color: '#302629', fontSize: 14, backgroundColor: '#FFF' }, largeInput: { fontSize: 25, fontWeight: '800' }, chips: { flexDirection: 'row', gap: 8, marginTop: 8 }, chip: { borderRadius: 16, backgroundColor: '#F7F3F3', paddingHorizontal: 13, paddingVertical: 8 }, selectedChip: { backgroundColor: '#D42F50' }, chipText: { color: '#887B7E', fontSize: 12, fontWeight: '700', textTransform: 'capitalize' }, selectedChipText: { color: '#FFF' }, editHint: { color: '#D42F50', fontSize: 11, fontWeight: '700', marginTop: 7 }, editor: { backgroundColor: '#FFF8F9', borderRadius: 18, padding: 18, marginVertical: 20 }, subheading: { fontSize: 18, fontWeight: '800', color: '#302629', marginTop: 24 }, optionRow: { flexDirection: 'row', gap: 12 }, optionName: { flex: 2 }, optionPrice: { flex: 1 }, link: { color: '#D42F50', fontWeight: '800', marginTop: 15 }, addButton: { borderWidth: 1, borderColor: '#D42F50', borderRadius: 14, alignItems: 'center', padding: 14, marginTop: 15 }, addText: { color: '#D42F50', fontWeight: '800' }, message: { color: '#302629', marginTop: 16 }, bottomSave: { backgroundColor: '#D42F50', borderRadius: 14, alignItems: 'center', padding: 16, marginVertical: 20 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, paddingHorizontal: 24, backgroundColor: '#FFF' }, emptyTitle: { color: '#302629', fontSize: 22, fontWeight: '800', textAlign: 'center' }, emptyDetail: { color: '#887B7E', textAlign: 'center' }, emptyItems: { color: '#887B7E', marginTop: 20 }, coverNote: { color: '#887B7E', fontSize: 12, marginTop: 8 }, topBar: { position: 'absolute', left: 18, right: 18, flexDirection: 'row', justifyContent: 'space-between' }, topButton: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#302629', alignItems: 'center', justifyContent: 'center' }, topButtonText: { color: '#FFF', fontSize: 30 }, saveButton: { backgroundColor: '#D42F50', paddingHorizontal: 18, justifyContent: 'center', borderRadius: 21 }, saveText: { color: '#FFF', fontWeight: '800' }, field: { marginTop: 15 }, label: { color: '#887B7E', fontSize: 11, fontWeight: '700', marginBottom: 6 }, input: { borderWidth: 1, borderColor: '#EDE6E6', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, color: '#302629', fontSize: 14, backgroundColor: '#FFF' }, largeInput: { fontSize: 25, fontWeight: '800' }, chips: { flexDirection: 'row', gap: 8, marginTop: 8 }, chip: { borderRadius: 16, backgroundColor: '#F7F3F3', paddingHorizontal: 13, paddingVertical: 8 }, selectedChip: { backgroundColor: '#D42F50' }, chipText: { color: '#887B7E', fontSize: 12, fontWeight: '700', textTransform: 'capitalize' }, selectedChipText: { color: '#FFF' }, editHint: { color: '#D42F50', fontSize: 11, fontWeight: '700', marginTop: 7 }, editor: { backgroundColor: '#FFF8F9', borderRadius: 18, padding: 18, marginVertical: 20 }, subheading: { fontSize: 18, fontWeight: '800', color: '#302629', marginTop: 24 }, optionRow: { flexDirection: 'row', gap: 12 }, optionName: { flex: 2 }, optionPrice: { flex: 1 }, link: { color: '#D42F50', fontWeight: '800', marginTop: 15 }, addButton: { borderWidth: 1, borderColor: '#D42F50', borderRadius: 14, alignItems: 'center', padding: 14, marginTop: 15 }, addText: { color: '#D42F50', fontWeight: '800' }, message: { color: '#302629', marginTop: 16 }, bottomSave: { backgroundColor: '#D42F50', borderRadius: 14, alignItems: 'center', padding: 16, marginVertical: 20 },
 });

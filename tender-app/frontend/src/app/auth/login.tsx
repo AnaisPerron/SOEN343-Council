@@ -120,10 +120,7 @@ export default function LoginScreen() {
           {role === 'courier' ? (
             <Text style={styles.notice}>Courier accounts are not supported yet.</Text>
           ) : (
-            <>
-              {role === 'restaurant' && <Text style={styles.notice}>Little Italy Pizza demo: littleitaly@demo.test / DemoPass123!</Text>}
-              <LoginForm key={role} role={role} />
-            </>
+            <LoginForm key={role} role={role} />
           )}
 
           {role === 'Operator' ? (

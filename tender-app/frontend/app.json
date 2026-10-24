@@ -18,6 +18,13 @@
       "expo-router",
       "expo-font",
       "expo-image",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Tender to choose a restaurant cover image from your library.",
+          "microphonePermission": false
+        }
+      ],
       "expo-splash-screen",
       "expo-status-bar",
       "expo-web-browser"
