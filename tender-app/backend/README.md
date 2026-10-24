@@ -22,7 +22,7 @@ Alternatively, add `--spring.profiles.active=demo` to your IDE's run configurati
 
 ### Seeded Data
 
-Includes 9 users, 3 restaurants, 7 menu items, and 8 orders, covering REG/ORD scenarios such as restaurant availability, sold out items, order lifecycles, and preparation queues.
+Includes 9 users, 4 restaurants, 7 menu items, and 8 orders, covering REG/ORD scenarios such as restaurant availability, sold out items, order lifecycles, and preparation queues.
 
 **Demo accounts:**
 
@@ -36,3 +36,20 @@ Includes 9 users, 3 restaurants, 7 menu items, and 8 orders, covering REG/ORD sc
 **Password:** `DemoPass123!` (verify BCrypt compatibility when implementing authentication).
 
 **Remove the `demo` profile to run without resetting the database.**
+
+### Menu photos
+
+The SQL seed uses the same seven dishes and image files as the frontend mocks.
+Maven copies `../frontend/src/mocks/menu-items-imgs/*.jpg` into the backend's
+static resources when building, so the images are included in the packaged JAR.
+Unauthenticated GET requests can load `/menu-items-imgs/<filename>.jpg`.
+
+Seeded `photo_url` values are relative to the backend origin. For example,
+`/menu-items-imgs/truffle.jpg` is served at
+`http://localhost:8080/menu-items-imgs/truffle.jpg` during local development.
+API clients should resolve these paths against the backend URL, rather than
+the frontend URL (use the computer's LAN address when testing on a phone).
+These images are served by the running backend; they are not uploaded to Supabase Storage.
+
+The demo seed retains open, paused, and closed restaurant scenarios, so its
+restaurant statuses and generated IDs can differ from the frontend mock state.

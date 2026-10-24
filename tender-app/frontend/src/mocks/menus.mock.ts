@@ -1,3 +1,4 @@
+import { Asset } from 'expo-asset';
 import type { Menu, MenuItem, MenuItemOption } from './types';
 
 export const menusMock: Menu[] = [
@@ -7,14 +8,15 @@ export const menusMock: Menu[] = [
   { id: 104, restaurant_id: 4, name: 'Little Italy Menu' },
 ];
 
+// Static requires let Metro bundle the photos; resolve them to URLs for the seed.
 export const menuItemsMock: MenuItem[] = [
-  { id: 1001, menu_id: 101, name: 'Maple-glazed chicken sandwich', price: 14.5, status: 'available', photo_url: null },
-  { id: 1002, menu_id: 101, name: 'Truffle fries', price: 6.25, status: 'available', photo_url: null },
-  { id: 1003, menu_id: 101, name: 'Apple crumble', price: 7, status: 'sold_out', photo_url: null },
-  { id: 2001, menu_id: 102, name: 'Harvest grain bowl', price: 15.75, status: 'available', photo_url: null },
-  { id: 2002, menu_id: 102, name: 'Miso tofu bowl', price: 14, status: 'available', photo_url: null },
-  { id: 3001, menu_id: 103, name: 'Smoked salmon bagel', price: 12.5, status: 'available', photo_url: null },
-  { id: 4001, menu_id: 104, name: 'Margherita pizza', price: 17, status: 'available', photo_url: null },
+  { id: 1001, menu_id: 101, name: 'Maple-glazed chicken sandwich', price: 14.5, status: 'available', photo_url: Asset.fromModule(require('./menu-items-imgs/maple-glazed-chicken-sandwich.jpg')).uri },
+  { id: 1002, menu_id: 101, name: 'Truffle fries', price: 6.25, status: 'available', photo_url: Asset.fromModule(require('./menu-items-imgs/truffle.jpg')).uri },
+  { id: 1003, menu_id: 101, name: 'Apple crumble', price: 7, status: 'sold_out', photo_url: Asset.fromModule(require('./menu-items-imgs/apple-crumble.jpg')).uri },
+  { id: 2001, menu_id: 102, name: 'Harvest grain bowl', price: 15.75, status: 'available', photo_url: Asset.fromModule(require('./menu-items-imgs/harvest-grain-bowl.jpg')).uri },
+  { id: 2002, menu_id: 102, name: 'Miso tofu bowl', price: 14, status: 'available', photo_url: Asset.fromModule(require('./menu-items-imgs/miso-tofu-bowl.jpg')).uri },
+  { id: 3001, menu_id: 103, name: 'Smoked salmon bagel', price: 12.5, status: 'available', photo_url: Asset.fromModule(require('./menu-items-imgs/smoked-salmon-bagel.jpg')).uri },
+  { id: 4001, menu_id: 104, name: 'Margherita pizza', price: 17, status: 'available', photo_url: Asset.fromModule(require('./menu-items-imgs/margherita-pizza.jpg')).uri },
 ];
 
 export const menuItemOptionsMock: MenuItemOption[] = [
