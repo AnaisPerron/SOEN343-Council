@@ -1,6 +1,7 @@
 package com.council.tenderapp.ord.repositories;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -21,4 +22,6 @@ public interface RestaurantRepository extends JpaRepository<Restaurant, Long> {
             WHERE r.status = :status
             """, nativeQuery = true)
     List<RestaurantBrowseProjection> findRestaurantBrowseByStatus(String status);
+
+    Optional<Restaurant> findByName(String name);
 }
