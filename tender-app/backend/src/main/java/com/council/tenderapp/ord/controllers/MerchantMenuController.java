@@ -29,17 +29,22 @@ public class MerchantMenuController {
 
     @PatchMapping("/{id}/availability")
     public ResponseEntity<MenuItemDto> toggleAvailability(
-            @RequestHeader("X-Session-Token") String token,
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
             @PathVariable Long id
     ) {
-        Long restaurantId = getValidatedRestaurantId(token);
+        Long restaurantId = getValidatedRestaurantId(authHeader);
 
         MenuItemDto updatedItem = merchantMenuService.toggleAvailability(restaurantId, id);
         
         return ResponseEntity.ok(updatedItem);
     }
 
-    private Long getValidatedRestaurantId(String token) {
+    private Long getValidatedRestaurantId( @RequestHeader(value = "Authorization", required = false) String authHeader)
+    {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Missing or invalid Authorization header");
+        }
+        String token = authHeader.substring(7); // Strip "Bearer "
         Session session = sessionService.find(token)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired session token"));
         
@@ -50,29 +55,29 @@ public class MerchantMenuController {
     }
 
     @GetMapping
-    public ResponseEntity<List<MenuItemDto>> listMenuItems(@RequestHeader("X-Session-Token") String token) {
-        Long restaurantId = getValidatedRestaurantId(token);
+    public ResponseEntity<List<MenuItemDto>> listMenuItems(@RequestHeader(value = "Authorization", required = false) String authHeader) {
+        Long restaurantId = getValidatedRestaurantId(authHeader);
         List<MenuItemDto> items = merchantMenuService.listMenuItems(restaurantId);
         return ResponseEntity.ok(items);
     }
 
     @PostMapping
     public ResponseEntity<MenuItemDto> createMenuItem(
-            @RequestHeader("X-Session-Token") String token,
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
             @Valid @RequestBody MenuItemRequestDto request
     ) {
-        getValidatedRestaurantId(token);
+        getValidatedRestaurantId(authHeader);
         MenuItemDto createdItem = merchantMenuService.createMenuItem(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdItem);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<MenuItemDto> updateMenuItem(
-            @RequestHeader("X-Session-Token") String token,
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
             @PathVariable Long id,
             @Valid @RequestBody MenuItemRequestDto request
     ) {
-        getValidatedRestaurantId(token);
+        getValidatedRestaurantId(authHeader);
         MenuItemDto updatedItem = merchantMenuService.updateMenuItem(id, request);
         return ResponseEntity.ok(updatedItem);
     }
