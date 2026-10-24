@@ -17,8 +17,8 @@ export default function RestaurantDashboard() {
     <Pressable accessibilityRole="button" style={styles.menuButton} onPress={() => router.push('/restaurant/menu')}>
       <Text style={styles.menuTitle}>Menu</Text><Text style={styles.menuDescription}>Edit and publish your menu →</Text>
     </Pressable>
-    <Pressable accessibilityRole="button" accessibilityState={{ disabled: true }} style={styles.ordersButton} disabled>
-      <Text style={styles.ordersTitle}>Orders</Text><Text style={styles.ordersDescription}>Coming soon</Text>
+    <Pressable accessibilityRole="button" style={styles.ordersButton} onPress={() => router.push('/restaurant/orders')}>
+      <Text style={styles.ordersTitle}>Orders</Text><Text style={styles.ordersDescription}>Open the order queue →</Text>
     </Pressable>
     <Pressable accessibilityRole="button" onPress={() => { signOut(); router.replace('/auth/login'); }}><Text style={styles.signOut}>Sign out</Text></Pressable>
   </SafeAreaView>;
@@ -33,7 +33,7 @@ const styles = StyleSheet.create({
   menuTitle: { color: '#FFF', fontSize: 23, fontWeight: '900' },
   menuDescription: { color: '#FFF', marginTop: 8 },
   ordersButton: { backgroundColor: '#F7F3F3', borderRadius: 18, padding: 24, marginBottom: 30 },
-  ordersTitle: { color: '#887B7E', fontSize: 23, fontWeight: '900' },
+  ordersTitle: { color: '#302629', fontSize: 23, fontWeight: '900' },
   ordersDescription: { color: '#887B7E', marginTop: 8 },
   signOut: { color: '#D42F50', fontWeight: '700' },
 });
