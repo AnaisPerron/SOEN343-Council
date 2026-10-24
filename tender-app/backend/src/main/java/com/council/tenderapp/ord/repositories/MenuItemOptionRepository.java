@@ -7,5 +7,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import com.council.tenderapp.ord.entities.MenuItemOption;
 
 public interface MenuItemOptionRepository extends JpaRepository<MenuItemOption, Long> {
-    List<MenuItemOption> findByMenuItemId(Long menuItemId);
+    List<MenuItemOption> findByMenuItemIdIn(List<Long> menuItemIds);
 }

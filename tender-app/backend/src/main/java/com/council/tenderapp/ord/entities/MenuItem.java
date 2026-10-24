@@ -27,16 +27,30 @@ public class MenuItem {
     @Column(length = 150)
     private String name;
 
+    @Column(length = 255)
+    private String category;
+
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
+
     // Constructors
     public MenuItem() {}
 
-    public MenuItem(Long menuId, BigDecimal price, String status, String photoUrl, String name) {
+    
+
+    public MenuItem(Long id, Long menuId, BigDecimal price, String status, String photoUrl, String name,
+            String category, String description) {
+        this.id = id;
         this.menuId = menuId;
         this.price = price;
         this.status = status;
         this.photoUrl = photoUrl;
         this.name = name;
+        this.category = category;
+        this.description = description;
     }
+
+
 
     public Long getId() {
         return id;
@@ -84,6 +98,22 @@ public class MenuItem {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 
     

@@ -1,6 +1,7 @@
 package com.council.tenderapp.reg.exceptions;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -20,6 +21,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import com.council.tenderapp.ord.exceptions.RestaurantClosedException;
+import com.council.tenderapp.ord.exceptions.RestaurantNotFoundException;
 import com.council.tenderapp.reg.dtos.ErrorResponse;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -91,5 +94,31 @@ public class GlobalExceptionHandler {
         );
 
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorBody);
+    }
+
+    @ExceptionHandler (RestaurantNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleRestaurantNotFound(RestaurantNotFoundException ex) {
+       
+        log.warn("Restaurant not found: {}", ex.getMessage());
+        
+        ErrorResponse error = ErrorResponse.of(
+            HttpStatus.NOT_FOUND.value(),
+            "Not Found",
+            ex.getMessage()
+        );
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler (RestaurantClosedException.class)
+    public ResponseEntity<ErrorResponse> handleRestaurantClosed(RestaurantClosedException ex) {
+        
+        log.warn("Access denied - Restaurant closed: {}", ex.getMessage());
+        
+        ErrorResponse error = ErrorResponse.of(
+            HttpStatus.FORBIDDEN.value(),
+            "Forbidden",
+            ex.getMessage()
+        );
+        return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
     }
 }

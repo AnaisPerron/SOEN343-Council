@@ -4,8 +4,16 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+import com.council.tenderapp.ord.dtos.MenuItemDto;
+import com.council.tenderapp.ord.dtos.MenuItemOptionDto;
+import com.council.tenderapp.ord.dtos.MenuResponseDTO;
 import com.council.tenderapp.ord.dtos.RestaurantBrowseProjection;
 import com.council.tenderapp.ord.dtos.RestaurantResponseDTO;
+import com.council.tenderapp.ord.entities.MenuItem;
+import com.council.tenderapp.ord.entities.MenuItemOption;
+import com.council.tenderapp.ord.entities.Restaurant;
+import com.council.tenderapp.ord.exceptions.RestaurantClosedException;
+import com.council.tenderapp.ord.exceptions.RestaurantNotFoundException;
 import com.council.tenderapp.ord.repositories.MenuItemOptionRepository;
 import com.council.tenderapp.ord.repositories.MenuItemRepository;
 import com.council.tenderapp.ord.repositories.RestaurantRepository;
@@ -38,7 +46,46 @@ public class BrowseService
         ).toList();
     }
 
-    /*public List<MenuResponseDTO> getMenuByRestaurantId(Long restaurantId) {
+    public MenuResponseDTO getRestaurantMenu(Long restaurantId) {
+        List<MenuItem> menuItems = menuItemRepository.findMenuItemsByRestaurantId(restaurantId);
+        List<MenuItemOption> menuItemOptions = List.of();
 
-    }*/
+        if(!menuItems.isEmpty()) {
+            List<Long> menuItemIds = menuItems.stream().map(MenuItem::getId).toList();
+            menuItemOptions = menuItemOptionRepository.findByMenuItemIdIn(menuItemIds);
+        }
+
+        //converting to DTOs
+
+        List<MenuItemDto> menuItemDtos = menuItems.stream()
+        .map(i -> new MenuItemDto(
+            i.getId(), 
+            i.getMenuId(), 
+            i.getName(), 
+            i.getPrice(), 
+            i.getDescription(), 
+            "available".equalsIgnoreCase(i.getStatus()), 
+            i.getPhotoUrl()
+        ))
+        .toList();
+
+        List<MenuItemOptionDto> menuItemOptionDtos = menuItemOptions.stream()
+        .map(o -> new MenuItemOptionDto(
+            o.getId(), 
+            o.getMenuItemId(), 
+            o.getName(), 
+            o.getAdditionalCost()
+        ))
+        .toList();
+        
+        return new MenuResponseDTO(menuItemDtos, menuItemOptionDtos);
+    }
+
+    public void checkRestaurantOpen(Long restaurantId) {
+        Restaurant restaurant = restaurantRepository.findById(restaurantId)
+            .orElseThrow(() -> new RestaurantNotFoundException("Restaurant not found with id"+ restaurantId));
+    
+            if(!"open".equalsIgnoreCase(restaurant.getStatus()))
+                throw new RestaurantClosedException("Restaurant" + restaurant.getId() + " : " + restaurant.getName() + " is not open");
+    }
 }
