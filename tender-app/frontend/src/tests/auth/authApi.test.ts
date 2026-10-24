@@ -99,8 +99,8 @@ describe('login api', () => {
     });
   });
 
-  it('signs in a restaurant with a menu and one without contacting the backend', async () => {
-    const fetchMock = mock.method(globalThis, 'fetch', async () => { throw new Error('Unexpected backend request'); });
+  it('uses the two demo restaurants only when the backend cannot be reached', async () => {
+    const fetchMock = mock.method(globalThis, 'fetch', async () => { throw new TypeError('fetch failed'); });
     for (const [email, restaurant] of [['greenbowl@demo.test', 'Green Bowl Kitchen'], ['littleitaly@demo.test', 'Little Italy Pizza']]) {
       const session = await login({ role: 'restaurant', email, password: 'DemoPass123!' });
       assert.equal(session.user.name, restaurant);
@@ -110,7 +110,16 @@ describe('login api', () => {
       else assert.equal(menu, null);
       await logout(session.token);
     }
-    assert.equal(fetchMock.mock.callCount(), 0);
+    assert.equal(fetchMock.mock.callCount(), 2);
+  });
+
+  it('does not accept demo credentials when the backend responds', async () => {
+    const fetchMock = mockFetch(401, { status: 401, message: 'Invalid email or password' });
+    await assert.rejects(
+      login({ role: 'restaurant', email: 'greenbowl@demo.test', password: 'DemoPass123!' }),
+      /Invalid email or password/,
+    );
+    assert.equal(fetchMock.mock.callCount(), 1);
   });
 
   it('rejects an account of a different role and ends its session', async () => {

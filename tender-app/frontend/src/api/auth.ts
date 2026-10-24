@@ -1,5 +1,5 @@
 import type { AuthSession, RegistrationInput, Role, SignInInput } from '../types/auth.ts';
-import { postJson } from './client.ts';
+import { ApiError, postJson } from './client.ts';
 import { demoRestaurantLogin, isDemoRestaurantToken } from '../mocks/restaurantAccount.ts';
 
 type BackendRole = 'CUSTOMER' | 'COURIER' | 'STAFF' | 'OPERATOR';
@@ -63,14 +63,19 @@ export async function logout(token: string): Promise<void> {
 
 /** Signs in, then rejects the session if the account does not belong to the selected role. */
 export async function login(input: SignInInput): Promise<AuthSession> {
-  if (input.role === 'restaurant') {
-    const demoSession = demoRestaurantLogin(input.email, input.password);
-    if (demoSession) return demoSession;
+  let response: LoginResponse;
+  try {
+    response = await postJson<LoginResponse>('/api/auth/login', {
+      email: input.email,
+      password: input.password,
+    });
+  } catch (error) {
+    if (input.role === 'restaurant' && error instanceof ApiError && error.status === 0) {
+      const demoSession = demoRestaurantLogin(input.email, input.password);
+      if (demoSession) return demoSession;
+    }
+    throw error;
   }
-  const response = await postJson<LoginResponse>('/api/auth/login', {
-    email: input.email,
-    password: input.password,
-  });
   const role = FROM_BACKEND_ROLE[response.role];
 
   if (role !== input.role) {

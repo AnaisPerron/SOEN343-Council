@@ -37,7 +37,7 @@ npx expo start --web
 
 ## Restaurant demo accounts
 
-Choose **Restaurant** on the sign-in screen. Both accounts use password `DemoPass123!` and are frontend-only; they do not require backend restaurant records.
+Choose **Restaurant** on the sign-in screen. Both accounts use password `DemoPass123!`. They work only when the app cannot reach the backend. When the backend responds, sign-in uses its result and these mock credentials are not accepted unless matching accounts exist there.
 
 | Email | Restaurant | Starting menu |
 | --- | --- | --- |
