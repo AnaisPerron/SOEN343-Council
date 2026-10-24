@@ -9,7 +9,7 @@ public record OrderResponseDto(
     Long restaurantId,
     String status,
     BigDecimal total,
-    Instant createdAt,
+    Instant placedAt,
     String paymentReference,
     List<OrderLineDto> lines
 ) {}

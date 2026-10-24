@@ -1,5 +1,6 @@
 package com.council.tenderapp.ord.entities;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 
 import jakarta.persistence.*;
@@ -9,6 +10,7 @@ import jakarta.persistence.*;
 public class Order {
 
     public static final String STATUS_PLACED = "placed";
+    public static final String STATUS_CANCELLED = "cancelled";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -26,23 +28,23 @@ public class Order {
     @Column(nullable = false, length = 20)
     private String status;
 
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+    @Column(name = "total_price")
+    private BigDecimal totalPrice;
 
     @Column(name = "accepted_at")
     private Instant acceptedAt;
 
-    @Column(name = "rejection_reason", columnDefinition = "TEXT")
+    @Column(name = "rejection_reason")
     private String rejectionReason;
 
     protected Order() {
     }
 
-    public Order(Long customerId, Long restaurantId, String status, Instant createdAt) {
+    public Order(Long customerId, Long restaurantId, String status, BigDecimal totalPrice) {
         this.customerId = customerId;
         this.restaurantId = restaurantId;
         this.status = status;
-        this.createdAt = createdAt;
+        this.totalPrice = totalPrice;
     }
 
     public Long getId() {
@@ -69,8 +71,8 @@ public class Order {
         this.status = status;
     }
 
-    public Instant getCreatedAt() {
-        return createdAt;
+    public BigDecimal getTotalPrice() {
+        return totalPrice;
     }
 
     public Instant getAcceptedAt() {

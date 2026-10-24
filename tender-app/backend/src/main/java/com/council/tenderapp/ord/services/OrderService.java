@@ -13,12 +13,16 @@ import org.springframework.transaction.annotation.Transactional;
 import com.council.tenderapp.ord.dtos.OrderItemRequestDto;
 import com.council.tenderapp.ord.dtos.OrderLineDto;
 import com.council.tenderapp.ord.dtos.OrderResponseDto;
+import com.council.tenderapp.ord.dtos.OrderStatusResponseDto;
 import com.council.tenderapp.ord.dtos.PlaceOrderRequestDto;
 import com.council.tenderapp.ord.entities.MenuItem;
 import com.council.tenderapp.ord.entities.Order;
 import com.council.tenderapp.ord.entities.OrderLine;
 import com.council.tenderapp.ord.exceptions.InvalidOrderException;
+import com.council.tenderapp.ord.exceptions.InvalidOrderStateException;
 import com.council.tenderapp.ord.exceptions.MenuItemUnavailableException;
+import com.council.tenderapp.ord.exceptions.OrderAccessDeniedException;
+import com.council.tenderapp.ord.exceptions.OrderNotFoundException;
 import com.council.tenderapp.ord.repositories.MenuItemRepository;
 import com.council.tenderapp.ord.repositories.OrderLineRepository;
 import com.council.tenderapp.ord.repositories.OrderRepository;
@@ -74,13 +78,14 @@ public class OrderService {
             throw new PaymentDeclinedException("Payment declined: " + payment.message());
         }
 
-        Order order = orderRepository.save(new Order(customerId, request.restaurantId(), Order.STATUS_PLACED, Instant.now()));
+        Instant placedAt = Instant.now();
+        Order order = orderRepository.save(new Order(customerId, request.restaurantId(), Order.STATUS_PLACED, total));
 
         List<OrderLine> lines = orderLineRepository.saveAll(request.items().stream()
                 .map(item -> new OrderLine(order.getId(), item.menuItemId(), item.quantity(), menu.get(item.menuItemId()).getPrice()))
                 .toList());
 
-        preparationQueueService.enqueue(order);
+        preparationQueueService.enqueue(order, placedAt);
 
         List<OrderLineDto> lineDtos = lines.stream()
                 .map(line -> new OrderLineDto(
@@ -92,7 +97,29 @@ public class OrderService {
                 ))
                 .toList();
 
-        return new OrderResponseDto(order.getId(), order.getRestaurantId(), order.getStatus(), total,
-                order.getCreatedAt(), payment.reference(), lineDtos);
+        return new OrderResponseDto(order.getId(), order.getRestaurantId(), order.getStatus(), order.getTotalPrice(),
+                placedAt, payment.reference(), lineDtos);
+    }
+
+    @Transactional
+    public OrderStatusResponseDto cancelOrder(Long customerId, Long orderId) {
+        Order order = orderRepository.findWithLockById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException("Order not found with id: " + orderId));
+
+        if (!order.getCustomerId().equals(customerId)) {
+            throw new OrderAccessDeniedException("Order " + orderId + " does not belong to this customer");
+        }
+        if (!Order.STATUS_PLACED.equals(order.getStatus())) {
+            throw new InvalidOrderStateException("Order " + orderId + " cannot be cancelled because it is " + order.getStatus());
+        }
+
+        String previousStatus = order.getStatus();
+        Instant cancelledAt = Instant.now();
+        order.setStatus(Order.STATUS_CANCELLED);
+        orderRepository.save(order);
+
+        preparationQueueService.remove(order, previousStatus, cancelledAt);
+
+        return new OrderStatusResponseDto(order.getId(), previousStatus, order.getStatus(), cancelledAt);
     }
 }

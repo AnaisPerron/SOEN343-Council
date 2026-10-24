@@ -22,7 +22,10 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.council.tenderapp.ord.exceptions.InvalidOrderException;
+import com.council.tenderapp.ord.exceptions.InvalidOrderStateException;
 import com.council.tenderapp.ord.exceptions.MenuItemUnavailableException;
+import com.council.tenderapp.ord.exceptions.OrderAccessDeniedException;
+import com.council.tenderapp.ord.exceptions.OrderNotFoundException;
 import com.council.tenderapp.ord.exceptions.RestaurantClosedException;
 import com.council.tenderapp.ord.exceptions.RestaurantNotFoundException;
 import com.council.tenderapp.reg.dtos.ErrorResponse;
@@ -134,6 +137,24 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MenuItemUnavailableException.class)
     public ResponseEntity<ErrorResponse> handleMenuItemUnavailable(MenuItemUnavailableException ex) {
         log.warn("Menu item unavailable: {}", ex.getMessage());
+        return build(HttpStatus.CONFLICT, ex.getMessage(), Map.of());
+    }
+
+    @ExceptionHandler(OrderNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleOrderNotFound(OrderNotFoundException ex) {
+        log.warn("Order not found: {}", ex.getMessage());
+        return build(HttpStatus.NOT_FOUND, ex.getMessage(), Map.of());
+    }
+
+    @ExceptionHandler(OrderAccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleOrderAccessDenied(OrderAccessDeniedException ex) {
+        log.warn("Order access denied: {}", ex.getMessage());
+        return build(HttpStatus.FORBIDDEN, ex.getMessage(), Map.of());
+    }
+
+    @ExceptionHandler(InvalidOrderStateException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidOrderState(InvalidOrderStateException ex) {
+        log.warn("Invalid order state: {}", ex.getMessage());
         return build(HttpStatus.CONFLICT, ex.getMessage(), Map.of());
     }
 
