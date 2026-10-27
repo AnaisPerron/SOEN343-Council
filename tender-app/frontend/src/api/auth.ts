@@ -1,5 +1,5 @@
 import type { AuthSession, RegistrationInput, Role, SignInInput } from '../types/auth.ts';
-import { postJson, requestJson } from './client.ts';
+import { ApiError, postJson, requestJson } from './client.ts';
 
 type BackendRole = 'CUSTOMER' | 'COURIER' | 'STAFF' | 'OPERATOR';
 
@@ -77,8 +77,16 @@ function toSession(response: LoginResponse): AuthSession {
 }
 
 export async function restoreSession(token: string): Promise<AuthSession> {
-  const response = await requestJson<LoginResponse>('GET', '/api/auth/session', undefined, token);
-  return toSession(response);
+  try {
+    const response = await requestJson<LoginResponse>('GET', '/api/auth/session', undefined, token);
+    return toSession(response);
+  } catch (error) {
+    // Older running backends do not expose /api/auth/session yet, but /api/profile
+    // still validates the token and returns the account attached to it.
+    if (!(error instanceof ApiError) || error.status !== 404) throw error;
+    const profile = await requestJson<RegisterResponse>('GET', '/api/profile', undefined, token);
+    return toSession({ ...profile, token, expiresAt: '' });
+  }
 }
 
 /** Signs in, then rejects the session if the account does not belong to the selected role. */

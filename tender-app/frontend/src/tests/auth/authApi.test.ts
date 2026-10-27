@@ -157,4 +157,21 @@ describe('login api', () => {
     assert.equal((init.headers as Record<string, string>).Authorization, 'Bearer abc123');
     assert.equal(session.user.role, 'restaurant');
   });
+
+  it('restores through the profile endpoint when the running backend lacks the session endpoint', async () => {
+    const calls: { url: string; init: RequestInit }[] = [];
+    mock.method(globalThis, 'fetch', async (url: string | URL | Request, init: RequestInit) => {
+      calls.push({ url: String(url), init });
+      return new Response(JSON.stringify(calls.length === 1 ? {} : {
+        id: 1, name: 'Alex', email: 'alex@example.com', phone: '5145550123', role: 'CUSTOMER',
+      }), { status: calls.length === 1 ? 404 : 200 });
+    });
+
+    const session = await restoreSession('saved-token');
+    assert.equal(calls[0].url, `${API_URL}/api/auth/session`);
+    assert.equal(calls[1].url, `${API_URL}/api/profile`);
+    assert.equal((calls[1].init.headers as Record<string, string>).Authorization, 'Bearer saved-token');
+    assert.equal(session.user.role, 'customer');
+    assert.equal(session.token, 'saved-token');
+  });
 });
