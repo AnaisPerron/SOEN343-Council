@@ -1,7 +1,9 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
-import { login, logout, register } from '@/api/auth';
+import { login, logout, register, restoreSession, updateProfile } from '@/api/auth';
+import { ApiError } from '@/api/client';
 import type { AuthSession, AuthUser, RegistrationInput, Role, SignInInput } from '@/types/auth';
+import { clearSessionToken, readSessionToken, saveSessionToken } from './sessionStorage';
 
 export type { Role } from '@/types/auth';
 
@@ -14,28 +16,70 @@ export const ROLE_OPTIONS: { value: Role; label: string }[] = [
 
 type AuthContextValue = {
   user: AuthUser | null;
+  ready: boolean;
   signIn: (input: SignInInput) => Promise<void>;
   signUp: (input: RegistrationInput) => Promise<void>;
   signOut: () => void;
+  saveProfile: (name: string, phoneNumber: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AuthSession | null>(null);
+  const [ready, setReady] = useState(false);
+  const generation = useRef(0);
+
+  useEffect(() => {
+    const currentGeneration = generation.current;
+    const hydrate = async () => {
+      try {
+        const token = await readSessionToken();
+        if (token) {
+          const restored = await restoreSession(token);
+          if (generation.current === currentGeneration) setSession(restored);
+        }
+      } catch (error) {
+        if (generation.current === currentGeneration && error instanceof ApiError && error.status === 401) {
+          await clearSessionToken().catch(() => {});
+        }
+      } finally {
+        if (generation.current === currentGeneration) setReady(true);
+      }
+    };
+    hydrate();
+  }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       user: session?.user ?? null,
-      signIn: async (input) => setSession(await login(input)),
+      ready,
+      signIn: async (input) => {
+        const signedIn = await login(input);
+        generation.current += 1;
+        await saveSessionToken(signedIn.token);
+        setSession(signedIn);
+        setReady(true);
+      },
       signUp: register,
+      saveProfile: async (name, phoneNumber) => {
+        if (!session) throw new Error('Please sign in again');
+        const updated = await updateProfile(session.token, name, phoneNumber);
+        setSession((current) => current ? {
+          ...current,
+          user: { ...current.user, name: updated.name, phoneNumber: updated.phone },
+        } : null);
+      },
       // Sign out locally right away; the backend session expires on its own if this request fails
       signOut: () => {
+        generation.current += 1;
         if (session) logout(session.token).catch(() => {});
+        clearSessionToken().catch(() => {});
         setSession(null);
+        setReady(true);
       },
     }),
-    [session],
+    [session, ready],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

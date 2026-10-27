@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { afterEach, describe, it, mock } from 'node:test';
 
-import { login, logout, register, toRegisterRequest } from '../../api/auth.ts';
+import { login, logout, register, restoreSession, toRegisterRequest } from '../../api/auth.ts';
 import { API_URL } from '../../api/client.ts';
 import type { RegistrationInput } from '../../types/auth.ts';
 
@@ -125,5 +125,15 @@ describe('login api', () => {
     const [url, init] = fetchMock.mock.calls[0].arguments as [string, RequestInit];
     assert.equal(url, `${API_URL}/api/auth/logout`);
     assert.equal((init.headers as Record<string, string>).Authorization, 'Bearer abc123');
+  });
+
+  it('validates a saved token and restores its account', async () => {
+    const fetchMock = mockFetch(200, loginResponse);
+    const session = await restoreSession('abc123');
+    const [url, init] = fetchMock.mock.calls[0].arguments as [string, RequestInit];
+    assert.equal(url, `${API_URL}/api/auth/session`);
+    assert.equal(init.method, 'GET');
+    assert.equal((init.headers as Record<string, string>).Authorization, 'Bearer abc123');
+    assert.equal(session.user.role, 'restaurant');
   });
 });

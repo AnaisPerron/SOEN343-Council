@@ -63,6 +63,24 @@ export async function updateProfile(token: string, name: string, phone: string):
   return requestJson<RegisterResponse>('PATCH', '/api/profile', { name, phone }, token);
 }
 
+function toSession(response: LoginResponse): AuthSession {
+  return {
+    token: response.token,
+    user: {
+      id: response.id,
+      role: FROM_BACKEND_ROLE[response.role],
+      name: response.name,
+      email: response.email,
+      phoneNumber: response.phone,
+    },
+  };
+}
+
+export async function restoreSession(token: string): Promise<AuthSession> {
+  const response = await requestJson<LoginResponse>('GET', '/api/auth/session', undefined, token);
+  return toSession(response);
+}
+
 /** Signs in, then rejects the session if the account does not belong to the selected role. */
 export async function login(input: SignInInput): Promise<AuthSession> {
   const response = await postJson<LoginResponse>('/api/auth/login', {
@@ -75,8 +93,5 @@ export async function login(input: SignInInput): Promise<AuthSession> {
     await logout(response.token).catch(() => {});
     throw new Error(`This is not a ${ROLE_LABELS[input.role]} account`);
   }
-  return {
-    token: response.token,
-    user: { id: response.id, role, name: response.name, email: response.email, phoneNumber: response.phone },
-  };
+  return toSession(response);
 }

@@ -5,10 +5,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.Instant;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,8 +24,12 @@ import com.council.tenderapp.reg.dtos.RegisterResponse;
 import com.council.tenderapp.reg.exceptions.DuplicateEmailException;
 import com.council.tenderapp.reg.exceptions.InvalidCredentialsException;
 import com.council.tenderapp.reg.entities.Role;
+import com.council.tenderapp.reg.entities.Profile;
+import com.council.tenderapp.reg.security.Session;
 import com.council.tenderapp.reg.services.LoginService;
 import com.council.tenderapp.reg.services.RegistrationService;
+import com.council.tenderapp.reg.services.SessionService;
+import com.council.tenderapp.reg.repositories.ProfileRepository;
 
 @WebMvcTest(AuthController.class)
 class AuthControllerTest {
@@ -36,6 +42,12 @@ class AuthControllerTest {
 
     @MockitoBean
     private LoginService loginService;
+
+    @MockitoBean
+    private SessionService sessionService;
+
+    @MockitoBean
+    private ProfileRepository profiles;
 
     private static final String VALID_BODY = """
             {"name":"Jane","email":"jane@example.com","password":"secret123","phone":"514-555-0101","role":"CUSTOMER"}
@@ -129,6 +141,25 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.fieldErrors.email").value("Email is required"))
                 .andExpect(jsonPath("$.fieldErrors.password").value("Password is required"));
         verifyNoInteractions(loginService);
+    }
+
+    @Test
+    void restoresAnActiveSession() throws Exception {
+        Session session = new Session("abc123", 1L, null, Role.CUSTOMER, Instant.parse("2026-01-02T00:00:00Z"));
+        when(sessionService.find("abc123")).thenReturn(Optional.of(session));
+        when(profiles.findById(1L)).thenReturn(Optional.of(new Profile(Role.CUSTOMER, "Jane", "jane@example.com", "hash", "514-555-0101")));
+
+        mockMvc.perform(get("/api/auth/session").header("Authorization", "Bearer abc123"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").value("abc123"))
+                .andExpect(jsonPath("$.name").value("Jane"));
+    }
+
+    @Test
+    void rejectsAnExpiredSession() throws Exception {
+        when(sessionService.find("expired")).thenReturn(Optional.empty());
+        mockMvc.perform(get("/api/auth/session").header("Authorization", "Bearer expired"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

@@ -22,6 +22,7 @@ import com.council.tenderapp.reg.entities.Profile;
 import com.council.tenderapp.reg.entities.Role;
 import com.council.tenderapp.reg.exceptions.InvalidCredentialsException;
 import com.council.tenderapp.reg.repositories.ProfileRepository;
+import com.council.tenderapp.ord.repositories.RestaurantRepository;
 import com.council.tenderapp.reg.security.Session;
 
 @ExtendWith(MockitoExtension.class)
@@ -29,6 +30,9 @@ class LoginServiceTest {
 
     @Mock
     private ProfileRepository repository;
+
+    @Mock
+    private RestaurantRepository restaurantRepository;
 
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
@@ -38,7 +42,7 @@ class LoginServiceTest {
     @BeforeEach
     void setUp() {
         sessionService = new SessionService(Duration.ofHours(1));
-        service = new LoginService(repository, passwordEncoder, sessionService);
+        service = new LoginService(repository, restaurantRepository, passwordEncoder, sessionService);
     }
 
     private Profile profile(String password, Role role) {
