@@ -60,6 +60,22 @@ class RegistrationServiceTest {
     }
 
     @Test
+    void registersRestaurantWithTrimmedContactDetails() {
+        when(repository.existsByEmailIgnoreCase("bistro@example.com")).thenReturn(false);
+        when(repository.saveAndFlush(any(Profile.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        RegisterResponse response = service.register(new RegisterRequest(
+                " Bistro ", " Bistro@Example.com ", "secret123", " 514-555-0199 ", Role.STAFF));
+
+        ArgumentCaptor<Profile> saved = ArgumentCaptor.forClass(Profile.class);
+        verify(repository).saveAndFlush(saved.capture());
+        assertThat(saved.getValue().getName()).isEqualTo("Bistro");
+        assertThat(saved.getValue().getPhone()).isEqualTo("514-555-0199");
+        assertThat(response.role()).isEqualTo(Role.STAFF);
+        assertThat(response.email()).isEqualTo("bistro@example.com");
+    }
+
+    @Test
     void rejectsDuplicateEmail() {
         when(repository.existsByEmailIgnoreCase("jane@example.com")).thenReturn(true);
 

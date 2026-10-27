@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { afterEach, describe, it, mock } from 'node:test';
 
-import { login, logout, register, restoreSession, toRegisterRequest } from '../../api/auth.ts';
+import { login, logout, register, restoreSession, toRegisterRequest, updateProfile } from '../../api/auth.ts';
 import { API_URL } from '../../api/client.ts';
 import type { RegistrationInput } from '../../types/auth.ts';
 
@@ -69,6 +69,27 @@ describe('registration api', () => {
       throw new TypeError('fetch failed');
     });
     await assert.rejects(register(customer), /Cannot reach the server/);
+  });
+});
+
+describe('profile api', () => {
+  afterEach(() => mock.restoreAll());
+
+  it('saves edited name and phone with the signed-in token', async () => {
+    const response = { id: 1, name: 'Alex Lee', email: 'alex@example.com', phone: '5145550199', role: 'CUSTOMER' };
+    const fetchMock = mockFetch(200, response);
+    assert.deepEqual(await updateProfile('saved-token', 'Alex Lee', '5145550199'), response);
+
+    const [url, init] = fetchMock.mock.calls[0].arguments as [string, RequestInit];
+    assert.equal(url, `${API_URL}/api/profile`);
+    assert.equal(init.method, 'PATCH');
+    assert.equal((init.headers as Record<string, string>).Authorization, 'Bearer saved-token');
+    assert.deepEqual(JSON.parse(init.body as string), { name: 'Alex Lee', phone: '5145550199' });
+  });
+
+  it('surfaces profile validation errors', async () => {
+    mockFetch(400, { fieldErrors: { phone: 'Phone must be a valid phone number' } });
+    await assert.rejects(updateProfile('saved-token', 'Alex', 'bad'), /Phone must be a valid phone number/);
   });
 });
 
