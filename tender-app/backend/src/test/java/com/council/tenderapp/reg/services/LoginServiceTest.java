@@ -38,7 +38,7 @@ class LoginServiceTest {
     @BeforeEach
     void setUp() {
         sessionService = new SessionService(Duration.ofHours(1));
-        service = new LoginService(repository, passwordEncoder, sessionService);
+        service = new LoginService(repository, null, passwordEncoder, sessionService);
     }
 
     private Profile profile(String password, Role role) {
