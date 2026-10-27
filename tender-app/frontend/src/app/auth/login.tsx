@@ -1,4 +1,4 @@
-import { Link, useRouter } from 'expo-router';
+import { Link, Redirect, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -16,10 +16,9 @@ import { ROLE_OPTIONS, useAuth, type Role } from '@/context/AuthContext';
 import { authStyles as styles } from './auth.styles';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-type SupportedRole = Exclude<Role, 'courier'>;
 type FormErrors = { email?: string; password?: string; form?: string };
 
-function LoginForm({ role }: { role: SupportedRole }) {
+function LoginForm({ role }: { role: Role }) {
   const { signIn } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState('');
@@ -38,8 +37,7 @@ function LoginForm({ role }: { role: SupportedRole }) {
     setLoading(true);
     try {
       await signIn({ role, email: email.trim(), password });
-      if (role === 'customer') router.replace('/customer/home/home');
-      else setLoading(false);
+      router.replace(role === 'customer' ? '/customer/home/home' : '/account');
     } catch (error) {
       setErrors({ form: error instanceof Error ? error.message : 'Something went wrong' });
       setLoading(false);
@@ -90,7 +88,11 @@ function LoginForm({ role }: { role: SupportedRole }) {
 }
 
 export default function LoginScreen() {
+  const { user, ready } = useAuth();
   const [role, setRole] = useState<Role>('customer');
+
+  if (!ready) return <SafeAreaView style={styles.safe}><ActivityIndicator color="#D42F50" /></SafeAreaView>;
+  if (user) return <Redirect href={user.role === 'customer' ? '/customer/home/home' : '/account'} />;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -116,11 +118,7 @@ export default function LoginScreen() {
             })}
           </View>
 
-          {role === 'courier' ? (
-            <Text style={styles.notice}>Courier accounts are not supported yet.</Text>
-          ) : (
-            <LoginForm key={role} role={role} />
-          )}
+          <LoginForm key={role} role={role} />
 
           {role === 'Operator' ? (
             <Text style={styles.notice}>Operator accounts are assigned. Registration is unavailable.</Text>

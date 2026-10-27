@@ -4,15 +4,22 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AccountMenu from '@/components/AccountMenu';
 import { useAuth } from '@/context/AuthContext';
+import type { AuthUser } from '@/types/auth';
 
 export default function ProfileScreen() {
-  const { user, saveProfile } = useAuth();
+  const { user, ready } = useAuth();
+  if (!ready) return <SafeAreaView style={styles.page}><ActivityIndicator color="#D42F50" /></SafeAreaView>;
+  if (!user) return <Redirect href="/auth/login" />;
+  return <ProfileForm key={user.id} user={user} />;
+}
+
+function ProfileForm({ user }: { user: AuthUser }) {
+  const { saveProfile } = useAuth();
   const router = useRouter();
-  const [name, setName] = useState(user?.name ?? '');
-  const [phone, setPhone] = useState(user?.phoneNumber ?? '');
+  const [name, setName] = useState(user.name);
+  const [phone, setPhone] = useState(user.phoneNumber);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
-  if (!user) return <Redirect href="/auth/login" />;
 
   const save = async () => {
     if (saving) return;
