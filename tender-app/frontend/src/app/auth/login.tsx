@@ -1,4 +1,4 @@
-import { Link, Redirect, useRouter } from 'expo-router';
+import { Link, Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ROLE_OPTIONS, useAuth, type Role } from '@/context/AuthContext';
 import { authStyles as styles } from './auth.styles';
+import { selectedRole } from './selectedRole';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 type FormErrors = { email?: string; password?: string; form?: string };
@@ -89,7 +90,8 @@ function LoginForm({ role }: { role: Role }) {
 
 export default function LoginScreen() {
   const { user, ready } = useAuth();
-  const [role, setRole] = useState<Role>('customer');
+  const params = useLocalSearchParams<{ role?: string }>();
+  const [role, setRole] = useState<Role>(() => selectedRole(params.role));
 
   if (!ready) return <SafeAreaView style={styles.safe}><ActivityIndicator color="#D42F50" /></SafeAreaView>;
   if (user) return <Redirect href={user.role === 'customer' ? '/customer/home/home' : '/account'} />;
@@ -125,7 +127,7 @@ export default function LoginScreen() {
           ) : role !== 'courier' ? (
             <View style={styles.switchRow}>
               <Text style={styles.switchText}>Don&apos;t have an account?</Text>
-              <Link href="/auth/register" style={styles.switchLink}>Register</Link>
+              <Link href={{ pathname: '/auth/register', params: { role } }} style={styles.switchLink}>Register</Link>
             </View>
           ) : null}
         </ScrollView>

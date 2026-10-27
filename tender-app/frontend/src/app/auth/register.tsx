@@ -1,4 +1,4 @@
-import { Link, useRouter } from 'expo-router';
+import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ROLE_OPTIONS, useAuth, type Role } from '@/context/AuthContext';
 import { authStyles as styles } from './auth.styles';
+import { selectedRole } from './selectedRole';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -31,7 +32,8 @@ type FormErrors = {
 export default function RegisterScreen() {
   const { signIn, signUp } = useAuth();
   const router = useRouter();
-  const [role, setRole] = useState<Role>('customer');
+  const params = useLocalSearchParams<{ role?: string }>();
+  const [role, setRole] = useState<Role>(() => selectedRole(params.role));
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -80,8 +82,9 @@ export default function RegisterScreen() {
     // Signing in switches the navigator to the home screen; the account already exists, so fall back to the sign in screen
     try {
       await signIn({ role, email: details.email, password });
+      router.replace(role === 'customer' ? '/customer/home/home' : '/account');
     } catch {
-      router.replace('/auth/login');
+      router.replace({ pathname: '/auth/login', params: { role } });
     }
   };
 
@@ -91,7 +94,7 @@ export default function RegisterScreen() {
         <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
           <Pressable
             style={styles.backButton}
-            onPress={() => router.replace('/auth/login')}
+            onPress={() => router.replace({ pathname: '/auth/login', params: { role } })}
             accessibilityRole="button"
             accessibilityLabel="Back to sign in"
           >
@@ -162,7 +165,7 @@ export default function RegisterScreen() {
 
           <View style={styles.switchRow}>
             <Text style={styles.switchText}>Already have an account?</Text>
-            <Link href="/auth/login" style={styles.switchLink}>Sign in</Link>
+            <Link href={{ pathname: '/auth/login', params: { role } }} style={styles.switchLink}>Sign in</Link>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
