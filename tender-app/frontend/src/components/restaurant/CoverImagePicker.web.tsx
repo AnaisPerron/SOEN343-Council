@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-type Props = { onSelect: (dataUri: string) => void; onError: (message: string) => void };
+type Props = { onSelect: (dataUri: string) => void; onError: (message: string) => void; label?: string };
 
 async function prepareImage(file: File): Promise<string> {
   if (!file.type.startsWith('image/')) throw new Error('Choose an image file.');
@@ -35,7 +35,7 @@ async function prepareImage(file: File): Promise<string> {
   }
 }
 
-export function CoverImagePicker({ onSelect, onError }: Props) {
+export function CoverImagePicker({ onSelect, onError, label = 'Restaurant cover image' }: Props) {
   const input = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
 
@@ -51,7 +51,7 @@ export function CoverImagePicker({ onSelect, onError }: Props) {
     onDrop={(event) => { event.preventDefault(); setDragging(false); void select(event.dataTransfer.files[0]); }}
     style={{ border: `1px dashed ${dragging ? '#D42F50' : '#CDBFC1'}`, borderRadius: 12, padding: 18, marginTop: 18, textAlign: 'center', background: dragging ? '#FFF3F5' : '#FFF' }}
   >
-    <div style={{ color: '#302629', fontWeight: 700, marginBottom: 8 }}>Restaurant cover image</div>
+    <div style={{ color: '#302629', fontWeight: 700, marginBottom: 8 }}>{label}</div>
     <div style={{ color: '#887B7E', fontSize: 13, marginBottom: 12 }}>Drag and drop an image here, or choose a file.</div>
     <button type="button" onClick={() => input.current?.click()} style={{ background: '#D42F50', color: '#FFF', border: 0, borderRadius: 9, padding: '10px 16px', fontWeight: 700, cursor: 'pointer' }}>
       Choose image

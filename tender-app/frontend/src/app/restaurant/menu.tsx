@@ -10,6 +10,7 @@ import { emptyRestaurantMenu } from '@/mocks/restaurantMenu';
 import { demoRestaurantForToken, isDemoRestaurantToken } from '@/mocks/restaurantAccount';
 import { CoverImagePicker } from '@/components/restaurant/CoverImagePicker';
 import { readRestaurantCover, writeRestaurantCover } from '@/storage/restaurantCover';
+import { clearRestaurantItemPhoto, readRestaurantItemPhoto, writeRestaurantItemPhoto } from '@/storage/restaurantItemPhoto';
 
 const newItem = (): MenuItem => ({ id: null, name: '', description: '', category: '', price: 0, status: 'available', photoUrl: null, options: [] });
 const money = (value: number) => Number.isFinite(value) ? value.toFixed(2) : '0.00';
@@ -25,6 +26,15 @@ export default function EditMenu() {
   const [message, setMessage] = useState('');
   const [expanded, setExpanded] = useState<number | null>(null);
   const backendCover = useRef<string | null>(null);
+  const backendPhotos = useRef(new Map<number, string | null>());
+
+  const withLocalPhotos = (loaded: RestaurantMenu): RestaurantMenu => ({
+    ...loaded,
+    items: loaded.items.map((item) => {
+      const localPhoto = item.id == null || !user ? undefined : readRestaurantItemPhoto(user.id, item.id);
+      return localPhoto === undefined ? item : { ...item, photoUrl: localPhoto };
+    }),
+  });
 
   const createMenu = () => {
     const demo = token ? demoRestaurantForToken(token) : null;
@@ -37,8 +47,10 @@ export default function EditMenu() {
     if (!token || user?.role !== 'restaurant') { router.replace('/auth/login'); return; }
     loadRestaurantMenu(token).then((loaded) => {
       backendCover.current = loaded.coverUrl;
+      backendPhotos.current = new Map(loaded.items.filter((item) => item.id != null).map((item) => [item.id!, item.photoUrl]));
       const localCover = isDemoRestaurantToken(token) ? undefined : readRestaurantCover(user.id);
-      setMenu(localCover === undefined ? loaded : { ...loaded, coverUrl: localCover });
+      const withCover = localCover === undefined ? loaded : { ...loaded, coverUrl: localCover };
+      setMenu(isDemoRestaurantToken(token) ? withCover : withLocalPhotos(withCover));
     }).catch((error) => setMessage(error.message)).finally(() => setLoading(false));
   }, [token, user?.role, user?.id, router]);
 
@@ -63,6 +75,34 @@ export default function EditMenu() {
     }
     update({ coverUrl: null });
   };
+  const selectItemPhoto = (index: number, dataUri: string) => {
+    if (!token || !user || !menu) return;
+    setMessage('');
+    const itemId = menu.items[index]?.id;
+    if (!isDemoRestaurantToken(token) && itemId != null) {
+      try { writeRestaurantItemPhoto(user.id, itemId, dataUri); }
+      catch { setMessage('Image selected for this session, but browser storage is full.'); }
+    }
+    updateItem(index, { photoUrl: dataUri });
+  };
+  const changeItemPhotoUrl = (index: number, photoUrl: string) => {
+    if (!token || !user || !menu) return;
+    const itemId = menu.items[index]?.id;
+    if (!isDemoRestaurantToken(token) && itemId != null) {
+      try { clearRestaurantItemPhoto(user.id, itemId); }
+      catch { setMessage('Photo URL changed for this session, but browser storage is unavailable.'); }
+    }
+    updateItem(index, { photoUrl });
+  };
+  const removeItemPhoto = (index: number) => {
+    if (!token || !user || !menu) return;
+    const itemId = menu.items[index]?.id;
+    if (!isDemoRestaurantToken(token) && itemId != null) {
+      try { writeRestaurantItemPhoto(user.id, itemId, null); }
+      catch { setMessage('Photo removed for this session, but browser storage is full.'); }
+    }
+    updateItem(index, { photoUrl: null });
+  };
   const save = async () => {
     if (!menu || !token || saving) return;
     if (!menu.name.trim() || !menu.menuName.trim() || menu.items.some((item) => !item.name.trim() || !item.category.trim() || item.price < 0 || item.options.some((option) => !option.name.trim() || option.additionalCost < 0))) {
@@ -74,11 +114,27 @@ export default function EditMenu() {
         setMenu(await saveRestaurantMenu(token, menu));
         setMessage('Demo menu saved locally.');
       } else {
-        const saved = await saveRestaurantMenu(token, { ...menu, coverUrl: backendCover.current });
+        const existingIds = new Set(menu.items.map((item) => item.id).filter((id): id is number => id != null));
+        const saved = await saveRestaurantMenu(token, { ...menu, coverUrl: backendCover.current, items: menu.items.map((item) => ({
+          ...item,
+          photoUrl: item.photoUrl?.startsWith('data:') ? (item.id == null ? null : backendPhotos.current.get(item.id) ?? null) : item.photoUrl,
+        })) });
         backendCover.current = saved.coverUrl;
+        backendPhotos.current = new Map(saved.items.filter((item) => item.id != null).map((item) => [item.id!, item.photoUrl]));
+        const createdItems = saved.items.filter((item) => item.id != null && !existingIds.has(item.id));
+        let createdIndex = 0;
+        let photoStorageFull = false;
+        menu.items.forEach((item) => {
+          if (item.id != null) return;
+          const created = createdItems[createdIndex++];
+          if (created?.id == null || !item.photoUrl?.startsWith('data:') || !user) return;
+          try { writeRestaurantItemPhoto(user.id, created.id, item.photoUrl); }
+          catch { photoStorageFull = true; }
+        });
         const localCover = user ? readRestaurantCover(user.id) : undefined;
-        setMenu(localCover === undefined ? saved : { ...saved, coverUrl: localCover });
-        setMessage('Menu saved. Cover image stays on this device.');
+        const withCover = localCover === undefined ? saved : { ...saved, coverUrl: localCover };
+        setMenu(withLocalPhotos(withCover));
+        setMessage(photoStorageFull ? 'Menu saved. A photo is available for this session, but browser storage is full.' : 'Menu saved. Picked images stay on this device.');
       }
     }
     catch (error) { setMessage(error instanceof Error ? error.message : 'Could not save menu.'); }
@@ -130,7 +186,10 @@ export default function EditMenu() {
         <Field label="Description" value={menu.items[expanded].description ?? ''} placeholder="Describe this item" onChangeText={(description) => updateItem(expanded, { description })} multiline />
         <Field label="Category" value={menu.items[expanded].category} placeholder="e.g. Pizza" onChangeText={(category) => updateItem(expanded, { category })} />
         <Field label="Price ($)" value={menu.items[expanded].price ? String(menu.items[expanded].price) : ''} placeholder="0.00" onChangeText={(value) => updateItem(expanded, { price: Number(value) || 0 })} keyboardType="decimal-pad" />
-        <Field label="Photo URL" value={menu.items[expanded].photoUrl ?? ''} placeholder="https://example.com/pizza.jpg" onChangeText={(photoUrl) => updateItem(expanded, { photoUrl })} />
+        <CoverImagePicker label="Menu item photo" onSelect={(dataUri) => selectItemPhoto(expanded, dataUri)} onError={setMessage} />
+        <Text style={local.coverNote}>Picked item photos stay on this device.</Text>
+        {!!menu.items[expanded].photoUrl && <Pressable accessibilityRole="button" onPress={() => removeItemPhoto(expanded)}><Text style={local.link}>Remove item photo</Text></Pressable>}
+        <Field label="Photo URL" value={menu.items[expanded].photoUrl?.startsWith('data:') ? '' : menu.items[expanded].photoUrl ?? ''} placeholder="https://example.com/pizza.jpg" onChangeText={(photoUrl) => changeItemPhotoUrl(expanded, photoUrl)} />
         <Text style={local.label}>Availability</Text><View style={local.chips}><Chip label="Available" selected={menu.items[expanded].status === 'available'} onPress={() => updateItem(expanded, { status: 'available' })} /><Chip label="Sold out" selected={menu.items[expanded].status === 'sold_out'} onPress={() => updateItem(expanded, { status: 'sold_out' })} /></View>
         <Text style={local.subheading}>Toppings</Text>
         {menu.items[expanded].options.map((option, optionIndex) => <View key={option.id ?? `new-${optionIndex}`} style={local.optionRow}>

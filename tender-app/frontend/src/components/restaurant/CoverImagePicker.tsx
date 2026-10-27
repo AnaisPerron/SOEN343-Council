@@ -1,8 +1,8 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-type Props = { onSelect: (dataUri: string) => void; onError: (message: string) => void };
+type Props = { onSelect: (dataUri: string) => void; onError: (message: string) => void; label?: string };
 
-export function CoverImagePicker({ onSelect, onError }: Props) {
+export function CoverImagePicker({ onSelect, onError, label = 'Restaurant cover image' }: Props) {
   const pick = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], base64: true, quality: 0.7 });
@@ -16,7 +16,7 @@ export function CoverImagePicker({ onSelect, onError }: Props) {
   };
 
   return <View style={styles.box}>
-    <Text style={styles.label}>Restaurant cover image</Text>
+    <Text style={styles.label}>{label}</Text>
     <Pressable accessibilityRole="button" onPress={pick} style={styles.button}>
       <Text style={styles.buttonText}>Choose image from device</Text>
     </Pressable>
