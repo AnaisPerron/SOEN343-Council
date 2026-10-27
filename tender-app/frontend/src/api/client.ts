@@ -19,15 +19,19 @@ export class ApiError extends Error {
 }
 
 export async function postJson<T>(path: string, body: unknown, token?: string): Promise<T> {
+  return requestJson<T>('POST', path, body, token);
+}
+
+export async function requestJson<T>(method: 'GET' | 'PATCH' | 'POST', path: string, body?: unknown, token?: string): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers.Authorization = `Bearer ${token}`;
 
   let response: Response;
   try {
     response = await fetch(`${API_URL}${path}`, {
-      method: 'POST',
+      method,
       headers,
-      body: JSON.stringify(body),
+      body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
     throw new ApiError(0, `Cannot reach the server at ${API_URL}`);

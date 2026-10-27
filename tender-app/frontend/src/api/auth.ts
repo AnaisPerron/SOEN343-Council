@@ -1,5 +1,5 @@
 import type { AuthSession, RegistrationInput, Role, SignInInput } from '../types/auth.ts';
-import { postJson } from './client.ts';
+import { postJson, requestJson } from './client.ts';
 
 type BackendRole = 'CUSTOMER' | 'COURIER' | 'STAFF' | 'OPERATOR';
 
@@ -57,6 +57,10 @@ export async function register(input: RegistrationInput): Promise<void> {
 
 export async function logout(token: string): Promise<void> {
   await postJson<void>('/api/auth/logout', {}, token);
+}
+
+export async function updateProfile(token: string, name: string, phone: string): Promise<RegisterResponse> {
+  return requestJson<RegisterResponse>('PATCH', '/api/profile', { name, phone }, token);
 }
 
 /** Signs in, then rejects the session if the account does not belong to the selected role. */
