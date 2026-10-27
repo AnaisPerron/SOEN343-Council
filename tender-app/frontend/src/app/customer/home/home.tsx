@@ -22,6 +22,7 @@ import { styles } from './home.styles';
 import { searchRestaurants } from '../services/restaurantSearch';
 import RestaurantSection from '../components/RestaurantSection';
 import CartIconButton from '../components/CartIconButton';
+import AccountMenu from '@/components/AccountMenu';
 import type { RestaurantCardData } from '../components/RestaurantCard';
 import {
   getRestaurantOrderRestriction,
@@ -167,11 +168,7 @@ export default function CustomerHome() {
           </TouchableOpacity>
           */}
           <CartIconButton count={cartCount} onPress={() => router.push('/customer/cart/cart')} />
-          {!compact && (
-            <TouchableOpacity style={styles.profile} accessibilityRole="button">
-              <Text style={styles.profileText}>A</Text>
-            </TouchableOpacity>
-          )}
+          <AccountMenu />
         </View>
 
         {!isMobileSearch && (

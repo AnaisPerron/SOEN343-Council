@@ -14,6 +14,7 @@ export const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   topbar: {
+    zIndex: 10,
     height: 58,
     flexDirection: 'row',
     alignItems: 'center',
@@ -22,7 +23,7 @@ export const styles = StyleSheet.create({
     marginBottom: 28,
   },
   // Collapse the unused mobile top bar so the content below moves up into its space.
-  mobileTopbar: { height: 44, marginBottom: 8 },
+  mobileTopbar: { height: 44, marginTop: 12, marginBottom: 8 },
   locationPill: {
     flexDirection: 'row',
     alignItems: 'center',
