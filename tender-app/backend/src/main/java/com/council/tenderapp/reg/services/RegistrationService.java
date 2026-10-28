@@ -14,6 +14,11 @@ import com.council.tenderapp.reg.dtos.RegisterResponse;
 import com.council.tenderapp.reg.exceptions.DuplicateEmailException;
 import com.council.tenderapp.reg.entities.Profile;
 import com.council.tenderapp.reg.repositories.ProfileRepository;
+import com.council.tenderapp.ord.entities.Restaurant;
+import com.council.tenderapp.ord.entities.RestaurantStaff;
+import com.council.tenderapp.ord.repositories.RestaurantRepository;
+import com.council.tenderapp.ord.repositories.RestaurantStaffRepository;
+import com.council.tenderapp.reg.entities.Role;
 
 @Service
 public class RegistrationService {
@@ -22,10 +27,15 @@ public class RegistrationService {
 
     private final ProfileRepository repository;
     private final PasswordEncoder passwordEncoder;
+    private final RestaurantRepository restaurantRepository;
+    private final RestaurantStaffRepository restaurantStaffRepository;
 
-    public RegistrationService(ProfileRepository repository, PasswordEncoder passwordEncoder) {
+    public RegistrationService(ProfileRepository repository, PasswordEncoder passwordEncoder,
+            RestaurantRepository restaurantRepository, RestaurantStaffRepository restaurantStaffRepository) {
         this.repository = repository;
         this.passwordEncoder = passwordEncoder;
+        this.restaurantRepository = restaurantRepository;
+        this.restaurantStaffRepository = restaurantStaffRepository;
     }
 
     @Transactional
@@ -44,7 +54,13 @@ public class RegistrationService {
                 request.phone().trim());
 
         try {
-            return RegisterResponse.from(repository.saveAndFlush(profile));
+            Profile saved = repository.saveAndFlush(profile);
+            if (saved.getRole() == Role.STAFF) {
+                Restaurant restaurant = restaurantRepository.saveAndFlush(
+                        new Restaurant(saved.getName(), "closed", null, null));
+                restaurantStaffRepository.saveAndFlush(new RestaurantStaff(saved.getId(), restaurant.getId()));
+            }
+            return RegisterResponse.from(saved);
         } catch (DataIntegrityViolationException ex) {
             // Another request registered the same email between the check and the insert
             if (isUniqueViolation(ex)) {
