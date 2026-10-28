@@ -111,11 +111,13 @@ class LoginServiceTest {
                 .thenReturn(Optional.of(profile("secret123", Role.STAFF)));
         when(restaurantStaffRepository.findById(7L))
                 .thenReturn(Optional.of(new RestaurantStaff(7L, 42L)));
+        when(restaurantRepository.findById(42L))
+                .thenReturn(Optional.of(new Restaurant("Maple & Main", "open", null, null)));
 
         LoginResponse response = service.login(new LoginRequest("jane@example.com", "secret123"));
 
         assertThat(sessionService.find(response.token()).orElseThrow().restaurantId()).isEqualTo(42L);
-        org.mockito.Mockito.verifyNoInteractions(restaurantRepository);
+        assertThat(response.name()).isEqualTo("Maple & Main");
     }
 
     @Test

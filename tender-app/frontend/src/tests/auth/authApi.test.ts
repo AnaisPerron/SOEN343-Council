@@ -32,7 +32,7 @@ describe('registration api', () => {
     });
   });
 
-  it('registers restaurants as staff using the restaurant name', () => {
+  it('registers a restaurant with its name and address', () => {
     const request = toRegisterRequest({
       role: 'restaurant',
       restaurantName: 'Maple & Main',
@@ -43,6 +43,7 @@ describe('registration api', () => {
     });
     assert.equal(request.role, 'STAFF');
     assert.equal(request.name, 'Maple & Main');
+    assert.equal(request.address, '123 Main St, Montreal, Canada');
   });
 
   it('posts registration to the backend', async () => {
@@ -91,6 +92,16 @@ describe('profile api', () => {
     mockFetch(400, { fieldErrors: { phone: 'Phone must be a valid phone number' } });
     await assert.rejects(updateProfile('saved-token', 'Alex', 'bad'), /Phone must be a valid phone number/);
   });
+
+  it('sends an edited restaurant address with the profile update', async () => {
+    const fetchMock = mockFetch(200, { id: 1, name: 'Maple Bistro', email: 'hello@maple.example',
+      phone: '5145550199', role: 'STAFF', restaurantId: 42, address: '99 Rue St' });
+    await updateProfile('saved-token', 'Maple Bistro', '5145550199', '99 Rue St');
+    const [, init] = fetchMock.mock.calls[0].arguments as [string, RequestInit];
+    assert.deepEqual(JSON.parse(init.body as string), {
+      name: 'Maple Bistro', phone: '5145550199', address: '99 Rue St',
+    });
+  });
 });
 
 describe('login api', () => {
@@ -104,6 +115,8 @@ describe('login api', () => {
     email: 'hello@maple.example',
     phone: '5145550199',
     role: 'STAFF',
+    restaurantId: 42,
+    address: '123 Main St, Montreal, Canada',
   };
 
   it('posts credentials and maps the backend account to the app user', async () => {
@@ -115,7 +128,8 @@ describe('login api', () => {
     assert.deepEqual(JSON.parse(init.body as string), { email: 'hello@maple.example', password: 'restaurant-pass' });
     assert.deepEqual(session, {
       token: 'abc123',
-      user: { id: 1, role: 'restaurant', name: 'Maple & Main', email: 'hello@maple.example', phoneNumber: '5145550199' },
+      user: { id: 1, role: 'restaurant', name: 'Maple & Main', email: 'hello@maple.example',
+        phoneNumber: '5145550199', restaurantId: 42, address: '123 Main St, Montreal, Canada' },
     });
   });
 
@@ -156,6 +170,7 @@ describe('login api', () => {
     assert.equal(init.method, 'GET');
     assert.equal((init.headers as Record<string, string>).Authorization, 'Bearer abc123');
     assert.equal(session.user.role, 'restaurant');
+    assert.equal(session.user.restaurantId, 42);
   });
 
   it('restores through the profile endpoint when the running backend lacks the session endpoint', async () => {

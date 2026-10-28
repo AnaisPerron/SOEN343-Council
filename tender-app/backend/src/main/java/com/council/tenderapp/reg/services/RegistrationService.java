@@ -57,8 +57,9 @@ public class RegistrationService {
             Profile saved = repository.saveAndFlush(profile);
             if (saved.getRole() == Role.STAFF) {
                 Restaurant restaurant = restaurantRepository.saveAndFlush(
-                        new Restaurant(saved.getName(), "closed", null, null));
+                        restaurantWithDetails(saved.getName(), request.phone(), request.address()));
                 restaurantStaffRepository.saveAndFlush(new RestaurantStaff(saved.getId(), restaurant.getId()));
+                return RegisterResponse.from(saved, restaurant);
             }
             return RegisterResponse.from(saved);
         } catch (DataIntegrityViolationException ex) {
@@ -68,6 +69,13 @@ public class RegistrationService {
             }
             throw ex;
         }
+    }
+
+    private static Restaurant restaurantWithDetails(String name, String phone, String address) {
+        Restaurant restaurant = new Restaurant(name, "closed", null, null);
+        restaurant.setPhone(phone.trim());
+        restaurant.setAddress(address == null ? null : address.trim());
+        return restaurant;
     }
 
     private static boolean isUniqueViolation(DataIntegrityViolationException ex) {

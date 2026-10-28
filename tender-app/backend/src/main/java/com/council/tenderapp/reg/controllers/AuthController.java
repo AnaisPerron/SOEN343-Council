@@ -19,6 +19,10 @@ import com.council.tenderapp.reg.services.LoginService;
 import com.council.tenderapp.reg.services.RegistrationService;
 import com.council.tenderapp.reg.services.SessionService;
 import com.council.tenderapp.reg.repositories.ProfileRepository;
+import com.council.tenderapp.ord.entities.Restaurant;
+import com.council.tenderapp.ord.repositories.RestaurantRepository;
+import com.council.tenderapp.reg.entities.Profile;
+import com.council.tenderapp.reg.entities.Role;
 import com.council.tenderapp.reg.security.Session;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -34,13 +38,15 @@ public class AuthController {
     private final LoginService loginService;
     private final SessionService sessionService;
     private final ProfileRepository profiles;
+    private final RestaurantRepository restaurants;
 
     public AuthController(RegistrationService registrationService, LoginService loginService,
-            SessionService sessionService, ProfileRepository profiles) {
+            SessionService sessionService, ProfileRepository profiles, RestaurantRepository restaurants) {
         this.registrationService = registrationService;
         this.loginService = loginService;
         this.sessionService = sessionService;
         this.profiles = profiles;
+        this.restaurants = restaurants;
     }
 
     @PostMapping("/register")
@@ -59,8 +65,17 @@ public class AuthController {
         String token = bearerToken(authorization);
         Session session = sessionService.find(token)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Session expired"));
-        return LoginResponse.from(session, profiles.findById(session.accountId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Account unavailable")));
+        Profile profile = profiles.findById(session.accountId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Account unavailable"));
+        if (session.role() == Role.STAFF) {
+            if (session.restaurantId() == null) {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Restaurant session unavailable");
+            }
+            Restaurant restaurant = restaurants.findById(session.restaurantId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Restaurant unavailable"));
+            return LoginResponse.from(session, profile, restaurant);
+        }
+        return LoginResponse.from(session, profile);
     }
 
     // Logging out an unknown or expired token still succeeds, so retries are safe

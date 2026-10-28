@@ -30,6 +30,8 @@ import com.council.tenderapp.reg.services.LoginService;
 import com.council.tenderapp.reg.services.RegistrationService;
 import com.council.tenderapp.reg.services.SessionService;
 import com.council.tenderapp.reg.repositories.ProfileRepository;
+import com.council.tenderapp.ord.repositories.RestaurantRepository;
+import com.council.tenderapp.ord.entities.Restaurant;
 
 @WebMvcTest(AuthController.class)
 class AuthControllerTest {
@@ -48,6 +50,9 @@ class AuthControllerTest {
 
     @MockitoBean
     private ProfileRepository profiles;
+
+    @MockitoBean
+    private RestaurantRepository restaurants;
 
     private static final String VALID_BODY = """
             {"name":"Jane","email":"jane@example.com","password":"secret123","phone":"514-555-0101","role":"CUSTOMER"}
@@ -153,6 +158,25 @@ class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").value("abc123"))
                 .andExpect(jsonPath("$.name").value("Jane"));
+    }
+
+    @Test
+    void restoresRestaurantDetailsInsteadOfTheStaffDisplayName() throws Exception {
+        Session session = new Session("restaurant-token", 8L, 42L, Role.STAFF,
+                Instant.parse("2026-01-02T00:00:00Z"));
+        when(sessionService.find("restaurant-token")).thenReturn(Optional.of(session));
+        when(profiles.findById(8L)).thenReturn(Optional.of(
+                new Profile(Role.STAFF, "Sam Staff", "sam@example.com", "hash", "514-555-0101")));
+        Restaurant restaurant = new Restaurant("Maple & Main", "open", null, null);
+        restaurant.setId(42L);
+        restaurant.setAddress("123 Main St");
+        when(restaurants.findById(42L)).thenReturn(Optional.of(restaurant));
+
+        mockMvc.perform(get("/api/auth/session").header("Authorization", "Bearer restaurant-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Maple & Main"))
+                .andExpect(jsonPath("$.restaurantId").value(42))
+                .andExpect(jsonPath("$.address").value("123 Main St"));
     }
 
     @Test

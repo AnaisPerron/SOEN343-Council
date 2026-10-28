@@ -18,6 +18,7 @@ function ProfileForm({ user }: { user: AuthUser }) {
   const router = useRouter();
   const [name, setName] = useState(user.name);
   const [phone, setPhone] = useState(user.phoneNumber);
+  const [address, setAddress] = useState(user.address ?? '');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -25,10 +26,11 @@ function ProfileForm({ user }: { user: AuthUser }) {
     if (saving) return;
     if (!name.trim()) { setMessage('Name is required'); return; }
     if (!/^\+?[0-9 ()-]{7,20}$/.test(phone.trim())) { setMessage('Enter a valid phone number'); return; }
+    if (user.role === 'restaurant' && !address.trim()) { setMessage('Restaurant address is required'); return; }
     setSaving(true);
     setMessage('');
     try {
-      await saveProfile(name.trim(), phone.trim());
+      await saveProfile(name.trim(), phone.trim(), user.role === 'restaurant' ? address.trim() : undefined);
       setMessage('Profile saved');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Could not save profile');
@@ -41,12 +43,16 @@ function ProfileForm({ user }: { user: AuthUser }) {
       <AccountMenu />
     </View>
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <Text style={styles.title}>Profile</Text>
-      <Text style={styles.subtitle}>Your account details</Text>
-      <Text style={styles.label}>Name</Text>
+      <Text style={styles.title}>{user.role === 'restaurant' ? 'Restaurant profile' : 'Profile'}</Text>
+      <Text style={styles.subtitle}>{user.role === 'restaurant' ? 'Your restaurant details' : 'Your account details'}</Text>
+      <Text style={styles.label}>{user.role === 'restaurant' ? 'Restaurant name' : 'Name'}</Text>
       <TextInput style={styles.input} value={name} onChangeText={setName} accessibilityLabel="Name" autoCapitalize="words" maxLength={100} />
       <Text style={styles.label}>Phone number</Text>
       <TextInput style={styles.input} value={phone} onChangeText={setPhone} accessibilityLabel="Phone number" keyboardType="phone-pad" maxLength={20} />
+      {user.role === 'restaurant' ? <>
+        <Text style={styles.label}>Restaurant address</Text>
+        <TextInput style={styles.input} value={address} onChangeText={setAddress} accessibilityLabel="Restaurant address" maxLength={255} />
+      </> : null}
       <Text style={styles.label}>Email</Text>
       <Text style={styles.readonly}>{user.email}</Text>
       {message ? <Text style={styles.message} accessibilityRole="alert">{message}</Text> : null}

@@ -45,6 +45,7 @@ public class LoginService {
         String email = request.email().trim().toLowerCase(Locale.ROOT);
         Profile profile = repository.findByEmailIgnoreCase(email).orElse(null);
         Long restaurantId = null;
+        Restaurant restaurant = null;
 
         if (profile == null) {
             passwordEncoder.matches(request.password(), dummyHash);
@@ -59,16 +60,22 @@ public class LoginService {
             if (staff == null) {
                 // Accounts created before restaurant linking was added get their own closed restaurant.
                 // Never claim an existing restaurant by matching a mutable display name.
-                Restaurant restaurant = restaurantRepository.saveAndFlush(
-                        new Restaurant(profile.getName(), "closed", null, null));
+                Restaurant legacyRestaurant = new Restaurant(profile.getName(), "closed", null, null);
+                legacyRestaurant.setPhone(profile.getPhone());
+                restaurant = restaurantRepository.saveAndFlush(legacyRestaurant);
                 staff = restaurantStaffRepository.saveAndFlush(new RestaurantStaff(profile.getId(), restaurant.getId()));
             }
             restaurantId = staff.getRestaurantId();
+            if (restaurant == null) {
+                restaurant = restaurantRepository.findById(restaurantId)
+                        .orElseThrow(() -> new IllegalStateException("Restaurant account has no restaurant"));
+            }
         }
 
         Session session = sessionService.create(profile.getId(), restaurantId, profile.getRole());
         
-        return LoginResponse.from(session, profile);
+        return restaurant == null ? LoginResponse.from(session, profile)
+                : LoginResponse.from(session, profile, restaurant);
     }
 
     public void logout(String token) {

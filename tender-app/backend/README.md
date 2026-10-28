@@ -68,6 +68,8 @@ requires the project's authentication system to be added separately.
 Before starting this merged version against an existing PostgreSQL database,
 apply [`docs/order-lifecycle-merge.sql`](docs/order-lifecycle-merge.sql). It adds
 and backfills `orders.date_ordered` and allows the `refunded` lifecycle status.
+Apply [`docs/restaurant-profile.sql`](docs/restaurant-profile.sql) before deploying
+restaurant contact profiles to an existing database.
 The test suite uses an in-memory H2 database and does not apply this script to
 your configured database.
 

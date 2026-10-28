@@ -20,7 +20,7 @@ type AuthContextValue = {
   signIn: (input: SignInInput) => Promise<void>;
   signUp: (input: RegistrationInput) => Promise<void>;
   signOut: () => void;
-  saveProfile: (name: string, phoneNumber: string) => Promise<void>;
+  saveProfile: (name: string, phoneNumber: string, address?: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -62,12 +62,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setReady(true);
       },
       signUp: register,
-      saveProfile: async (name, phoneNumber) => {
+      saveProfile: async (name, phoneNumber, address) => {
         if (!session) throw new Error('Please sign in again');
-        const updated = await updateProfile(session.token, name, phoneNumber);
+        const updated = await updateProfile(session.token, name, phoneNumber, address);
         setSession((current) => current ? {
           ...current,
-          user: { ...current.user, name: updated.name, phoneNumber: updated.phone },
+          user: { ...current.user, name: updated.name, phoneNumber: updated.phone,
+            restaurantId: updated.restaurantId ?? current.user.restaurantId,
+            address: updated.address ?? current.user.address },
         } : null);
       },
       // Sign out locally right away; the backend session expires on its own if this request fails

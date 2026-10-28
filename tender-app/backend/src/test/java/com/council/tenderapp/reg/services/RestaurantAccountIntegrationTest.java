@@ -28,7 +28,7 @@ class RestaurantAccountIntegrationTest {
     void newlyRegisteredRestaurantCanLogInWithItsOwnRestaurant() {
         RegisterResponse registered = registrationService.register(new RegisterRequest(
                 "Bistro", "bistro-integration@example.com", "secret123",
-                "514-555-0199", Role.STAFF));
+                "514-555-0199", Role.STAFF, "123 Main St, Montreal, Canada"));
 
         LoginResponse login = loginService.login(new LoginRequest(
                 "bistro-integration@example.com", "secret123"));
@@ -37,5 +37,8 @@ class RestaurantAccountIntegrationTest {
         assertThat(restaurantId).isEqualTo(
                 restaurantStaffRepository.findById(registered.id()).orElseThrow().getRestaurantId());
         assertThat(restaurantRepository.findById(restaurantId).orElseThrow().getName()).isEqualTo("Bistro");
+        assertThat(restaurantRepository.findById(restaurantId).orElseThrow().getPhone()).isEqualTo("514-555-0199");
+        assertThat(login.name()).isEqualTo("Bistro");
+        assertThat(login.address()).isEqualTo("123 Main St, Montreal, Canada");
     }
 }

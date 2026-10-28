@@ -20,6 +20,12 @@ public class Restaurant {
 
     private Double longitude;
 
+    @Column(length = 255)
+    private String address;
+
+    @Column(length = 20)
+    private String phone;
+
     public Restaurant() {}
 
     public Restaurant(String name, String status, Double latitude, Double longitude) {
@@ -68,4 +74,9 @@ public class Restaurant {
     public void setLongitude(Double longitude) {
         this.longitude = longitude;
     }
+
+    public String getAddress() { return address; }
+    public void setAddress(String address) { this.address = address; }
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
 }

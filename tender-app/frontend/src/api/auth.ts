@@ -10,6 +10,8 @@ export type RegisterResponse = {
   email: string;
   phone: string;
   role: BackendRole;
+  restaurantId?: number | null;
+  address?: string | null;
 };
 
 /** Response body of POST /api/auth/login. */
@@ -48,6 +50,7 @@ export function toRegisterRequest(input: RegistrationInput) {
     password: input.password,
     phone: input.phoneNumber,
     role: TO_BACKEND_ROLE[input.role],
+    ...(input.role === 'restaurant' ? { address: [input.address.addressLine, input.address.city, input.address.country].join(', ') } : {}),
   };
 }
 
@@ -59,8 +62,8 @@ export async function logout(token: string): Promise<void> {
   await postJson<void>('/api/auth/logout', {}, token);
 }
 
-export async function updateProfile(token: string, name: string, phone: string): Promise<RegisterResponse> {
-  return requestJson<RegisterResponse>('PATCH', '/api/profile', { name, phone }, token);
+export async function updateProfile(token: string, name: string, phone: string, address?: string): Promise<RegisterResponse> {
+  return requestJson<RegisterResponse>('PATCH', '/api/profile', { name, phone, ...(address === undefined ? {} : { address }) }, token);
 }
 
 function toSession(response: LoginResponse): AuthSession {
@@ -72,6 +75,8 @@ function toSession(response: LoginResponse): AuthSession {
       name: response.name,
       email: response.email,
       phoneNumber: response.phone,
+      ...(response.restaurantId == null ? {} : { restaurantId: response.restaurantId }),
+      ...(response.address == null ? {} : { address: response.address }),
     },
   };
 }
