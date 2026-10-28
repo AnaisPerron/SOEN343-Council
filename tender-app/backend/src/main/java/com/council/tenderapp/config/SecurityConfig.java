@@ -29,7 +29,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableMethodSecurity //Allows use of @PreAuthorize in controller methods for specific users
 public class SecurityConfig 
 {
-    @Value("${app.cors.allowed-origins}")
+    @Value("${app.cors.allowed-origins:http://localhost:8081}")
     private String[] allowedOrigins;
 
     private final SessionService sessionService;
