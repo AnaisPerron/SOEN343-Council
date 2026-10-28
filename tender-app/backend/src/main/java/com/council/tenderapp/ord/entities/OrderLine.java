@@ -1,8 +1,15 @@
 package com.council.tenderapp.ord.entities;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import java.math.BigDecimal;
-
-import jakarta.persistence.*;
 
 @Entity
 @Table(name = "order_lines")
@@ -12,25 +19,25 @@ public class OrderLine {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "order_id", nullable = false)
-    private Long orderId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "order_id", nullable = false)
+    private Order order;
 
-    @Column(name = "menu_item_id", nullable = false)
-    private Long menuItemId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "menu_item_id", nullable = false)
+    private MenuItem menuItem;
 
     @Column(nullable = false)
-    private Integer quantity;
+    private int quantity;
 
-    // Snapshot of the menu price at order time, so later price changes don't affect this order
-    @Column(name = "unit_price", precision = 10, scale = 2)
+    @Column(name = "unit_price", nullable = false, precision = 10, scale = 2)
     private BigDecimal unitPrice;
 
     protected OrderLine() {
     }
 
-    public OrderLine(Long orderId, Long menuItemId, Integer quantity, BigDecimal unitPrice) {
-        this.orderId = orderId;
-        this.menuItemId = menuItemId;
+    public OrderLine(MenuItem menuItem, int quantity, BigDecimal unitPrice) {
+        this.menuItem = menuItem;
         this.quantity = quantity;
         this.unitPrice = unitPrice;
     }
@@ -39,23 +46,39 @@ public class OrderLine {
         return id;
     }
 
-    public Long getOrderId() {
-        return orderId;
+    public Order getOrder() {
+        return order;
     }
 
-    public Long getMenuItemId() {
-        return menuItemId;
+    public void setOrder(Order order) {
+        this.order = order;
     }
 
-    public Integer getQuantity() {
+    public MenuItem getMenuItem() {
+        return menuItem;
+    }
+
+    public Long getMenuItemId() { return menuItem == null ? null : menuItem.getId(); }
+
+    public Long getOrderId() { return order == null ? null : order.getId(); }
+
+    public void setMenuItem(MenuItem menuItem) {
+        this.menuItem = menuItem;
+    }
+
+    public int getQuantity() {
         return quantity;
+    }
+
+    public void setQuantity(int quantity) {
+        this.quantity = quantity;
     }
 
     public BigDecimal getUnitPrice() {
         return unitPrice;
     }
 
-    public BigDecimal getLineTotal() {
-        return unitPrice.multiply(BigDecimal.valueOf(quantity));
+    public void setUnitPrice(BigDecimal unitPrice) {
+        this.unitPrice = unitPrice;
     }
 }

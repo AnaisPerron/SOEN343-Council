@@ -43,6 +43,7 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter
 
                 UsernamePasswordAuthenticationToken authentication = 
                     new UsernamePasswordAuthenticationToken(session.accountId(), null, authorities);
+                authentication.setDetails(session.restaurantId());
                 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }

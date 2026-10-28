@@ -29,7 +29,7 @@ import com.council.tenderapp.ord.dtos.PlaceOrderRequestDto;
 import com.council.tenderapp.ord.exceptions.InvalidOrderStateException;
 import com.council.tenderapp.ord.exceptions.OrderAccessDeniedException;
 import com.council.tenderapp.ord.exceptions.OrderNotFoundException;
-import com.council.tenderapp.ord.services.OrderService;
+import com.council.tenderapp.ord.services.CustomerOrderService;
 import com.council.tenderapp.reg.entities.Role;
 import com.council.tenderapp.reg.services.SessionService;
 
@@ -51,7 +51,7 @@ class OrderControllerTest {
     private SessionService sessionService;
 
     @MockitoBean
-    private OrderService orderService;
+    private CustomerOrderService orderService;
 
     private String bearer(Role role) {
         return "Bearer " + sessionService.create(7L, role).token();

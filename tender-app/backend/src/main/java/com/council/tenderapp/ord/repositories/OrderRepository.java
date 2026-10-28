@@ -1,17 +1,39 @@
 package com.council.tenderapp.ord.repositories;
 
+import jakarta.persistence.LockModeType;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
-
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import com.council.tenderapp.ord.entities.Order;
-
-import jakarta.persistence.LockModeType;
+import com.council.tenderapp.ord.entities.OrderStatus;
 
 public interface OrderRepository extends JpaRepository<Order, Long> {
 
-    // Row lock so a status change can't race another one on the same order (e.g. cancel vs accept)
+    List<Order> findByRestaurantIdAndStatusOrderByDateOrderedAscIdAsc(
+        Long restaurantId,
+        OrderStatus status
+    );
+
+    List<Order> findByRestaurantIdAndStatusInOrderByAcceptedAtAscIdAsc(
+        Long restaurantId,
+        Collection<OrderStatus> statuses
+    );
+
+    List<Order> findByRestaurantIdAndStatusIn(
+        Long restaurantId,
+        Collection<OrderStatus> statuses
+    );
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    Optional<Order> findWithLockById(Long id);
+    @Query("SELECT o FROM Order o WHERE o.id = :orderId")
+    Optional<Order> findByIdForUpdate(@Param("orderId") Long orderId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT o FROM Order o WHERE o.id = :orderId")
+    Optional<Order> findWithLockById(@Param("orderId") Long orderId);
 }

@@ -53,38 +53,42 @@ INSERT INTO courier_profiles (user_id, latitude, longitude, status) VALUES
 -- ---------------- ORD: RESTAURANTS / MENUS ----------------
 -- Open = can order; paused/closed = reject new orders
 INSERT INTO restaurants (name, status, latitude, longitude) VALUES
-('Metro Pizza', 'open', 45.5100, -73.5700), -- 1
-('Green Bowl', 'paused', 45.5150, -73.5600), -- 2
-('Night Noodles', 'closed', 45.5010, -73.5840); -- 3
+('Maple & Main', 'open', 45.5100, -73.5700), -- 1
+('Green Bowl Kitchen', 'paused', 45.5150, -73.5600), -- 2
+('Café Nord', 'closed', 45.5010, -73.5840), -- 3
+('Little Italy Pizza', 'open', 45.5352, -73.6132); -- 4
 
 INSERT INTO restaurant_staff (user_id, restaurant_id) VALUES
 (4, 1), (5, 2), (9, 3);
 
 INSERT INTO menus (restaurant_id, name) VALUES
-(1, 'Metro Pizza Menu'), -- 1
+(1, 'Maple & Main Menu'), -- 1
 (2, 'Green Bowl Menu'), -- 2
-(3, 'Night Noodles Menu'); -- 3
+(3, 'Café Nord Menu'), -- 3
+(4, 'Little Italy Menu'); -- 4
 
--- The sold-out pizza is intentionally available for negative-case testing
+-- Same dishes and photos as the frontend fixtures. URLs are relative to the backend origin.
+-- The sold-out crumble is intentionally included for negative-case testing.
 INSERT INTO menu_items (menu_id, name, price, status, photo_url) VALUES
-(1, 'Margherita Pizza', 14.00, 'available', NULL), -- 1
-(1, 'Pepperoni Pizza', 17.00, 'available', NULL), -- 2
-(1, 'Truffle Pizza', 22.00, 'sold_out', NULL), -- 3
-(1, 'Sparkling Water', 3.00, 'available', NULL), -- 4
-(2, 'Tofu Power Bowl', 15.00, 'available', NULL), -- 5
-(2, 'Roasted Veggie Bowl', 13.00, 'available', NULL), -- 6
-(3, 'Miso Noodles', 16.00, 'available', NULL); -- 7
+(1, 'Maple-glazed chicken sandwich', 14.50, 'available', '/menu-items-imgs/maple-glazed-chicken-sandwich.jpg'), -- 1
+(1, 'Truffle fries', 6.25, 'available', '/menu-items-imgs/truffle.jpg'), -- 2
+(1, 'Apple crumble', 7.00, 'sold_out', '/menu-items-imgs/apple-crumble.jpg'), -- 3
+(2, 'Harvest grain bowl', 15.75, 'available', '/menu-items-imgs/harvest-grain-bowl.jpg'), -- 4
+(2, 'Miso tofu bowl', 14.00, 'available', '/menu-items-imgs/miso-tofu-bowl.jpg'), -- 5
+(3, 'Smoked salmon bagel', 12.50, 'available', '/menu-items-imgs/smoked-salmon-bagel.jpg'), -- 6
+(4, 'Margherita pizza', 17.00, 'available', '/menu-items-imgs/margherita-pizza.jpg'); -- 7
 
 INSERT INTO menu_item_options (menu_item_id, name, additional_cost) VALUES
-(1, 'Extra basil', 1.00), -- 1
-(1, 'Extra cheese', 2.00), -- 2
-(2, 'Extra pepperoni', 3.00), -- 3
+(1, 'Add avocado', 2.00), -- 1
+(1, 'Gluten-free bun', 1.50), -- 2
+(2, 'Extra truffle seasoning', 1.00), -- 3
 (5, 'Extra tofu', 2.50), -- 4
-(6, 'Extra dressing', 0.50); -- 5
+(4, 'Add grilled chicken', 4.00), -- 5
+(7, 'Extra mozzarella', 2.50); -- 6
 
 -- ---------------- ORD: EXISTING ORDERS ----------------
 -- Several status snapshots to show active queues, order history and events.
--- All active orders belong to Metro Pizza (open); the paused restaurant has
+-- All active orders belong to Maple & Main (open); the paused restaurant has
 -- a historical completed order to show that pausing does not erase history
 INSERT INTO orders
 (customer_id, restaurant_id, courier_id, status, created_at, accepted_at, rejection_reason)
@@ -100,21 +104,21 @@ VALUES
 
 -- Price snapshots are independent of future changes to menu pricing
 INSERT INTO order_lines (order_id, menu_item_id, quantity, unit_price) VALUES
-(1, 1, 1, 14.00), -- 1
-(1, 4, 1,  3.00), -- 2
-(2, 2, 2, 17.00), -- 3
-(3, 1, 1, 14.00), -- 4
-(4, 2, 1, 17.00), -- 5
-(5, 1, 1, 14.00), -- 6
-(6, 2, 1, 17.00), -- 7
-(7, 5, 1, 15.00), -- 8
-(8, 4, 2,  3.00); -- 9
+(1, 1, 1, 14.50), -- 1
+(1, 2, 1,  6.25), -- 2
+(2, 2, 2,  6.25), -- 3
+(3, 1, 1, 14.50), -- 4
+(4, 2, 1,  6.25), -- 5
+(5, 1, 1, 14.50), -- 6
+(6, 2, 1,  6.25), -- 7
+(7, 5, 1, 14.00), -- 8
+(8, 2, 2,  6.25); -- 9
 
 INSERT INTO order_line_options
 (order_line_id, menu_item_id, menu_item_option_id, additional_cost) VALUES
-(1, 1, 1, 1.00), -- Alice's Margherita with extra basil
-(3, 2, 3, 3.00), -- Omar's Pepperoni with extra pepperoni
-(4, 1, 2, 2.00), -- Maya's Margherita with extra cheese
+(1, 1, 1, 2.00), -- Alice's sandwich with avocado
+(3, 2, 3, 1.00), -- Omar's fries with extra truffle seasoning
+(4, 1, 2, 1.50), -- Maya's sandwich with a gluten-free bun
 (8, 5, 4, 2.50); -- Delivered tofu bowl with extra tofu
 
 -- Historical status events with distinct event IDs assigned automatically

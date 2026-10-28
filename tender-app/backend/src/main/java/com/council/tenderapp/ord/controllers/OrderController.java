@@ -1,5 +1,6 @@
 package com.council.tenderapp.ord.controllers;
 
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -13,25 +14,22 @@ import org.springframework.web.bind.annotation.RestController;
 import com.council.tenderapp.ord.dtos.OrderResponseDto;
 import com.council.tenderapp.ord.dtos.OrderStatusResponseDto;
 import com.council.tenderapp.ord.dtos.PlaceOrderRequestDto;
-import com.council.tenderapp.ord.services.OrderService;
-
-import jakarta.validation.Valid;
+import com.council.tenderapp.ord.services.CustomerOrderService;
 
 @RestController
 @RequestMapping("/api/orders")
 public class OrderController {
+    private final CustomerOrderService orderService;
 
-    private final OrderService orderService;
-
-    public OrderController(OrderService orderService) {
+    public OrderController(CustomerOrderService orderService) {
         this.orderService = orderService;
     }
 
-    // The token filter sets the account id as the principal
     @PostMapping
     @PreAuthorize("hasRole('CUSTOMER')")
     @ResponseStatus(HttpStatus.CREATED)
-    public OrderResponseDto placeOrder(@AuthenticationPrincipal Long customerId, @Valid @RequestBody PlaceOrderRequestDto request) {
+    public OrderResponseDto placeOrder(@AuthenticationPrincipal Long customerId,
+            @Valid @RequestBody PlaceOrderRequestDto request) {
         return orderService.placeOrder(customerId, request);
     }
 

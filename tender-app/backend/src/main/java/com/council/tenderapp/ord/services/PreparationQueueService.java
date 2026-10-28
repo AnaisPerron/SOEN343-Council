@@ -22,13 +22,14 @@ public class PreparationQueueService {
     }
 
     public void enqueue(Order order, Instant placedAt) {
-        orderEventRepository.save(new OrderEvent(order.getId(), null, Order.STATUS_PLACED, "order_placed", placedAt));
+        orderEventRepository.save(new OrderEvent(order.getId(), null, "placed", "order_placed", placedAt));
         logService.info("Order " + order.getId() + " added to restaurant " + order.getRestaurantId() + " preparation queue");
     }
 
     // The order has already left the queue by changing status; this records the order_cancelled event
     public void remove(Order order, String previousStatus, Instant removedAt) {
-        orderEventRepository.save(new OrderEvent(order.getId(), previousStatus, order.getStatus(), "order_cancelled", removedAt));
+        orderEventRepository.save(new OrderEvent(order.getId(), previousStatus,
+                order.getStatus().name().toLowerCase(), "order_cancelled", removedAt));
         logService.info("Order " + order.getId() + " removed from restaurant " + order.getRestaurantId() + " preparation queue");
     }
 }

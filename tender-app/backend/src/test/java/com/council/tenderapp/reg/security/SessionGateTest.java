@@ -6,8 +6,11 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -29,6 +32,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.council.tenderapp.config.SecurityConfig;
+import com.council.tenderapp.ord.repositories.RestaurantRepository;
 import com.council.tenderapp.reg.controllers.AuthController;
 import com.council.tenderapp.reg.entities.Profile;
 import com.council.tenderapp.reg.entities.Role;
@@ -49,7 +53,7 @@ class SessionGateTest {
     private static final String MENU = "/api/restaurants/1/menu";
     private static final String PLACE_ORDER = "/api/orders";
 
-    // Stand-ins for real endpoints, which are not on the backend yet; the gate guards every path outside /api/auth
+    // Stand-ins for protected API endpoints, which are not on the backend yet.
     @RestController
     static class ProtectedEndpoints {
 
@@ -72,6 +76,9 @@ class SessionGateTest {
 
     @MockitoBean
     private ProfileRepository repository;
+
+    @MockitoBean
+    private RestaurantRepository restaurantRepository;
 
     @MockitoBean
     private RegistrationService registrationService;
@@ -99,6 +106,20 @@ class SessionGateTest {
 
     private static String bearer(String token) {
         return "Bearer " + token;
+    }
+
+    @Test
+    void allSeededMenuPhotosAreServedWithoutSession() throws Exception {
+        for (String filename : List.of(
+                "maple-glazed-chicken-sandwich.jpg", "truffle.jpg", "apple-crumble.jpg",
+                "harvest-grain-bowl.jpg", "miso-tofu-bowl.jpg", "smoked-salmon-bagel.jpg",
+                "margherita-pizza.jpg")) {
+            byte[] expected = Files.readAllBytes(Path.of("../frontend/src/mocks/menu-items-imgs", filename));
+            mockMvc.perform(get("/menu-items-imgs/" + filename))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.IMAGE_JPEG))
+                    .andExpect(content().bytes(expected));
+        }
     }
 
     @Test

@@ -1,125 +1,209 @@
 package com.council.tenderapp.ord.services;
 
-import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
+import java.util.Objects;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.web.server.ResponseStatusException;
 
-import com.council.tenderapp.ord.dtos.OrderItemRequestDto;
-import com.council.tenderapp.ord.dtos.OrderLineDto;
-import com.council.tenderapp.ord.dtos.OrderResponseDto;
-import com.council.tenderapp.ord.dtos.OrderStatusResponseDto;
-import com.council.tenderapp.ord.dtos.PlaceOrderRequestDto;
-import com.council.tenderapp.ord.entities.MenuItem;
+import com.council.tenderapp.ord.dto.response.OrderLineResponse;
+import com.council.tenderapp.ord.dto.response.OrderResponse;
 import com.council.tenderapp.ord.entities.Order;
-import com.council.tenderapp.ord.entities.OrderLine;
-import com.council.tenderapp.ord.exceptions.InvalidOrderException;
-import com.council.tenderapp.ord.exceptions.InvalidOrderStateException;
-import com.council.tenderapp.ord.exceptions.MenuItemUnavailableException;
-import com.council.tenderapp.ord.exceptions.OrderAccessDeniedException;
-import com.council.tenderapp.ord.exceptions.OrderNotFoundException;
-import com.council.tenderapp.ord.repositories.MenuItemRepository;
-import com.council.tenderapp.ord.repositories.OrderLineRepository;
+import com.council.tenderapp.ord.entities.OrderStatus;
 import com.council.tenderapp.ord.repositories.OrderRepository;
-import com.council.tenderapp.technicalservices.payment.PaymentDeclinedException;
-import com.council.tenderapp.technicalservices.payment.PaymentGateway;
-import com.council.tenderapp.technicalservices.payment.PaymentResult;
 
 @Service
 public class OrderService {
 
-    private final BrowseService browseService;
-    private final MenuItemRepository menuItemRepository;
+    private static final List<OrderStatus> PREPARATION_STATUSES =
+        List.of(OrderStatus.ACCEPTED, OrderStatus.PREPARING);
+
     private final OrderRepository orderRepository;
-    private final OrderLineRepository orderLineRepository;
-    private final PaymentGateway paymentGateway;
-    private final PreparationQueueService preparationQueueService;
+    private final OrderStatusPublisher orderStatusPublisher;
 
-    public OrderService(BrowseService browseService, MenuItemRepository menuItemRepository, OrderRepository orderRepository,
-            OrderLineRepository orderLineRepository, PaymentGateway paymentGateway, PreparationQueueService preparationQueueService) {
-        this.browseService = browseService;
-        this.menuItemRepository = menuItemRepository;
+    public OrderService(OrderRepository orderRepository, OrderStatusPublisher orderStatusPublisher) {
         this.orderRepository = orderRepository;
-        this.orderLineRepository = orderLineRepository;
-        this.paymentGateway = paymentGateway;
-        this.preparationQueueService = preparationQueueService;
+        this.orderStatusPublisher = orderStatusPublisher;
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getPreparationQueue(Long restaurantId) {
+        return orderRepository
+            .findByRestaurantIdAndStatusInOrderByAcceptedAtAscIdAsc(restaurantId, PREPARATION_STATUSES)
+            .stream()
+            .map(this::toResponse)
+            .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getIncomingOrders(Long restaurantId) {
+        return orderRepository
+            .findByRestaurantIdAndStatusOrderByDateOrderedAscIdAsc(restaurantId, OrderStatus.PLACED)
+            .stream()
+            .map(this::toResponse)
+            .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getPickupQueue(Long restaurantId) {
+        return orderRepository
+            .findByRestaurantIdAndStatusOrderByDateOrderedAscIdAsc(restaurantId, OrderStatus.READY)
+            .stream()
+            .map(this::toResponse)
+            .toList();
     }
 
     @Transactional
-    public OrderResponseDto placeOrder(Long customerId, PlaceOrderRequestDto request) {
-        browseService.checkRestaurantOpen(request.restaurantId());
-
-        // Only this restaurant's items are looked up, so an item from any other restaurant is rejected
-        Map<Long, MenuItem> menu = menuItemRepository.findMenuItemsByRestaurantId(request.restaurantId())
-                .stream()
-                .collect(Collectors.toMap(MenuItem::getId, Function.identity()));
-
-        for (OrderItemRequestDto item : request.items()) {
-            MenuItem menuItem = menu.get(item.menuItemId());
-            if (menuItem == null) {
-                throw new InvalidOrderException("Menu item " + item.menuItemId() + " does not belong to restaurant " + request.restaurantId());
-            }
-            if (!"available".equalsIgnoreCase(menuItem.getStatus())) {
-                throw new MenuItemUnavailableException("Menu item " + menuItem.getId() + " : " + menuItem.getName() + " is not available");
-            }
-        }
-
-        BigDecimal total = request.items().stream()
-                .map(item -> menu.get(item.menuItemId()).getPrice().multiply(BigDecimal.valueOf(item.quantity())))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        PaymentResult payment = paymentGateway.charge(customerId, total);
-        if (!payment.approved()) {
-            throw new PaymentDeclinedException("Payment declined: " + payment.message());
-        }
-
-        Instant placedAt = Instant.now();
-        Order order = orderRepository.save(new Order(customerId, request.restaurantId(), Order.STATUS_PLACED, total));
-
-        List<OrderLine> lines = orderLineRepository.saveAll(request.items().stream()
-                .map(item -> new OrderLine(order.getId(), item.menuItemId(), item.quantity(), menu.get(item.menuItemId()).getPrice()))
-                .toList());
-
-        preparationQueueService.enqueue(order, placedAt);
-
-        List<OrderLineDto> lineDtos = lines.stream()
-                .map(line -> new OrderLineDto(
-                    line.getMenuItemId(),
-                    menu.get(line.getMenuItemId()).getName(),
-                    line.getQuantity(),
-                    line.getUnitPrice(),
-                    line.getLineTotal()
-                ))
-                .toList();
-
-        return new OrderResponseDto(order.getId(), order.getRestaurantId(), order.getStatus(), order.getTotalPrice(),
-                placedAt, payment.reference(), lineDtos);
+    public OrderResponse acceptOrder(Long restaurantId, Long orderId) {
+        Order order = getOwnedOrderForUpdate(restaurantId, orderId);
+        OrderStatus previousStatus = order.getStatus();
+        transitionOrder(order, OrderStatus.ACCEPTED, "accept");
+        Order savedOrder = orderRepository.save(order);
+        publishStatusChange(savedOrder, previousStatus, "accepted", null);
+        return toResponse(savedOrder);
     }
 
     @Transactional
-    public OrderStatusResponseDto cancelOrder(Long customerId, Long orderId) {
-        Order order = orderRepository.findWithLockById(orderId)
-                .orElseThrow(() -> new OrderNotFoundException("Order not found with id: " + orderId));
-
-        if (!order.getCustomerId().equals(customerId)) {
-            throw new OrderAccessDeniedException("Order " + orderId + " does not belong to this customer");
-        }
-        if (!Order.STATUS_PLACED.equals(order.getStatus())) {
-            throw new InvalidOrderStateException("Order " + orderId + " cannot be cancelled because it is " + order.getStatus());
+    public OrderResponse rejectOrder(Long restaurantId, Long orderId, String reason) {
+        String trimmedReason = reason == null ? "" : reason.trim();
+        if (trimmedReason.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A rejection reason is required");
         }
 
-        String previousStatus = order.getStatus();
-        Instant cancelledAt = Instant.now();
-        order.setStatus(Order.STATUS_CANCELLED);
-        orderRepository.save(order);
+        Order order = getOwnedOrderForUpdate(restaurantId, orderId);
+        OrderStatus previousStatus = order.getStatus();
+        transitionOrder(order, OrderStatus.REJECTED, "reject");
+        order.setRejectionReason(trimmedReason);
+        Order savedOrder = orderRepository.save(order);
+        publishStatusChange(savedOrder, previousStatus, "rejected", trimmedReason);
+        return toResponse(savedOrder);
+    }
 
-        preparationQueueService.remove(order, previousStatus, cancelledAt);
+    @Transactional
+    public OrderResponse cancelOrder(Long restaurantId, Long orderId) {
+        Order order = getOwnedOrderForUpdate(restaurantId, orderId);
+        OrderStatus previousStatus = order.getStatus();
+        transitionOrder(order, OrderStatus.CANCELLED, "cancel");
+        Order savedOrder = orderRepository.save(order);
+        publishStatusChange(savedOrder, previousStatus, "cancelled", null);
+        return toResponse(savedOrder);
+    }
 
-        return new OrderStatusResponseDto(order.getId(), previousStatus, order.getStatus(), cancelledAt);
+    @Transactional
+    public OrderResponse startPreparation(Long restaurantId, Long orderId) {
+        Order order = getOwnedOrderForUpdate(restaurantId, orderId);
+        OrderStatus previousStatus = order.getStatus();
+        transitionOrder(order, OrderStatus.PREPARING, "prepare");
+        Order savedOrder = orderRepository.save(order);
+        publishStatusChange(savedOrder, previousStatus, "started preparing", null);
+        return toResponse(savedOrder);
+    }
+
+    @Transactional
+    public OrderResponse markReady(Long restaurantId, Long orderId) {
+        Order order = getOwnedOrderForUpdate(restaurantId, orderId);
+        OrderStatus previousStatus = order.getStatus();
+        transitionOrder(order, OrderStatus.READY, "mark ready");
+        Order savedOrder = orderRepository.save(order);
+        publishStatusChange(savedOrder, previousStatus, "marked ready", null);
+        return toResponse(savedOrder);
+    }
+
+    @Transactional
+    public OrderResponse markPickedUp(Long restaurantId, Long orderId) {
+        Order order = getOwnedOrderForUpdate(restaurantId, orderId);
+        OrderStatus previousStatus = order.getStatus();
+        transitionOrder(order, OrderStatus.PICKED_UP, "mark picked up");
+        Order savedOrder = orderRepository.save(order);
+        publishStatusChange(savedOrder, previousStatus, "marked picked up", null);
+        return toResponse(savedOrder);
+    }
+
+    @Transactional
+    public OrderResponse markDelivered(Long restaurantId, Long orderId) {
+        Order order = getOwnedOrderForUpdate(restaurantId, orderId);
+        OrderStatus previousStatus = order.getStatus();
+        transitionOrder(order, OrderStatus.DELIVERED, "mark delivered");
+        Order savedOrder = orderRepository.save(order);
+        publishStatusChange(savedOrder, previousStatus, "marked delivered", null);
+        return toResponse(savedOrder);
+    }
+
+    @Transactional
+    public OrderResponse refundOrder(Long restaurantId, Long orderId) {
+        Order order = getOwnedOrderForUpdate(restaurantId, orderId);
+        OrderStatus previousStatus = order.getStatus();
+        transitionOrder(order, OrderStatus.REFUNDED, "refund");
+        Order savedOrder = orderRepository.save(order);
+        publishStatusChange(savedOrder, previousStatus, "refunded", null);
+        return toResponse(savedOrder);
+    }
+
+    private void transitionOrder(Order order, OrderStatus nextStatus, String action) {
+        OrderStatus currentStatus = order.getStatus();
+        try {
+            order.transitionTo(nextStatus);
+        } catch (IllegalStateException exception) {
+            throw invalidTransition(currentStatus, action);
+        }
+    }
+
+    private void publishStatusChange(
+        Order order,
+        OrderStatus previousStatus,
+        String action,
+        String rejectionReason
+    ) {
+        Runnable publish = () ->
+            orderStatusPublisher.publish(order, previousStatus, action, rejectionReason);
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    publish.run();
+                }
+            });
+        } else {
+            publish.run();
+        }
+    }
+
+    private Order getOwnedOrderForUpdate(Long restaurantId, Long orderId) {
+        Order order = orderRepository.findByIdForUpdate(orderId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+        if (!Objects.equals(order.getRestaurantId(), restaurantId)) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Order does not belong to the restaurant"
+            );
+        }
+        return order;
+    }
+
+    private ResponseStatusException invalidTransition(OrderStatus currentStatus, String action) {
+        return new ResponseStatusException(
+            HttpStatus.BAD_REQUEST,
+            "Invalid order transition for action '" + action + "' from status " + currentStatus
+        );
+    }
+
+    private OrderResponse toResponse(Order order) {
+        List<OrderLineResponse> orderLines = order.getOrderLines().stream()
+            .map(line ->
+                new OrderLineResponse(line.getMenuItem().getName(), line.getQuantity(), line.getUnitPrice())
+            )
+            .toList();
+        return new OrderResponse(
+            order.getId(),
+            order.getStatus(),
+            order.getDateOrdered(),
+            order.getAcceptedAt(),
+            order.getRejectionReason(),
+            order.getTotalPrice(),
+            orderLines
+        );
     }
 }

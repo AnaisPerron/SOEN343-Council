@@ -3,7 +3,6 @@ package com.council.tenderapp.ord.services;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -33,6 +32,7 @@ import com.council.tenderapp.ord.dtos.PlaceOrderRequestDto;
 import com.council.tenderapp.ord.entities.MenuItem;
 import com.council.tenderapp.ord.entities.Order;
 import com.council.tenderapp.ord.entities.OrderLine;
+import com.council.tenderapp.ord.entities.OrderStatus;
 import com.council.tenderapp.ord.exceptions.InvalidOrderException;
 import com.council.tenderapp.ord.exceptions.InvalidOrderStateException;
 import com.council.tenderapp.ord.exceptions.MenuItemUnavailableException;
@@ -40,7 +40,6 @@ import com.council.tenderapp.ord.exceptions.OrderAccessDeniedException;
 import com.council.tenderapp.ord.exceptions.OrderNotFoundException;
 import com.council.tenderapp.ord.exceptions.RestaurantClosedException;
 import com.council.tenderapp.ord.repositories.MenuItemRepository;
-import com.council.tenderapp.ord.repositories.OrderLineRepository;
 import com.council.tenderapp.ord.repositories.OrderRepository;
 import com.council.tenderapp.technicalservices.payment.PaymentDeclinedException;
 import com.council.tenderapp.technicalservices.payment.PaymentGateway;
@@ -59,17 +58,15 @@ class OrderServiceTest {
     @Mock
     private OrderRepository orderRepository;
     @Mock
-    private OrderLineRepository orderLineRepository;
-    @Mock
     private PaymentGateway paymentGateway;
     @Mock
     private PreparationQueueService preparationQueueService;
 
-    private OrderService service;
+    private CustomerOrderService service;
 
     @BeforeEach
     void setUp() {
-        service = new OrderService(browseService, menuItemRepository, orderRepository, orderLineRepository, paymentGateway, preparationQueueService);
+        service = new CustomerOrderService(browseService, menuItemRepository, orderRepository, paymentGateway, preparationQueueService);
     }
 
     private static MenuItem item(Long id, String name, String price, String status) {
@@ -93,7 +90,6 @@ class OrderServiceTest {
             ReflectionTestUtils.setField(order, "id", 42L);
             return order;
         });
-        when(orderLineRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
 
         OrderResponseDto response = service.placeOrder(CUSTOMER_ID,
                 request(new OrderItemRequestDto(1L, 2), new OrderItemRequestDto(4L, 2)));
@@ -118,14 +114,12 @@ class OrderServiceTest {
         menu(item(2L, "Pepperoni Pizza", "17.00", "available"));
         when(paymentGateway.charge(any(), any())).thenReturn(PaymentResult.approved("MOCK-1"));
         when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(orderLineRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
 
         service.placeOrder(CUSTOMER_ID, request(new OrderItemRequestDto(2L, 3)));
 
-        @SuppressWarnings("unchecked")
-        ArgumentCaptor<List<OrderLine>> lines = ArgumentCaptor.forClass(List.class);
-        verify(orderLineRepository).saveAll(lines.capture());
-        assertThat(lines.getValue()).singleElement().satisfies(line -> {
+        ArgumentCaptor<Order> saved = ArgumentCaptor.forClass(Order.class);
+        verify(orderRepository).save(saved.capture());
+        assertThat(saved.getValue().getOrderLines()).singleElement().satisfies(line -> {
             assertThat(line.getMenuItemId()).isEqualTo(2L);
             assertThat(line.getQuantity()).isEqualTo(3);
             assertThat(line.getUnitPrice()).isEqualByComparingTo("17.00");
@@ -171,7 +165,7 @@ class OrderServiceTest {
     }
 
     private Order existingOrder(Long customerId, String status) {
-        Order order = new Order(customerId, RESTAURANT_ID, status, new BigDecimal("14.00"));
+        Order order = new Order(customerId, RESTAURANT_ID, OrderStatus.valueOf(status.toUpperCase()), new BigDecimal("14.00"));
         ReflectionTestUtils.setField(order, "id", 42L);
         when(orderRepository.findWithLockById(42L)).thenReturn(Optional.of(order));
         return order;
@@ -186,7 +180,7 @@ class OrderServiceTest {
         assertThat(response.orderId()).isEqualTo(42L);
         assertThat(response.previousStatus()).isEqualTo("placed");
         assertThat(response.status()).isEqualTo("cancelled");
-        assertThat(order.getStatus()).isEqualTo("cancelled");
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
         verify(orderRepository).save(order);
         verify(preparationQueueService).remove(eq(order), eq("placed"), any(Instant.class));
     }
@@ -205,7 +199,7 @@ class OrderServiceTest {
 
         assertThatThrownBy(() -> service.cancelOrder(CUSTOMER_ID, 42L))
                 .isInstanceOf(OrderAccessDeniedException.class);
-        assertThat(order.getStatus()).isEqualTo("placed");
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.PLACED);
         verify(orderRepository, never()).save(any());
         verifyNoInteractions(preparationQueueService);
     }
@@ -217,7 +211,7 @@ class OrderServiceTest {
 
         assertThatThrownBy(() -> service.cancelOrder(CUSTOMER_ID, 42L))
                 .isInstanceOf(InvalidOrderStateException.class);
-        assertThat(order.getStatus()).isEqualTo(status);
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.valueOf(status.toUpperCase()));
         verify(orderRepository, never()).save(any());
         verifyNoInteractions(preparationQueueService);
     }
