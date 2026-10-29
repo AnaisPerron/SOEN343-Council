@@ -20,7 +20,7 @@ import com.council.tenderapp.ord.services.OrderService;
 @RestController
 @CrossOrigin(origins = "${app.cors.allowed-origin:http://localhost:8081}")
 @RequestMapping("/api/restaurants/{restaurantId}/orders")
-@PreAuthorize("hasRole('STAFF') and authentication.details == #restaurantId")
+@PreAuthorize("hasRole('STAFF') and authentication.details.restaurantId == #restaurantId")
 public class RestaurantOrderController {
     private final OrderService orderService;
     private final DashboardObserver dashboardObserver;

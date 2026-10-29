@@ -28,6 +28,7 @@ import com.council.tenderapp.ord.exceptions.OrderAccessDeniedException;
 import com.council.tenderapp.ord.exceptions.OrderNotFoundException;
 import com.council.tenderapp.ord.exceptions.RestaurantClosedException;
 import com.council.tenderapp.ord.exceptions.RestaurantNotFoundException;
+import com.council.tenderapp.ord.exceptions.UnauthorizedMenuAccessException;
 import com.council.tenderapp.reg.dtos.ErrorResponse;
 import com.council.tenderapp.technicalservices.payment.PaymentDeclinedException;
 
@@ -44,6 +45,9 @@ public class GlobalExceptionHandler {
         for (FieldError error : ex.getBindingResult().getFieldErrors()) {
             fieldErrors.putIfAbsent(error.getField(), error.getDefaultMessage());
         }
+
+        log.warn("Validation failed "+fieldErrors);
+
         return build(HttpStatus.BAD_REQUEST, "Validation failed", fieldErrors);
     }
 
@@ -70,10 +74,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<?> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
-        // 1. Grab the current authentication from Spring Security
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         
-        // 2. Extract and clean up the roles (stripping the "ROLE_" prefix if present)
         String roles = "ANONYMOUS";
         if (auth != null && auth.isAuthenticated()) {
             roles = auth.getAuthorities().stream()
@@ -84,13 +86,10 @@ public class GlobalExceptionHandler {
 
         String requestUri = request.getRequestURI();
 
-        // 3. Build your exact requested message format
         String customMessage = String.format("role:%s does not have permission for %s", roles, requestUri);
 
-        // 4. Log the warning to the terminal
         log.warn("Security Alert: {}", customMessage);
 
-        // 5. Construct the clean JSON response for the frontend
         Map<String, Object> errorBody = Map.of(
             "timestamp", Instant.now().toString(),
             "status", HttpStatus.FORBIDDEN.value(),
@@ -119,6 +118,19 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleRestaurantClosed(RestaurantClosedException ex) {
         
         log.warn("Access denied - Restaurant closed: {}", ex.getMessage());
+        
+        ErrorResponse error = ErrorResponse.of(
+            HttpStatus.FORBIDDEN.value(),
+            "Forbidden",
+            ex.getMessage()
+        );
+        return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(UnauthorizedMenuAccessException.class)
+    public ResponseEntity<ErrorResponse> handleUnauthorizedMenuAccess(UnauthorizedMenuAccessException ex)
+    {
+        log.warn("Access denied - Restaurant does not have permission over this menu: {}", ex.getMessage());
         
         ErrorResponse error = ErrorResponse.of(
             HttpStatus.FORBIDDEN.value(),

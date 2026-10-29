@@ -18,4 +18,22 @@ public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
             WHERE m.restaurant_id = :restaurantId
             """, nativeQuery = true)
     List<MenuItem> findMenuItemsByRestaurantId(@Param ("restaurantId") Long restaurantId);
+
+    @Query(value = """
+            SELECT id 
+            FROM menus 
+            WHERE restaurant_id = :restaurantId 
+            LIMIT 1
+            """, nativeQuery = true)
+    Long findMenuIdByRestaurantId(@Param("restaurantId") Long restaurantId);
+
+    @Query(value = """
+            SELECT EXISTS (
+                SELECT 1 
+                FROM menu_items mi 
+                JOIN menus m ON mi.menu_id = m.id 
+                WHERE mi.id = :menuItemId AND m.restaurant_id = :restaurantId
+            )
+            """, nativeQuery = true)
+    boolean existsByIdAndRestaurantId(@Param("menuItemId") Long menuItemId, @Param("restaurantId") Long restaurantId);
 }
