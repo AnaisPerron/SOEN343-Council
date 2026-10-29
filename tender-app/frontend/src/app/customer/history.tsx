@@ -43,7 +43,7 @@ const styles = StyleSheet.create({
   subtitle: { color: '#79525A', fontSize: 15, marginTop: 6, marginBottom: 24 },
   empty: { color: '#79525A', fontSize: 16, paddingVertical: 25 },
   card: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#F3D1D7', borderRadius: 16, padding: 18, marginBottom: 12 },
-  restaurant: { color: '#38252A', fontSize: 18, fontWeight: '800', marginBottom: 8 },
+  restaurant: { color: '#38252A', fontFamily: 'LoveLight', fontSize: 28, fontWeight: '400', marginBottom: 8 },
   detail: { color: '#79525A', fontSize: 14, marginTop: 4 },
   cancel: { alignSelf: 'flex-start', marginTop: 14, paddingVertical: 8 },
   cancelText: { color: '#B52F4B', fontWeight: '700' },

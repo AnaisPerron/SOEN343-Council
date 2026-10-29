@@ -9,7 +9,7 @@ export const styles = StyleSheet.create({
   stickyHeader: { position: 'absolute', top: 0, left: 0, right: 0, minHeight: 58, paddingHorizontal: 18, paddingBottom: 10, backgroundColor: '#FFFFFF', flexDirection: 'row', alignItems: 'center', gap: 14, shadowColor: '#372B2E', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 8 },
   stickyTitle: { flex: 1, fontFamily: font, fontSize: 16, fontWeight: '800', color: ink },
   itemPanel: { paddingTop: 28, paddingHorizontal: 22, paddingBottom: 170, maxWidth: 800, width: '100%', alignSelf: 'center', alignItems: 'center' },
-  restaurantName: { fontFamily: font, color: '#A92140', fontSize: 12, fontWeight: '800', marginBottom: 12 },
+  restaurantName: { fontFamily: 'LoveLight', color: '#A92140', fontSize: 24, fontWeight: '400', marginBottom: 12 },
   title: { fontFamily: font, color: ink, fontSize: 29, fontWeight: '900', lineHeight: 35, letterSpacing: -0.8, textAlign: 'center' },
   price: { fontFamily: font, color: ink, fontSize: 17, fontWeight: '800', marginTop: 13 },
   description: { fontFamily: font, color: '#6E6265', fontSize: 15, lineHeight: 23, marginTop: 25, textAlign: 'center', maxWidth: 530 },

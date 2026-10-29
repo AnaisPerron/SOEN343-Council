@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-type Props = { onSelect: (dataUri: string) => void; onError: (message: string) => void; label?: string };
+type Props = { onSelect: (dataUri: string) => void; onError: (message: string) => void; label?: string; compact?: boolean };
 
 async function prepareImage(file: File): Promise<string> {
   if (!file.type.startsWith('image/')) throw new Error('Choose an image file.');
@@ -35,7 +35,7 @@ async function prepareImage(file: File): Promise<string> {
   }
 }
 
-export function CoverImagePicker({ onSelect, onError, label = 'Restaurant cover image' }: Props) {
+export function CoverImagePicker({ onSelect, onError, label = 'Restaurant cover image', compact = false }: Props) {
   const input = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
 
@@ -45,6 +45,7 @@ export function CoverImagePicker({ onSelect, onError, label = 'Restaurant cover 
     catch (error) { onError(error instanceof Error ? error.message : 'Could not read this image.'); }
   };
 
+  if (compact) return <div><button type="button" aria-label="Change restaurant cover image" onClick={() => input.current?.click()} style={{ width: 44, height: 44, borderRadius: 22, border: 0, background: '#fff', color: '#302629', fontSize: 25, cursor: 'pointer' }}>✎</button><input ref={input} type="file" accept="image/*" hidden onChange={(event) => { void select(event.target.files?.[0]); event.target.value = ''; }} /></div>;
   return <div
     onDragOver={(event) => { event.preventDefault(); setDragging(true); }}
     onDragLeave={() => setDragging(false)}

@@ -1,4 +1,5 @@
 import { Stack } from 'expo-router';
+import { useFonts } from 'expo-font';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider, useAuth } from '@/context/AuthContext';
@@ -34,6 +35,8 @@ function SessionContent() {
 }
 
 export default function RootLayout() {
+  const [loaded, error] = useFonts({ LoveLight: require('../../assets/LoveLight-Regular.ttf') });
+  if (!loaded && !error) return null;
   return (
     <SafeAreaProvider>
       <AuthProvider>

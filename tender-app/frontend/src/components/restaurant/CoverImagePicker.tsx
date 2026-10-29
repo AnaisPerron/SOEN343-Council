@@ -1,8 +1,8 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-type Props = { onSelect: (dataUri: string) => void; onError: (message: string) => void; label?: string };
+type Props = { onSelect: (dataUri: string) => void; onError: (message: string) => void; label?: string; compact?: boolean };
 
-export function CoverImagePicker({ onSelect, onError, label = 'Restaurant cover image' }: Props) {
+export function CoverImagePicker({ onSelect, onError, label = 'Restaurant cover image', compact = false }: Props) {
   const pick = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], base64: true, quality: 0.7 });
@@ -15,6 +15,7 @@ export function CoverImagePicker({ onSelect, onError, label = 'Restaurant cover 
     }
   };
 
+  if (compact) return <Pressable accessibilityRole="button" accessibilityLabel="Change restaurant cover image" onPress={pick} style={styles.iconButton}><Text style={styles.icon}>✎</Text></Pressable>;
   return <View style={styles.box}>
     <Text style={styles.label}>{label}</Text>
     <Pressable accessibilityRole="button" onPress={pick} style={styles.button}>
@@ -28,4 +29,6 @@ const styles = StyleSheet.create({
   label: { color: '#302629', fontWeight: '700', marginBottom: 12 },
   button: { backgroundColor: '#D42F50', borderRadius: 9, paddingHorizontal: 16, paddingVertical: 10 },
   buttonText: { color: '#FFF', fontWeight: '700' },
+  iconButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center', elevation: 3 },
+  icon: { color: '#302629', fontSize: 25 },
 });
