@@ -4,6 +4,7 @@ import { afterEach, describe, it, mock } from 'node:test';
 import { login, logout, register, restoreSession, toRegisterRequest, updateProfile } from '../../api/auth.ts';
 import { API_URL } from '../../api/client.ts';
 import type { RegistrationInput } from '../../types/auth.ts';
+import { loadDemoRestaurantMenu } from '../../mocks/restaurantMenu.ts';
 
 const address = { country: 'Canada', city: 'Montreal', addressLine: '123 Main St' };
 const customer: RegistrationInput = {
@@ -131,6 +132,29 @@ describe('login api', () => {
       user: { id: 1, role: 'restaurant', name: 'Maple & Main', email: 'hello@maple.example',
         phoneNumber: '5145550199', restaurantId: 42, address: '123 Main St, Montreal, Canada' },
     });
+  });
+
+  it('uses the two demo restaurants only when the backend cannot be reached', async () => {
+    const fetchMock = mock.method(globalThis, 'fetch', async () => { throw new TypeError('fetch failed'); });
+    for (const [email, restaurant] of [['greenbowl@demo.test', 'Green Bowl Kitchen'], ['littleitaly@demo.test', 'Little Italy Pizza']]) {
+      const session = await login({ role: 'restaurant', email, password: 'DemoPass123!' });
+      assert.equal(session.user.name, restaurant);
+      assert.equal(session.user.role, 'restaurant');
+      const menu = loadDemoRestaurantMenu(session.token);
+      if (restaurant === 'Green Bowl Kitchen') assert.equal(menu?.items.length, 3);
+      else assert.equal(menu, null);
+      await logout(session.token);
+    }
+    assert.equal(fetchMock.mock.callCount(), 2);
+  });
+
+  it('does not accept demo credentials when the backend responds', async () => {
+    const fetchMock = mockFetch(401, { status: 401, message: 'Invalid email or password' });
+    await assert.rejects(
+      login({ role: 'restaurant', email: 'greenbowl@demo.test', password: 'DemoPass123!' }),
+      /Invalid email or password/,
+    );
+    assert.equal(fetchMock.mock.callCount(), 1);
   });
 
   it('rejects an account of a different role and ends its session', async () => {

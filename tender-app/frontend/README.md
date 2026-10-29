@@ -57,6 +57,19 @@ Start the app (from the web):
 npx expo start --web
 ```
 
+## Restaurant demo accounts
+
+Choose **Restaurant** on the sign-in screen. Both accounts use password `DemoPass123!`. They work only when the app cannot reach the backend. When the backend responds, sign-in uses its result and these mock credentials are not accepted unless matching accounts exist there.
+
+| Email | Restaurant | Starting menu |
+| --- | --- | --- |
+| `greenbowl@demo.test` | Green Bowl Kitchen | Three menu items ready to edit |
+| `littleitaly@demo.test` | Little Italy Pizza | No menu; use the create-menu prompt |
+
+Changes to each demo menu are saved separately. On web, they are stored in that browser's local storage. In Expo Go, they are kept for the current app session.
+
+The **Orders** dashboard link opens the local restaurant queue. Green Bowl Kitchen has sample orders across all nine statuses; Little Italy Pizza starts with no orders. Filter by status, open an order for customer and delivery details, accept or reject placed orders with a reason, start preparation, mark prepared orders ready, or select several orders to delete from the local queue. These actions are frontend-only and do not change backend orders.
+
 
 
 ## Troubleshooting: Expo Go version mismatch
