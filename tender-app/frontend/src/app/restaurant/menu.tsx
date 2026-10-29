@@ -10,7 +10,6 @@ import { CoverImagePicker } from '@/components/restaurant/CoverImagePicker';
 import { readSessionToken } from '@/context/sessionStorage';
 import { readRestaurantCover, writeRestaurantCover } from '@/storage/restaurantCover';
 import { clearRestaurantItemPhoto, readRestaurantItemPhoto, writeRestaurantItemPhoto } from '@/storage/restaurantItemPhoto';
-import { parseDeliveryFee } from '@/services/restaurant/deliveryFee';
 
 const newItem = (): MenuItem => ({ id: null, name: '', description: '', category: '', price: 0, status: 'available', photoUrl: null, options: [] });
 const emptyRestaurantMenu = (restaurantId: number, name: string): RestaurantMenu => ({ restaurantId, name, status: 'closed', address: '', deliveryFee: 0, coverUrl: null, menuName: '', items: [] });
@@ -22,7 +21,6 @@ export default function EditMenu() {
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const [menu, setMenu] = useState<RestaurantMenu | null>(null);
-  const [deliveryFeeInput, setDeliveryFeeInput] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -42,7 +40,6 @@ export default function EditMenu() {
   const createMenu = () => {
     const draft = emptyRestaurantMenu(user?.restaurantId ?? 0, user?.name ?? '');
     setMenu(draft);
-    setDeliveryFeeInput('');
     setMessage('');
   };
 
@@ -60,7 +57,6 @@ export default function EditMenu() {
       const localCover = readRestaurantCover(user.id);
       const withCover = localCover === undefined ? loaded : { ...loaded, coverUrl: localCover };
       setMenu(withLocalPhotos(withCover));
-      setDeliveryFeeInput(loaded.deliveryFee ? String(loaded.deliveryFee) : '');
     }).catch((error) => { if (active) setMessage(error instanceof Error ? error.message : 'Could not load menu.'); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
@@ -113,15 +109,13 @@ export default function EditMenu() {
   };
   const save = async () => {
     if (!menu || !token || saving) return;
-    const deliveryFee = parseDeliveryFee(deliveryFeeInput);
-    if (deliveryFee === null) { setMessage('Enter a nonnegative delivery fee with at most two decimal places.'); return; }
     if (!menu.name.trim() || !menu.menuName.trim() || menu.items.some((item) => !item.name.trim() || !item.category.trim() || item.price < 0 || item.options.some((option) => !option.name.trim() || option.additionalCost < 0))) {
       setMessage('Complete each name, category, and nonnegative price before saving.'); return;
     }
     setSaving(true); setMessage('');
     try {
         const existingIds = new Set(menu.items.map((item) => item.id).filter((id): id is number => id != null));
-        const saved = await saveRestaurantMenu(token, { ...menu, deliveryFee, coverUrl: backendCover.current, items: menu.items.map((item) => ({
+        const saved = await saveRestaurantMenu(token, { ...menu, coverUrl: backendCover.current, items: menu.items.map((item) => ({
           ...item,
           photoUrl: item.photoUrl?.startsWith('data:') ? (item.id == null ? null : backendPhotos.current.get(item.id) ?? null) : item.photoUrl,
         })) });
@@ -140,7 +134,6 @@ export default function EditMenu() {
         const localCover = user ? readRestaurantCover(user.id) : undefined;
         const withCover = localCover === undefined ? saved : { ...saved, coverUrl: localCover };
         setMenu(withLocalPhotos(withCover));
-        setDeliveryFeeInput(saved.deliveryFee ? String(saved.deliveryFee) : '');
         setMessage(photoStorageFull ? 'Menu saved. A photo is available for this session, but browser storage is full.' : 'Menu saved. Picked images stay on this device.');
     }
     catch (error) { setMessage(error instanceof Error ? error.message : 'Could not save menu.'); }
@@ -168,7 +161,6 @@ export default function EditMenu() {
       <View style={customerStyles.ratingLine}><Text style={customerStyles.muted}>Restaurant status</Text></View>
       <View style={local.chips}>{(['open', 'paused', 'closed'] as const).map((status) => <Chip key={status} label={status} selected={menu.status === status} onPress={() => update({ status })} />)}</View>
       <Field label="Address" value={menu.address ?? ''} placeholder="Street address" onChangeText={(address) => update({ address })} />
-      <Field label="Delivery fee ($)" value={deliveryFeeInput} placeholder="0.00" onChangeText={setDeliveryFeeInput} keyboardType="decimal-pad" />
       <Text style={local.coverNote}>Cover images stay on this device.</Text>
       {!!menu.coverUrl && <Pressable accessibilityRole="button" onPress={removeCover}><Text style={local.link}>Remove cover image</Text></Pressable>}
 
