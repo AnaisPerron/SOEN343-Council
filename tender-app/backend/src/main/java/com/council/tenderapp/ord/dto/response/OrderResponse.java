@@ -9,6 +9,7 @@ import com.council.tenderapp.ord.entities.OrderStatus;
 public class OrderResponse {
 
     private final Long id;
+    private final Long restaurantId;
     private final OrderStatus status;
     private final Date dateOrdered;
     private final Date acceptedAt;
@@ -18,6 +19,7 @@ public class OrderResponse {
 
     public OrderResponse(
         Long id,
+        Long restaurantId,
         OrderStatus status,
         Date dateOrdered,
         Date acceptedAt,
@@ -26,6 +28,7 @@ public class OrderResponse {
         List<OrderLineResponse> orderLines
     ) {
         this.id = id;
+        this.restaurantId = restaurantId;
         this.status = status;
         this.dateOrdered = dateOrdered == null ? null : new Date(dateOrdered.getTime());
         this.acceptedAt = acceptedAt == null ? null : new Date(acceptedAt.getTime());
@@ -37,6 +40,8 @@ public class OrderResponse {
     public Long getId() {
         return id;
     }
+
+    public Long getRestaurantId() { return restaurantId; }
 
     public OrderStatus getStatus() {
         return status;

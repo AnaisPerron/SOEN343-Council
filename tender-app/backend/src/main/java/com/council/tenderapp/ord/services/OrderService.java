@@ -208,6 +208,7 @@ public class OrderService {
             .toList();
         return new OrderResponse(
             order.getId(),
+            order.getRestaurantId(),
             order.getStatus(),
             order.getDateOrdered(),
             order.getAcceptedAt(),

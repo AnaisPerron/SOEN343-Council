@@ -6,6 +6,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -55,6 +56,19 @@ class OrderControllerTest {
 
     private String bearer(Role role) {
         return "Bearer " + sessionService.create(7L, role).token();
+    }
+
+    @Test
+    void historyUsesAuthenticatedCustomerAndRejectsOtherRoles() throws Exception {
+        when(orderService.getHistory(7L)).thenReturn(List.of());
+        mockMvc.perform(get(PLACE_ORDER).header(HttpHeaders.AUTHORIZATION, bearer(Role.CUSTOMER)))
+            .andExpect(status().isOk()).andExpect(jsonPath("$").isArray());
+        verify(orderService).getHistory(7L);
+        for (Role role : List.of(Role.COURIER, Role.STAFF, Role.OPERATOR)) {
+            mockMvc.perform(get(PLACE_ORDER).header(HttpHeaders.AUTHORIZATION, bearer(role)))
+                .andExpect(status().isForbidden());
+        }
+        mockMvc.perform(get(PLACE_ORDER)).andExpect(status().isUnauthorized());
     }
 
     @Test

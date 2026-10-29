@@ -52,7 +52,7 @@ export default function RestaurantOrders() {
         const data = await requestJson<{ id: number; status: string; dateOrdered: string; acceptedAt: string | null; rejectionReason: string | null; orderLines: { itemName: string; quantity: number; unitPrice: number }[] }[]>('GET', `/api/restaurants/${restaurantId}/orders`, undefined, token);
         if (!active) return;
         console.info('Restaurant orders loaded', { restaurantId, count: data.length });
-        setOrders(data.map((order) => ({ id: order.id, restaurantId, status: order.status.toLowerCase() as RestaurantOrderStatus, createdAt: order.dateOrdered, updatedAt: order.dateOrdered, acceptedAt: order.acceptedAt, rejectionReason: order.rejectionReason, customer: { name: 'Unavailable', address: 'Unavailable', phone: 'Unavailable' }, lines: order.orderLines.map((line) => ({ name: line.itemName, quantity: line.quantity, unitPrice: line.unitPrice, toppings: [] })) })));
+        setOrders(data.map((order) => ({ id: order.id, restaurantId, status: order.status.toLowerCase() as RestaurantOrderStatus, createdAt: order.dateOrdered, updatedAt: null, acceptedAt: order.acceptedAt, rejectionReason: order.rejectionReason, customer: { name: 'Unavailable', address: 'Unavailable', phone: 'Unavailable' }, lines: order.orderLines.map((line) => ({ name: line.itemName, quantity: line.quantity, unitPrice: line.unitPrice, toppings: [] })) })));
         setMessage('');
       } catch (error) { if (active) { console.error('Unable to load restaurant orders', error); setMessage(error instanceof Error ? error.message : 'Unable to load orders'); } }
     };
@@ -78,9 +78,9 @@ export default function RestaurantOrders() {
       const actions: Partial<Record<RestaurantOrderStatus, string>> = { accepted: 'accept', rejected: 'reject', preparing: 'prepare', ready: 'ready', picked_up: 'picked-up', delivered: 'delivered' };
       const action = actions[nextStatus];
       if (!action) throw new Error('This status change is not available.');
-      await requestJson('POST', `/api/restaurants/${restaurantId}/orders/${target.id}/${action}`, nextStatus === 'rejected' ? { reason: reason?.trim() || null } : undefined, token);
+      const updated = await requestJson<{ status: string; acceptedAt: string | null; rejectionReason: string | null }>('POST', `/api/restaurants/${restaurantId}/orders/${target.id}/${action}`, nextStatus === 'rejected' ? { reason: reason?.trim() || null } : undefined, token);
       console.info('Restaurant order status updated', { orderId: target.id, status: nextStatus });
-      setOrders((current) => current.map((order) => order.id === target.id ? { ...order, status: nextStatus, rejectionReason: nextStatus === 'rejected' ? reason?.trim() || null : order.rejectionReason } : order));
+      setOrders((current) => current.map((order) => order.id === target.id ? { ...order, status: updated.status.toLowerCase() as RestaurantOrderStatus, acceptedAt: updated.acceptedAt, rejectionReason: updated.rejectionReason } : order));
       if (nextStatus === 'rejected') { setToast(`Order #${target.id} was rejected.`); setDetailId(null); }
       setRejecting(false);
       setRejectionReason('');
@@ -171,7 +171,6 @@ export default function RestaurantOrders() {
           <View style={styles.divider} />
           <Info label="Placed" value={dateTime(detail.createdAt)} />
           {detail.acceptedAt && <Info label="Accepted" value={dateTime(detail.acceptedAt)} />}
-          <Info label="Last updated" value={dateTime(detail.updatedAt)} />
           <Info label="Customer" value={detail.customer.name} />
           <Info label="Delivery address" value={detail.customer.address} />
           <Info label="Contact" value={detail.customer.phone} />

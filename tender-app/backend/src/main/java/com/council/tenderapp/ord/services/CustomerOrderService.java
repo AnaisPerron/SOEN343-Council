@@ -29,6 +29,8 @@ import com.council.tenderapp.ord.repositories.OrderRepository;
 import com.council.tenderapp.technicalservices.payment.PaymentDeclinedException;
 import com.council.tenderapp.technicalservices.payment.PaymentGateway;
 import com.council.tenderapp.technicalservices.payment.PaymentResult;
+import com.council.tenderapp.ord.dto.response.OrderResponse;
+import com.council.tenderapp.ord.dto.response.OrderLineResponse;
 
 @Service
 public class CustomerOrderService {
@@ -46,6 +48,17 @@ public class CustomerOrderService {
         this.orderRepository = orderRepository;
         this.paymentGateway = paymentGateway;
         this.preparationQueueService = preparationQueueService;
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getHistory(Long customerId) {
+        return orderRepository.findByCustomerIdOrderByDateOrderedDescIdDesc(customerId).stream()
+            .map(order -> new OrderResponse(order.getId(), order.getRestaurantId(), order.getStatus(),
+                order.getDateOrdered(), order.getAcceptedAt(),
+                order.getRejectionReason(), order.getTotalPrice(), order.getOrderLines().stream()
+                    .map(line -> new OrderLineResponse(line.getMenuItem().getName(), line.getQuantity(), line.getUnitPrice()))
+                    .toList()))
+            .toList();
     }
 
     @Transactional

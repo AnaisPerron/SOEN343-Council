@@ -14,21 +14,20 @@ type OrderPhase = 'review' | 'submitting' | 'success';
 
 export default function ConfirmOrderScreen() {
   const router = useRouter();
-  const { lines, clearCart } = useCart();
-  const { orders, placeOrders, cancelOrder } = useOrders();
+  const { lines, setQuantity } = useCart();
+  const { orders, placeOrder, cancelOrder } = useOrders();
   const [phase, setPhase] = useState<OrderPhase>('review');
   const [placedIds, setPlacedIds] = useState<string[]>([]);
   const [restriction, setRestriction] = useState<RestaurantOrderRestriction | null>(null);
+  const [submitError, setSubmitError] = useState('');
   const [successOpacity] = useState(() => new Animated.Value(0));
   const [successScale] = useState(() => new Animated.Value(0.88));
-  const submitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sending = useRef(false);
   const groups = groupCartLinesByRestaurant(lines);
   const total = groups.reduce((sum, group) => sum + group.total, 0);
   const placedOrders = orders.filter((order) => placedIds.includes(order.id));
 
   useEffect(() => () => {
-    if (submitTimer.current) clearTimeout(submitTimer.current);
     successOpacity.stopAnimation();
     successScale.stopAnimation();
   }, [successOpacity, successScale]);
@@ -37,7 +36,7 @@ export default function ConfirmOrderScreen() {
     ? router.replace('/customer/home/home')
     : router.canGoBack() ? router.back() : router.replace('/customer/cart/cart');
 
-  const sendOrders = () => {
+  const sendOrders = async () => {
     if (sending.current || phase !== 'review' || lines.length === 0) return;
     const blocked = getCartOrderRestriction(groups.map((group) => group.restaurantId), restaurantsMock);
     if (blocked) {
@@ -46,20 +45,30 @@ export default function ConfirmOrderScreen() {
     }
 
     setRestriction(null);
+    setSubmitError('');
+    if (groups.some((group) => group.lines.some((line) => line.optionIds.length > 0))) {
+      setSubmitError('Ordering items with options is not supported yet. Remove the options before ordering.');
+      return;
+    }
     sending.current = true;
     setPhase('submitting');
-    // TODO: Send each restaurant's order to the backend when its order endpoint is available.
-    // This demo delay creates local order records without making a request.
-    submitTimer.current = setTimeout(() => {
-      const placed = placeOrders(groups);
-      setPlacedIds(placed.map((order) => order.id));
-      clearCart();
+    const submitted: string[] = [];
+    try {
+      for (const group of groups) {
+        const placed = await placeOrder(group);
+        submitted.push(placed.id);
+        group.lines.forEach((line) => setQuantity(line.key, 0));
+      }
+      setPlacedIds(submitted);
       setPhase('success');
       Animated.parallel([
         Animated.timing(successOpacity, { toValue: 1, duration: 280, useNativeDriver: true }),
         Animated.spring(successScale, { toValue: 1, friction: 6, tension: 75, useNativeDriver: true }),
       ]).start();
-    }, 1100);
+    } catch (error) {
+      setSubmitError(`${submitted.length ? `${submitted.length} order(s) were placed. Remaining items are still in your cart. ` : ''}${error instanceof Error ? error.message : 'Could not place the order.'}`);
+      setPhase('review');
+    } finally { sending.current = false; }
   };
 
   return (
@@ -91,7 +100,7 @@ export default function ConfirmOrderScreen() {
                 <View style={styles.statusStep}><View style={styles.statusDotFuture} /><Text style={styles.statusFuture}>Accepted or rejected</Text></View>
                 <View style={styles.statusStep}><View style={styles.statusDotPreparing} /><Text style={styles.statusFuture}>Preparing</Text></View>
                 <View style={styles.statusStep}><View style={styles.statusDotReady} /><Text style={styles.statusFuture}>Ready</Text></View>
-                <TouchableOpacity style={styles.cancelButton} accessibilityRole="button" accessibilityLabel={`Cancel order for ${restaurant?.name ?? 'Restaurant'}`} onPress={() => cancelOrder(order.id)}><Text style={styles.cancelButtonText}>Cancel order</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.cancelButton} accessibilityRole="button" accessibilityLabel={`Cancel order for ${restaurant?.name ?? 'Restaurant'}`} onPress={() => { void cancelOrder(order.id).catch((error) => setSubmitError(error instanceof Error ? error.message : 'Could not cancel order.')); }}><Text style={styles.cancelButtonText}>Cancel order</Text></TouchableOpacity>
               </>}
             </View>;
           })}
@@ -131,8 +140,9 @@ export default function ConfirmOrderScreen() {
         </ScrollView>
       )}
 
+      {!!submitError && <View style={styles.restrictionPanel} accessibilityRole="alert"><Text style={styles.restrictionText}>{submitError}</Text></View>}
       <View style={styles.footer}>
-        {phase === 'success' ? (
+      {phase === 'success' ? (
           <TouchableOpacity style={styles.sendButton} accessibilityRole="button" onPress={() => router.replace('/customer/home/home')}><Text style={styles.sendButtonText}>Browse restaurants</Text></TouchableOpacity>
         ) : (
           <TouchableOpacity style={[styles.sendButton, (phase === 'submitting' || lines.length === 0) && styles.sendButtonDisabled]} accessibilityRole="button" accessibilityLabel="Send orders" accessibilityState={{ disabled: phase === 'submitting' || lines.length === 0, busy: phase === 'submitting' }} disabled={phase === 'submitting' || lines.length === 0} onPress={sendOrders}>

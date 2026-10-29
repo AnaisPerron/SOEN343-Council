@@ -19,7 +19,7 @@ export type RestaurantOrder = {
   status: RestaurantOrderStatus;
   createdAt: string;
   acceptedAt: string | null;
-  updatedAt: string;
+  updatedAt: string | null;
   rejectionReason: string | null;
   customer: { name: string; address: string; phone: string };
   lines: RestaurantOrderLine[];
