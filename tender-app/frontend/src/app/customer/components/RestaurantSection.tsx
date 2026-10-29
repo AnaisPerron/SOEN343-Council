@@ -21,7 +21,7 @@ export default function RestaurantSection({
   index,
   onRestaurantPress,
 }: RestaurantSectionProps) {
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const scrollBy = (direction: number) => {
     scrollRef.current?.scrollTo({ x: direction * 430, animated: true });
   };

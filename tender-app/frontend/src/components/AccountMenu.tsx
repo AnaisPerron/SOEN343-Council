@@ -8,7 +8,7 @@ export default function AccountMenu() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 44, right: 0 });
-  const anchor = useRef<View>(null);
+  const anchor = useRef<React.ComponentRef<typeof View>>(null);
   const { width: screenWidth } = useWindowDimensions();
   if (!user) return null;
 

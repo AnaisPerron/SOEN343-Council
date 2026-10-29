@@ -96,7 +96,7 @@ export default function RestaurantDetails() {
   const cartCount = lines.reduce((count, line) => count + line.quantity, 0);
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const sectionOffsets = useRef<Record<string, number>>({});
   const [infoHeight, setInfoHeight] = useState(0);
   const [stickyVisible, setStickyVisible] = useState(false);
