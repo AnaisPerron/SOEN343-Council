@@ -10,6 +10,7 @@ import { CoverImagePicker } from '@/components/restaurant/CoverImagePicker';
 import { readSessionToken } from '@/context/sessionStorage';
 import { readRestaurantCover, writeRestaurantCover } from '@/storage/restaurantCover';
 import { clearRestaurantItemPhoto, readRestaurantItemPhoto, writeRestaurantItemPhoto } from '@/storage/restaurantItemPhoto';
+import { parseDeliveryFee } from '@/services/restaurant/deliveryFee';
 
 const newItem = (): MenuItem => ({ id: null, name: '', description: '', category: '', price: 0, status: 'available', photoUrl: null, options: [] });
 const emptyRestaurantMenu = (restaurantId: number, name: string): RestaurantMenu => ({ restaurantId, name, status: 'closed', address: '', deliveryFee: 0, coverUrl: null, menuName: '', items: [] });
@@ -21,6 +22,7 @@ export default function EditMenu() {
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const [menu, setMenu] = useState<RestaurantMenu | null>(null);
+  const [deliveryFeeInput, setDeliveryFeeInput] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -40,6 +42,7 @@ export default function EditMenu() {
   const createMenu = () => {
     const draft = emptyRestaurantMenu(user?.restaurantId ?? 0, user?.name ?? '');
     setMenu(draft);
+    setDeliveryFeeInput('');
     setMessage('');
   };
 
@@ -57,6 +60,7 @@ export default function EditMenu() {
       const localCover = readRestaurantCover(user.id);
       const withCover = localCover === undefined ? loaded : { ...loaded, coverUrl: localCover };
       setMenu(withLocalPhotos(withCover));
+      setDeliveryFeeInput(loaded.deliveryFee ? String(loaded.deliveryFee) : '');
     }).catch((error) => { if (active) setMessage(error instanceof Error ? error.message : 'Could not load menu.'); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
@@ -109,13 +113,15 @@ export default function EditMenu() {
   };
   const save = async () => {
     if (!menu || !token || saving) return;
+    const deliveryFee = parseDeliveryFee(deliveryFeeInput);
+    if (deliveryFee === null) { setMessage('Enter a nonnegative delivery fee with at most two decimal places.'); return; }
     if (!menu.name.trim() || !menu.menuName.trim() || menu.items.some((item) => !item.name.trim() || !item.category.trim() || item.price < 0 || item.options.some((option) => !option.name.trim() || option.additionalCost < 0))) {
       setMessage('Complete each name, category, and nonnegative price before saving.'); return;
     }
     setSaving(true); setMessage('');
     try {
         const existingIds = new Set(menu.items.map((item) => item.id).filter((id): id is number => id != null));
-        const saved = await saveRestaurantMenu(token, { ...menu, coverUrl: backendCover.current, items: menu.items.map((item) => ({
+        const saved = await saveRestaurantMenu(token, { ...menu, deliveryFee, coverUrl: backendCover.current, items: menu.items.map((item) => ({
           ...item,
           photoUrl: item.photoUrl?.startsWith('data:') ? (item.id == null ? null : backendPhotos.current.get(item.id) ?? null) : item.photoUrl,
         })) });
@@ -134,6 +140,7 @@ export default function EditMenu() {
         const localCover = user ? readRestaurantCover(user.id) : undefined;
         const withCover = localCover === undefined ? saved : { ...saved, coverUrl: localCover };
         setMenu(withLocalPhotos(withCover));
+        setDeliveryFeeInput(saved.deliveryFee ? String(saved.deliveryFee) : '');
         setMessage(photoStorageFull ? 'Menu saved. A photo is available for this session, but browser storage is full.' : 'Menu saved. Picked images stay on this device.');
     }
     catch (error) { setMessage(error instanceof Error ? error.message : 'Could not save menu.'); }
@@ -152,17 +159,16 @@ export default function EditMenu() {
   </View>;
   const coverHeight = Math.max(290, Math.min(height * 0.39, 390));
   const categories = [...new Set(menu.items.map((item) => item.category.trim() || 'Menu'))];
-  return <DetailPage title={menu.name} cover={menu.coverUrl ? { uri: menu.coverUrl } : undefined} coverHeight={coverHeight} foreground={<View style={[local.topBar, { top: insets.top + 12 }]}>
+  return <DetailPage title={menu.name} cover={menu.coverUrl ? { uri: menu.coverUrl } : undefined} coverHeight={coverHeight} foreground={<><View style={[local.topBar, { top: insets.top + 12 }]}>
     <Pressable style={local.topButton} accessibilityRole="button" onPress={() => router.back()}><Text style={local.topButtonText}>‹</Text></Pressable>
     <Pressable style={local.saveButton} accessibilityRole="button" accessibilityState={{ disabled: saving }} disabled={saving} onPress={save}><Text style={local.saveText}>{saving ? 'Saving…' : 'Save menu'}</Text></Pressable>
-  </View>}>
+  </View><View style={{ position: 'absolute', top: coverHeight - 58, right: 18 }}><CoverImagePicker compact onSelect={selectCover} onError={setMessage} /></View></>}>
     <View style={customerStyles.info}>
       <Field label="Restaurant name" value={menu.name} placeholder="Your restaurant name" onChangeText={(name) => update({ name })} large />
       <View style={customerStyles.ratingLine}><Text style={customerStyles.muted}>Restaurant status</Text></View>
       <View style={local.chips}>{(['open', 'paused', 'closed'] as const).map((status) => <Chip key={status} label={status} selected={menu.status === status} onPress={() => update({ status })} />)}</View>
       <Field label="Address" value={menu.address ?? ''} placeholder="Street address" onChangeText={(address) => update({ address })} />
-      <Field label="Delivery fee ($)" value={menu.deliveryFee ? String(menu.deliveryFee) : ''} placeholder="0.00" onChangeText={(value) => update({ deliveryFee: Number(value) || 0 })} keyboardType="decimal-pad" />
-      <CoverImagePicker onSelect={selectCover} onError={setMessage} />
+      <Field label="Delivery fee ($)" value={deliveryFeeInput} placeholder="0.00" onChangeText={setDeliveryFeeInput} keyboardType="decimal-pad" />
       <Text style={local.coverNote}>Cover images stay on this device.</Text>
       {!!menu.coverUrl && <Pressable accessibilityRole="button" onPress={removeCover}><Text style={local.link}>Remove cover image</Text></Pressable>}
 
@@ -214,5 +220,5 @@ function Chip({ label, selected, onPress }: { label: string; selected: boolean; 
   return <Pressable accessibilityRole="button" accessibilityState={{ selected }} onPress={onPress} style={[local.chip, selected && local.selectedChip]}><Text style={[local.chipText, selected && local.selectedChipText]}>{label}</Text></Pressable>;
 }
 const local = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, paddingHorizontal: 24, backgroundColor: '#FFF' }, emptyTitle: { color: '#302629', fontSize: 22, fontWeight: '800', textAlign: 'center' }, emptyDetail: { color: '#887B7E', textAlign: 'center' }, emptyItems: { color: '#887B7E', marginTop: 20 }, coverNote: { color: '#887B7E', fontSize: 12, marginTop: 8 }, topBar: { position: 'absolute', left: 18, right: 18, flexDirection: 'row', justifyContent: 'space-between' }, topButton: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#302629', alignItems: 'center', justifyContent: 'center' }, topButtonText: { color: '#FFF', fontSize: 30 }, saveButton: { backgroundColor: '#D42F50', paddingHorizontal: 18, justifyContent: 'center', borderRadius: 21 }, saveText: { color: '#FFF', fontWeight: '800' }, field: { marginTop: 15 }, label: { color: '#887B7E', fontSize: 11, fontWeight: '700', marginBottom: 6 }, input: { borderWidth: 1, borderColor: '#EDE6E6', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, color: '#302629', fontSize: 14, backgroundColor: '#FFF' }, largeInput: { fontSize: 25, fontWeight: '800' }, chips: { flexDirection: 'row', gap: 8, marginTop: 8 }, chip: { borderRadius: 16, backgroundColor: '#F7F3F3', paddingHorizontal: 13, paddingVertical: 8 }, selectedChip: { backgroundColor: '#D42F50' }, chipText: { color: '#887B7E', fontSize: 12, fontWeight: '700', textTransform: 'capitalize' }, selectedChipText: { color: '#FFF' }, editHint: { color: '#D42F50', fontSize: 11, fontWeight: '700', marginTop: 7 }, editor: { backgroundColor: '#FFF8F9', borderRadius: 18, padding: 18, marginVertical: 20 }, subheading: { fontSize: 18, fontWeight: '800', color: '#302629', marginTop: 24 }, optionRow: { flexDirection: 'row', gap: 12 }, optionName: { flex: 2 }, optionPrice: { flex: 1 }, link: { color: '#D42F50', fontWeight: '800', marginTop: 15 }, addButton: { borderWidth: 1, borderColor: '#D42F50', borderRadius: 14, alignItems: 'center', padding: 14, marginTop: 15 }, addText: { color: '#D42F50', fontWeight: '800' }, message: { color: '#302629', marginTop: 16 }, bottomSave: { backgroundColor: '#D42F50', borderRadius: 14, alignItems: 'center', padding: 16, marginVertical: 20 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, paddingHorizontal: 24, backgroundColor: '#FFF' }, emptyTitle: { color: '#302629', fontSize: 22, fontWeight: '800', textAlign: 'center' }, emptyDetail: { color: '#887B7E', textAlign: 'center' }, emptyItems: { color: '#887B7E', marginTop: 20 }, coverNote: { color: '#887B7E', fontSize: 12, marginTop: 8 }, topBar: { position: 'absolute', left: 18, right: 18, flexDirection: 'row', justifyContent: 'space-between' }, topButton: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#302629', alignItems: 'center', justifyContent: 'center' }, topButtonText: { color: '#FFF', fontSize: 30 }, saveButton: { backgroundColor: '#D42F50', paddingHorizontal: 18, justifyContent: 'center', borderRadius: 21 }, saveText: { color: '#FFF', fontWeight: '800' }, field: { marginTop: 15 }, label: { color: '#887B7E', fontSize: 11, fontWeight: '700', marginBottom: 6 }, input: { borderWidth: 1, borderColor: '#EDE6E6', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, color: '#302629', fontSize: 14, backgroundColor: '#FFF' }, largeInput: { fontFamily: 'LoveLight', fontSize: 38, fontWeight: '400' }, chips: { flexDirection: 'row', gap: 8, marginTop: 8 }, chip: { borderRadius: 16, backgroundColor: '#F7F3F3', paddingHorizontal: 13, paddingVertical: 8 }, selectedChip: { backgroundColor: '#D42F50' }, chipText: { color: '#887B7E', fontSize: 12, fontWeight: '700', textTransform: 'capitalize' }, selectedChipText: { color: '#FFF' }, editHint: { color: '#D42F50', fontSize: 11, fontWeight: '700', marginTop: 7 }, editor: { backgroundColor: '#FFF8F9', borderRadius: 18, padding: 18, marginVertical: 20 }, subheading: { fontSize: 18, fontWeight: '800', color: '#302629', marginTop: 24 }, optionRow: { flexDirection: 'row', gap: 12 }, optionName: { flex: 2 }, optionPrice: { flex: 1 }, link: { color: '#D42F50', fontWeight: '800', marginTop: 15 }, addButton: { borderWidth: 1, borderColor: '#D42F50', borderRadius: 14, alignItems: 'center', padding: 14, marginTop: 15 }, addText: { color: '#D42F50', fontWeight: '800' }, message: { color: '#302629', marginTop: 16 }, bottomSave: { backgroundColor: '#D42F50', borderRadius: 14, alignItems: 'center', padding: 16, marginVertical: 20 },
 });
