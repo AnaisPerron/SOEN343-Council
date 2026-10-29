@@ -1,23 +1,23 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DetailPage } from '../customer/components/DetailPage';
 import { styles as customerStyles } from '../customer/restaurant/restaurant.styles';
 import { useAuth } from '@/context/AuthContext';
 import { loadRestaurantMenu, saveRestaurantMenu, type MenuItem, type RestaurantMenu } from '@/api/restaurantMenu';
-import { emptyRestaurantMenu } from '@/mocks/restaurantMenu';
-import { demoRestaurantForToken, isDemoRestaurantToken } from '@/mocks/restaurantAccount';
 import { CoverImagePicker } from '@/components/restaurant/CoverImagePicker';
+import { readSessionToken } from '@/context/sessionStorage';
 import { readRestaurantCover, writeRestaurantCover } from '@/storage/restaurantCover';
 import { clearRestaurantItemPhoto, readRestaurantItemPhoto, writeRestaurantItemPhoto } from '@/storage/restaurantItemPhoto';
 
 const newItem = (): MenuItem => ({ id: null, name: '', description: '', category: '', price: 0, status: 'available', photoUrl: null, options: [] });
+const emptyRestaurantMenu = (restaurantId: number, name: string): RestaurantMenu => ({ restaurantId, name, status: 'closed', address: '', deliveryFee: 0, coverUrl: null, menuName: '', items: [] });
 const money = (value: number) => Number.isFinite(value) ? value.toFixed(2) : '0.00';
 
 export default function EditMenu() {
   const router = useRouter();
-  const { user, token } = useAuth();
+  const { user, ready } = useAuth();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const [menu, setMenu] = useState<RestaurantMenu | null>(null);
@@ -25,34 +25,42 @@ export default function EditMenu() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [expanded, setExpanded] = useState<number | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const backendCover = useRef<string | null>(null);
   const backendPhotos = useRef(new Map<number, string | null>());
 
-  const withLocalPhotos = (loaded: RestaurantMenu): RestaurantMenu => ({
+  const withLocalPhotos = useCallback((loaded: RestaurantMenu): RestaurantMenu => ({
     ...loaded,
     items: loaded.items.map((item) => {
       const localPhoto = item.id == null || !user ? undefined : readRestaurantItemPhoto(user.id, item.id);
       return localPhoto === undefined ? item : { ...item, photoUrl: localPhoto };
     }),
-  });
+  }), [user?.id]);
 
   const createMenu = () => {
-    const demo = token ? demoRestaurantForToken(token) : null;
-    const draft = emptyRestaurantMenu(demo?.restaurantId ?? 0, demo?.name ?? user?.name ?? '');
+    const draft = emptyRestaurantMenu(user?.restaurantId ?? 0, user?.name ?? '');
     setMenu(draft);
     setMessage('');
   };
 
   useEffect(() => {
-    if (!token || user?.role !== 'restaurant') { router.replace('/auth/login'); return; }
-    loadRestaurantMenu(token).then((loaded) => {
+    if (!ready || user?.role !== 'restaurant') return;
+    let active = true;
+    readSessionToken().then((sessionToken) => {
+      if (active) setToken(sessionToken);
+      if (!sessionToken) throw new Error('Please sign in again');
+      return loadRestaurantMenu(sessionToken);
+    }).then((loaded) => {
+      if (!loaded || !active) return;
       backendCover.current = loaded.coverUrl;
       backendPhotos.current = new Map(loaded.items.filter((item) => item.id != null).map((item) => [item.id!, item.photoUrl]));
-      const localCover = isDemoRestaurantToken(token) ? undefined : readRestaurantCover(user.id);
+      const localCover = readRestaurantCover(user.id);
       const withCover = localCover === undefined ? loaded : { ...loaded, coverUrl: localCover };
-      setMenu(isDemoRestaurantToken(token) ? withCover : withLocalPhotos(withCover));
-    }).catch((error) => setMessage(error.message)).finally(() => setLoading(false));
-  }, [token, user?.role, user?.id, router]);
+      setMenu(withLocalPhotos(withCover));
+    }).catch((error) => { if (active) setMessage(error instanceof Error ? error.message : 'Could not load menu.'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [ready, user?.role, user?.id, withLocalPhotos]);
 
   const update = (changes: Partial<RestaurantMenu>) => setMenu((current) => current && { ...current, ...changes });
   const updateItem = (index: number, changes: Partial<MenuItem>) => setMenu((current) => current && {
@@ -61,25 +69,21 @@ export default function EditMenu() {
   const selectCover = (dataUri: string) => {
     if (!token || !user) return;
     setMessage('');
-    if (!isDemoRestaurantToken(token)) {
-      try { writeRestaurantCover(user.id, dataUri); }
-      catch { setMessage('Image selected for this session, but browser storage is full.'); }
-    }
+    try { writeRestaurantCover(user.id, dataUri); }
+    catch { setMessage('Image selected for this session, but browser storage is full.'); }
     update({ coverUrl: dataUri });
   };
   const removeCover = () => {
     if (!token || !user) return;
-    if (!isDemoRestaurantToken(token)) {
-      try { writeRestaurantCover(user.id, null); }
-      catch { setMessage('Cover removed for this session, but browser storage is full.'); }
-    }
+    try { writeRestaurantCover(user.id, null); }
+    catch { setMessage('Cover removed for this session, but browser storage is full.'); }
     update({ coverUrl: null });
   };
   const selectItemPhoto = (index: number, dataUri: string) => {
     if (!token || !user || !menu) return;
     setMessage('');
     const itemId = menu.items[index]?.id;
-    if (!isDemoRestaurantToken(token) && itemId != null) {
+    if (itemId != null) {
       try { writeRestaurantItemPhoto(user.id, itemId, dataUri); }
       catch { setMessage('Image selected for this session, but browser storage is full.'); }
     }
@@ -88,7 +92,7 @@ export default function EditMenu() {
   const changeItemPhotoUrl = (index: number, photoUrl: string) => {
     if (!token || !user || !menu) return;
     const itemId = menu.items[index]?.id;
-    if (!isDemoRestaurantToken(token) && itemId != null) {
+    if (itemId != null) {
       try { clearRestaurantItemPhoto(user.id, itemId); }
       catch { setMessage('Photo URL changed for this session, but browser storage is unavailable.'); }
     }
@@ -97,7 +101,7 @@ export default function EditMenu() {
   const removeItemPhoto = (index: number) => {
     if (!token || !user || !menu) return;
     const itemId = menu.items[index]?.id;
-    if (!isDemoRestaurantToken(token) && itemId != null) {
+    if (itemId != null) {
       try { writeRestaurantItemPhoto(user.id, itemId, null); }
       catch { setMessage('Photo removed for this session, but browser storage is full.'); }
     }
@@ -110,10 +114,6 @@ export default function EditMenu() {
     }
     setSaving(true); setMessage('');
     try {
-      if (isDemoRestaurantToken(token)) {
-        setMenu(await saveRestaurantMenu(token, menu));
-        setMessage('Demo menu saved locally.');
-      } else {
         const existingIds = new Set(menu.items.map((item) => item.id).filter((id): id is number => id != null));
         const saved = await saveRestaurantMenu(token, { ...menu, coverUrl: backendCover.current, items: menu.items.map((item) => ({
           ...item,
@@ -135,12 +135,14 @@ export default function EditMenu() {
         const withCover = localCover === undefined ? saved : { ...saved, coverUrl: localCover };
         setMenu(withLocalPhotos(withCover));
         setMessage(photoStorageFull ? 'Menu saved. A photo is available for this session, but browser storage is full.' : 'Menu saved. Picked images stay on this device.');
-      }
     }
     catch (error) { setMessage(error instanceof Error ? error.message : 'Could not save menu.'); }
     finally { setSaving(false); }
   };
 
+  if (!ready) return <View style={local.center}><ActivityIndicator color="#D42F50" /></View>;
+  if (!user) return <Redirect href="/auth/login" />;
+  if (user.role !== 'restaurant') return <Redirect href="/account" />;
   if (loading) return <View style={local.center}><ActivityIndicator color="#D42F50" /></View>;
   if (!menu) return <View style={local.center}>
     <Text style={local.emptyTitle}>We couldn&apos;t fetch a menu for your restaurant.</Text>
