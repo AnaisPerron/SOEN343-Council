@@ -39,7 +39,7 @@ class RegistrationServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new RegistrationService(repository, passwordEncoder);
+        service = new RegistrationService(repository, passwordEncoder, null, null);
     }
 
     @Test
