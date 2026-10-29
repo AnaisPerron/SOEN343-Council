@@ -13,6 +13,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
+import com.council.tenderapp.reg.services.SessionService;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
@@ -34,6 +36,8 @@ class ProfileControllerTest {
 
     @Mock private RestaurantRepository restaurants;
     @Mock private RestaurantStaffRepository restaurantStaff;
+    @Mock private JdbcTemplate jdbc;
+    @Mock private SessionService sessions;
 
     private ProfileController controller;
     private Profile profile;
@@ -41,7 +45,7 @@ class ProfileControllerTest {
 
     @BeforeEach
     void setUp() {
-        controller = new ProfileController(profiles, restaurants, restaurantStaff);
+        controller = new ProfileController(profiles, restaurants, restaurantStaff, jdbc, sessions);
         profile = new Profile(Role.CUSTOMER, "Jane", "jane@example.com", "saved-hash", "514-555-0101");
         ReflectionTestUtils.setField(profile, "id", 7L);
         authentication = new UsernamePasswordAuthenticationToken(7L, null);

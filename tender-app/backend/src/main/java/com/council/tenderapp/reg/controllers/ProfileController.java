@@ -13,6 +13,11 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import com.council.tenderapp.reg.services.SessionService;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -27,12 +32,42 @@ public class ProfileController {
     private final ProfileRepository profiles;
     private final RestaurantRepository restaurants;
     private final RestaurantStaffRepository restaurantStaff;
+    private final JdbcTemplate jdbc;
+    private final SessionService sessions;
 
     public ProfileController(ProfileRepository profiles, RestaurantRepository restaurants,
-            RestaurantStaffRepository restaurantStaff) {
+            RestaurantStaffRepository restaurantStaff, JdbcTemplate jdbc, SessionService sessions) {
         this.profiles = profiles;
         this.restaurants = restaurants;
         this.restaurantStaff = restaurantStaff;
+        this.jdbc = jdbc;
+        this.sessions = sessions;
+    }
+
+    @Transactional
+    @DeleteMapping
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(Authentication authentication) {
+        Profile profile = currentProfile(authentication);
+        if (profile.getRole() == Role.OPERATOR) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Operator accounts cannot be deleted here");
+        Long id = profile.getId();
+        if (profile.getRole() == Role.CUSTOMER) {
+            jdbc.update("DELETE FROM order_line_options WHERE order_line_id IN (SELECT id FROM order_lines WHERE order_id IN (SELECT id FROM orders WHERE customer_id = ?))", id);
+            jdbc.update("DELETE FROM order_lines WHERE order_id IN (SELECT id FROM orders WHERE customer_id = ?)", id);
+            jdbc.update("DELETE FROM order_items WHERE order_id IN (SELECT id FROM orders WHERE customer_id = ?)", id);
+            jdbc.update("DELETE FROM orders WHERE customer_id = ?", id);
+            jdbc.update("DELETE FROM customer_profiles WHERE user_id = ?", id);
+        } else if (profile.getRole() == Role.COURIER) {
+            jdbc.update("UPDATE orders SET courier_id = NULL WHERE courier_id = ?", id);
+            jdbc.update("DELETE FROM courier_profiles WHERE user_id = ?", id);
+        } else {
+            jdbc.update("DELETE FROM restaurant_staff WHERE user_id = ?", id);
+        }
+        profiles.delete(profile);
+        profiles.flush();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override public void afterCommit() { sessions.invalidateAccount(id); }
+        });
     }
 
     @GetMapping
