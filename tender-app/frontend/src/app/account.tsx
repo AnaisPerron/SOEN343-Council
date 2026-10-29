@@ -9,9 +9,10 @@ export default function AccountHome() {
   if (!ready) return <SafeAreaView style={styles.page}><ActivityIndicator color="#D42F50" /></SafeAreaView>;
   if (!user) return <Redirect href="/auth/login" />;
   if (user.role === 'customer') return <Redirect href="/customer/home/home" />;
+  if (user.role === 'restaurant') return <Redirect href="/restaurant" />;
   return <SafeAreaView style={styles.page}>
     <View style={styles.header}><Text style={styles.brand}>Tender</Text><AccountMenu /></View>
-    <View style={styles.content}><Text style={styles.title}>Welcome, {user.name}</Text><Text style={styles.subtitle}>{user.role === 'Operator' ? 'Operator' : user.role === 'restaurant' ? 'Restaurant' : 'Courier'} account</Text></View>
+    <View style={styles.content}><Text style={styles.title}>Welcome, {user.name}</Text><Text style={styles.subtitle}>{user.role === 'Operator' ? 'Operator' : 'Courier'} account</Text></View>
   </SafeAreaView>;
 }
 

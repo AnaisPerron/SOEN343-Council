@@ -16,6 +16,7 @@ export const ROLE_OPTIONS: { value: Role; label: string }[] = [
 
 type AuthContextValue = {
   user: AuthUser | null;
+  token: string | null;
   ready: boolean;
   signIn: (input: SignInInput) => Promise<void>;
   signUp: (input: RegistrationInput) => Promise<void>;
@@ -53,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AuthContextValue>(
     () => ({
       user: session?.user ?? null,
+      token: session?.token ?? null,
       ready,
       signIn: async (input) => {
         const signedIn = await login(input);

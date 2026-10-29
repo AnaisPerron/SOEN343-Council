@@ -38,7 +38,7 @@ function LoginForm({ role }: { role: Role }) {
     setLoading(true);
     try {
       await signIn({ role, email: email.trim(), password });
-      router.replace(role === 'customer' ? '/customer/home/home' : '/account');
+      router.replace(role === 'customer' ? '/customer/home/home' : role === 'restaurant' ? '/restaurant' : '/account');
     } catch (error) {
       setErrors({ form: error instanceof Error ? error.message : 'Something went wrong' });
       setLoading(false);
