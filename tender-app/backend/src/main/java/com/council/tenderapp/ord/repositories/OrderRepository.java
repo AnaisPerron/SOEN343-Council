@@ -14,6 +14,9 @@ import com.council.tenderapp.ord.entities.OrderStatus;
 
 public interface OrderRepository extends JpaRepository<Order, Long> {
 
+    // All statuses are needed by the restaurant dashboard, ordered as a FIFO queue.
+    List<Order> findByRestaurantIdOrderByDateOrderedAscIdAsc(Long restaurantId);
+
     List<Order> findByRestaurantIdAndStatusOrderByDateOrderedAscIdAsc(
         Long restaurantId,
         OrderStatus status

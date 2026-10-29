@@ -135,12 +135,15 @@ class OrderServiceTest {
     }
 
     @Test
-    void rejectsBlankReasonWithoutChangingOrSavingOrder() {
-        assertThatThrownBy(() -> orderService.rejectOrder(42L, 6L, "  "))
-            .isInstanceOf(ResponseStatusException.class)
-            .hasMessageContaining("A rejection reason is required");
-
-        verify(orderRepository, never()).save(any());
+    void acceptsRejectionWithoutAReason() {
+        // The frontend allows the restaurant to leave the reason empty.
+        Order placed = order(42L, OrderStatus.PLACED, new Date());
+        placed.setId(6L);
+        when(orderRepository.findByIdForUpdate(6L)).thenReturn(Optional.of(placed));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        OrderResponse rejected = orderService.rejectOrder(42L, 6L, "  ");
+        assertThat(rejected.getStatus()).isEqualTo(OrderStatus.REJECTED);
+        assertThat(rejected.getRejectionReason()).isNull();
     }
 
     @Test

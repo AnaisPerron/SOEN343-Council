@@ -30,6 +30,12 @@ public class RestaurantOrderController {
         this.dashboardObserver = dashboardObserver;
     }
 
+    // Expose all statuses to the dashboard, including completed and rejected orders.
+    @GetMapping
+    public List<OrderResponse> getAllOrders(@PathVariable Long restaurantId) {
+        return orderService.getAllOrders(restaurantId);
+    }
+
     @GetMapping({"/preparation", "/arrival-queue"})
     public List<OrderResponse> getPreparationQueue(@PathVariable Long restaurantId) {
         return orderService.getPreparationQueue(restaurantId);

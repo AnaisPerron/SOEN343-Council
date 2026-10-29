@@ -2,6 +2,8 @@ package com.council.tenderapp.ord.services;
 
 import java.util.List;
 import java.util.Objects;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +19,7 @@ import com.council.tenderapp.ord.repositories.OrderRepository;
 
 @Service
 public class OrderService {
+    private static final Logger log = LoggerFactory.getLogger(OrderService.class);
 
     private static final List<OrderStatus> PREPARATION_STATUSES =
         List.of(OrderStatus.ACCEPTED, OrderStatus.PREPARING);
@@ -27,6 +30,14 @@ public class OrderService {
     public OrderService(OrderRepository orderRepository, OrderStatusPublisher orderStatusPublisher) {
         this.orderRepository = orderRepository;
         this.orderStatusPublisher = orderStatusPublisher;
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getAllOrders(Long restaurantId) {
+        // Read the database on every refresh so terminal statuses remain visible.
+        log.info("Loading restaurant orders: restaurantId={}", restaurantId);
+        return orderRepository.findByRestaurantIdOrderByDateOrderedAscIdAsc(restaurantId)
+            .stream().map(this::toResponse).toList();
     }
 
     @Transactional(readOnly = true)
@@ -69,15 +80,14 @@ public class OrderService {
     @Transactional
     public OrderResponse rejectOrder(Long restaurantId, Long orderId, String reason) {
         String trimmedReason = reason == null ? "" : reason.trim();
-        if (trimmedReason.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A rejection reason is required");
-        }
+        // The reason is optional in the restaurant dashboard; store no reason for an empty input.
 
         Order order = getOwnedOrderForUpdate(restaurantId, orderId);
         OrderStatus previousStatus = order.getStatus();
         transitionOrder(order, OrderStatus.REJECTED, "reject");
-        order.setRejectionReason(trimmedReason);
+        order.setRejectionReason(trimmedReason.isEmpty() ? null : trimmedReason);
         Order savedOrder = orderRepository.save(order);
+        log.info("Restaurant order rejected: orderId={}, restaurantId={}", orderId, restaurantId);
         publishStatusChange(savedOrder, previousStatus, "rejected", trimmedReason);
         return toResponse(savedOrder);
     }
