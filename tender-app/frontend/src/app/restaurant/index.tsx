@@ -12,16 +12,15 @@ export default function RestaurantDashboard() {
   if (user.role !== 'restaurant') return <Redirect href="/account" />;
 
   return <SafeAreaView style={styles.page}>
-    <View style={styles.header}><Text style={styles.eyebrow}>TENDER / RESTAURANT</Text><AccountMenu /></View>
+    <View style={styles.header}><Text style={styles.eyebrow}></Text><AccountMenu /></View>
     <Text style={styles.title}>{user.name}</Text>
     <Text style={styles.subtitle}>Manage your restaurant</Text>
     <Pressable accessibilityRole="button" style={styles.menuButton} onPress={() => router.push('/restaurant/menu')}>
       <Text style={styles.menuTitle}>Menu</Text><Text style={styles.menuDescription}>Edit and publish your menu →</Text>
     </Pressable>
-    <Pressable accessibilityRole="button" style={styles.ordersButton} onPress={() => router.push('/restaurant/services/incoming-orders')}>
+    <Pressable accessibilityRole="button" style={styles.ordersButton} onPress={() => router.push('/restaurant/orders')}>
       <Text style={styles.ordersTitle}>Orders</Text><Text style={styles.ordersDescription}>Open the order queue →</Text>
     </Pressable>
-    <Pressable accessibilityRole="button" onPress={() => { signOut(); router.replace('/auth/login'); }}><Text style={styles.signOut}>Sign out</Text></Pressable>
   </SafeAreaView>;
 }
 
@@ -29,7 +28,7 @@ const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: '#FFF', paddingHorizontal: 24, paddingTop: 52 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', zIndex: 10 },
   eyebrow: { color: '#D42F50', fontSize: 11, fontWeight: '800', letterSpacing: 2 },
-  title: { color: '#302629', fontSize: 31, fontWeight: '900', marginTop: 16 },
+  title: { color: '#302629', fontFamily: 'LoveLight', fontSize: 42, fontWeight: '400', marginTop: 16 },
   subtitle: { color: '#887B7E', marginTop: 6, marginBottom: 35 },
   menuButton: { backgroundColor: '#D42F50', borderRadius: 18, padding: 24, marginBottom: 14 },
   menuTitle: { color: '#FFF', fontSize: 23, fontWeight: '900' },

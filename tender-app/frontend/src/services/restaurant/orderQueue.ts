@@ -44,15 +44,16 @@ export function filterAndSortOrders(orders: RestaurantOrder[], filter: OrderFilt
 export function transitionOrder(order: RestaurantOrder, next: RestaurantOrderStatus, timestamp: string, reason?: string): RestaurantOrder {
   const allowed = (order.status === 'placed' && (next === 'accepted' || next === 'rejected'))
     || (order.status === 'accepted' && next === 'preparing')
-    || (order.status === 'preparing' && next === 'ready');
+    || (order.status === 'preparing' && next === 'ready')
+    || (order.status === 'ready' && next === 'picked_up')
+    || (order.status === 'picked_up' && next === 'delivered');
   if (!allowed) throw new Error(`Cannot change ${order.status} to ${next}.`);
-  if (next === 'rejected' && !reason?.trim()) throw new Error('A rejection reason is required.');
   return {
     ...order,
     status: next,
     updatedAt: timestamp,
     acceptedAt: next === 'accepted' ? timestamp : order.acceptedAt,
-    rejectionReason: next === 'rejected' ? reason!.trim() : order.rejectionReason,
+    rejectionReason: next === 'rejected' ? reason?.trim() || null : order.rejectionReason,
   };
 }
 
