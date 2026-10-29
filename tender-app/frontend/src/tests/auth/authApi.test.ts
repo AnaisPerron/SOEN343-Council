@@ -4,7 +4,6 @@ import { afterEach, describe, it, mock } from 'node:test';
 import { login, logout, register, restoreSession, toRegisterRequest, updateProfile } from '../../api/auth.ts';
 import { API_URL } from '../../api/client.ts';
 import type { RegistrationInput } from '../../types/auth.ts';
-import { loadDemoRestaurantMenu } from '../../mocks/restaurantMenu.ts';
 
 const address = { country: 'Canada', city: 'Montreal', addressLine: '123 Main St' };
 const customer: RegistrationInput = {
@@ -134,16 +133,10 @@ describe('login api', () => {
     });
   });
 
-  it('uses the two demo restaurants only when the backend cannot be reached', async () => {
+  it('reports an unreachable backend for demo credentials', async () => {
     const fetchMock = mock.method(globalThis, 'fetch', async () => { throw new TypeError('fetch failed'); });
-    for (const [email, restaurant] of [['greenbowl@demo.test', 'Green Bowl Kitchen'], ['littleitaly@demo.test', 'Little Italy Pizza']]) {
-      const session = await login({ role: 'restaurant', email, password: 'DemoPass123!' });
-      assert.equal(session.user.name, restaurant);
-      assert.equal(session.user.role, 'restaurant');
-      const menu = loadDemoRestaurantMenu(session.token);
-      if (restaurant === 'Green Bowl Kitchen') assert.equal(menu?.items.length, 3);
-      else assert.equal(menu, null);
-      await logout(session.token);
+    for (const email of ['greenbowl@demo.test', 'littleitaly@demo.test']) {
+      await assert.rejects(login({ role: 'restaurant', email, password: 'DemoPass123!' }), /Cannot reach the server/);
     }
     assert.equal(fetchMock.mock.callCount(), 2);
   });

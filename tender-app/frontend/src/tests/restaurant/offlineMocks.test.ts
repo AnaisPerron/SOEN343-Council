@@ -1,70 +1,46 @@
 import assert from 'node:assert/strict';
 import { afterEach, describe, it, mock } from 'node:test';
 
-import { login, logout } from '../../api/auth.ts';
-import { ApiError } from '../../api/client.ts';
+import { login } from '../../api/auth.ts';
+import { API_URL, ApiError } from '../../api/client.ts';
 import { loadRestaurantMenu, saveRestaurantMenu } from '../../api/restaurantMenu.ts';
 import { emptyRestaurantMenu } from '../../mocks/restaurantMenu.ts';
-import { filterAndSortOrders, transitionOrder, deleteSelectedOrders } from '../../services/restaurant/orderQueue.ts';
-import { loadRestaurantOrders, saveRestaurantOrders } from '../../storage/restaurantOrders.ts';
 
-describe('offline restaurant mocks', () => {
+describe('restaurant menu API', () => {
   afterEach(() => mock.restoreAll());
 
-  it('keeps both demo accounts, menus, and queues separate without backend or database access', async () => {
-    const previousStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
-    const values = new Map<string, string>();
-    Object.defineProperty(globalThis, 'localStorage', {
-      configurable: true,
-      value: {
-        getItem: (key: string) => values.get(key) ?? null,
-        setItem: (key: string, value: string) => { values.set(key, value); },
-      },
-    });
-    const fetchMock = mock.method(globalThis, 'fetch', async () => { throw new TypeError('Backend offline'); });
+  it('loads and saves a menu with the authenticated session', async () => {
+    const menu = emptyRestaurantMenu(4, 'Little Italy Pizza');
+    const fetchMock = mock.method(globalThis, 'fetch', async () =>
+      new Response(JSON.stringify(menu), { status: 200 }));
 
-    try {
-      const green = await login({ role: 'restaurant', email: 'greenbowl@demo.test', password: 'DemoPass123!' });
-      const little = await login({ role: 'restaurant', email: 'littleitaly@demo.test', password: 'DemoPass123!' });
+    assert.deepEqual(await loadRestaurantMenu('session-token'), menu);
+    assert.deepEqual(await saveRestaurantMenu('session-token', menu), menu);
 
-      const greenMenu = await loadRestaurantMenu(green.token);
-      assert.equal(greenMenu.name, 'Green Bowl Kitchen');
-      assert.equal(greenMenu.items.length, 3);
-      await assert.rejects(loadRestaurantMenu(little.token), (error) => error instanceof ApiError && error.status === 404);
-
-      const littleMenu = emptyRestaurantMenu(4, 'Little Italy Pizza');
-      littleMenu.menuName = 'Little Italy Menu';
-      littleMenu.items = [{ id: null, name: 'Margherita pizza', description: '', category: 'Pizza', price: 17, status: 'available', photoUrl: null, options: [] }];
-      await saveRestaurantMenu(little.token, littleMenu);
-      assert.equal((await loadRestaurantMenu(little.token)).items[0].name, 'Margherita pizza');
-      assert.equal((await loadRestaurantMenu(green.token)).items.length, 3);
-      await assert.rejects(saveRestaurantMenu(green.token, littleMenu), /does not belong/);
-
-      const greenQueue = loadRestaurantOrders(2);
-      assert.equal(greenQueue.length, 11);
-      assert.deepEqual(filterAndSortOrders(greenQueue, 'placed').map((order) => order.id), [9301, 9302, 9303]);
-      assert.deepEqual(loadRestaurantOrders(4), []);
-
-      const accepted = transitionOrder(greenQueue[0], 'accepted', '2026-10-23T14:30:00.000Z');
-      saveRestaurantOrders(2, greenQueue.map((order) => order.id === accepted.id ? accepted : order));
-      assert.equal(loadRestaurantOrders(2).find((order) => order.id === accepted.id)?.status, 'accepted');
-      saveRestaurantOrders(2, deleteSelectedOrders(loadRestaurantOrders(2), new Set([9301, 9302])));
-      assert.equal(loadRestaurantOrders(2).length, 9);
-      assert.deepEqual(loadRestaurantOrders(4), []);
-      assert.ok([...values.keys()].some((key) => key.includes('menu-v2:4')));
-
-      await logout(green.token);
-      await logout(little.token);
-      assert.equal(fetchMock.mock.callCount(), 2, 'only the two login attempts should touch the unreachable backend');
-    } finally {
-      if (previousStorage) Object.defineProperty(globalThis, 'localStorage', previousStorage);
-      else Reflect.deleteProperty(globalThis, 'localStorage');
-    }
+    const [getUrl, getRequest] = fetchMock.mock.calls[0].arguments as [string, RequestInit];
+    const [putUrl, putRequest] = fetchMock.mock.calls[1].arguments as [string, RequestInit];
+    assert.equal(getUrl, `${API_URL}/api/restaurant/menu`);
+    assert.equal(putUrl, getUrl);
+    assert.equal(getRequest.method, 'GET');
+    assert.equal(putRequest.method, 'PUT');
+    assert.equal((getRequest.headers as Record<string, string>).Authorization, 'Bearer session-token');
+    assert.equal((putRequest.headers as Record<string, string>).Authorization, 'Bearer session-token');
+    assert.deepEqual(JSON.parse(putRequest.body as string), menu);
   });
 
-  it('does not turn wrong credentials or another role into an offline demo login', async () => {
+  it('reports backend menu errors', async () => {
+    mock.method(globalThis, 'fetch', async () =>
+      new Response(JSON.stringify({ message: 'Menu not found' }), { status: 404 }));
+    await assert.rejects(loadRestaurantMenu('session-token'),
+      (error) => error instanceof ApiError && error.status === 404 && error.message === 'Menu not found');
+  });
+
+  it('reports when authentication and menu requests cannot reach the backend', async () => {
     mock.method(globalThis, 'fetch', async () => { throw new TypeError('Backend offline'); });
-    await assert.rejects(login({ role: 'restaurant', email: 'greenbowl@demo.test', password: 'wrong' }), /Cannot reach the server/);
-    await assert.rejects(login({ role: 'customer', email: 'greenbowl@demo.test', password: 'DemoPass123!' }), /Cannot reach the server/);
+    await assert.rejects(login({ role: 'restaurant', email: 'greenbowl@demo.test', password: 'DemoPass123!' }), /Cannot reach the server/);
+    await assert.rejects(loadRestaurantMenu('session-token'),
+      (error) => error instanceof ApiError && error.status === 0);
+    await assert.rejects(saveRestaurantMenu('session-token', emptyRestaurantMenu(4, 'Little Italy Pizza')),
+      (error) => error instanceof ApiError && error.status === 0);
   });
 });

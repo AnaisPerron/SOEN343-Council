@@ -30,9 +30,10 @@ describe('restaurant orders queue', () => {
     assert.throws(() => transitionOrder(ready, 'accepted', '2026-10-23T14:40:00.000Z'));
   });
 
-  it('requires a reason for rejection and deletes multiple selected orders', () => {
+  it('supports an optional rejection reason and deletes multiple selected orders', () => {
     const placed = restaurantOrdersMock[0];
-    assert.throws(() => transitionOrder(placed, 'rejected', '2026-10-23T14:20:00.000Z', '  '), /reason/);
+    assert.equal(transitionOrder(placed, 'rejected', '2026-10-23T14:20:00.000Z', '  ').rejectionReason, null);
+    assert.equal(transitionOrder(placed, 'rejected', '2026-10-23T14:20:00.000Z').rejectionReason, null);
     const rejected = transitionOrder(placed, 'rejected', '2026-10-23T14:20:00.000Z', ' Ingredient unavailable ');
     assert.equal(rejected.rejectionReason, 'Ingredient unavailable');
     assert.equal(rejected.acceptedAt, null);
