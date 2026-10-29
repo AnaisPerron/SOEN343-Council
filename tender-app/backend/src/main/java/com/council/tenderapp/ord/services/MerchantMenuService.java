@@ -27,6 +27,10 @@ public class MerchantMenuService {
         MenuItem menuItem = menuItemRepository.findById(menuItemId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Menu item not found with id: " + menuItemId));
 
+        if (!menuItemRepository.existsByIdAndRestaurantId(menuItemId, restaurantId)) {
+            throw new UnauthorizedMenuAccessException("Menu item belongs to another restaurant");
+        }
+
         menuItem.setStatus("sold_out".equals(menuItem.getStatus()) ? "available" : "sold_out");
         MenuItem savedItem = menuItemRepository.save(menuItem);
 
@@ -44,11 +48,13 @@ public class MerchantMenuService {
     @Transactional
     public MenuItemDto createMenuItem(Long restaurantId, MenuItemRequestDto request) {
         MenuItem menuItem = new MenuItem();
-        menuItem.setMenuId(restaurantId);
+        Long menuId = menuItemRepository.findMenuIdByRestaurantId(restaurantId);
+        if (menuId == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant has no menu");
+        menuItem.setMenuId(menuId);
         menuItem.setName(request.name());
         menuItem.setDescription(request.description());
         menuItem.setPrice(request.price());
-        menuItem.setStatus(request.available() ? "available" : "sold-out");
+        menuItem.setStatus(request.available() ? "available" : "sold_out");
 
         MenuItem saved = menuItemRepository.save(menuItem);
         return new MenuItemDto(saved);
@@ -68,7 +74,7 @@ public class MerchantMenuService {
         menuItem.setName(request.name());
         menuItem.setDescription(request.description());
         menuItem.setPrice(request.price());
-        menuItem.setStatus("sold_out".equals(menuItem.getStatus()) ? "available" : "sold_out");
+        menuItem.setStatus(request.available() ? "available" : "sold_out");
 
 
         MenuItem saved = menuItemRepository.save(menuItem);
