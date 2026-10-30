@@ -71,13 +71,13 @@ public class OperatorDashboardRepository {
     public DashboardPage<OrderSummary> orders(int page, int size) {
         return page("SELECT COUNT(*) FROM orders", """
                 SELECT o.id, o.customer_id, o.restaurant_id, o.courier_id, o.status,
-                    o.date_ordered, o.accepted_at, o.rejection_reason,
+                    o.created_at, o.accepted_at, o.rejection_reason,
                     COALESCE((SELECT SUM(l.quantity * l.unit_price) FROM order_lines l
                         WHERE l.order_id = o.id), o.total_price, 0) AS calculated_total
                 FROM orders o ORDER BY o.id LIMIT ? OFFSET ?
                 """, (rs, row) -> new OrderSummary(rs.getLong("id"), rs.getObject("customer_id", Long.class),
                         rs.getObject("restaurant_id", Long.class), rs.getObject("courier_id", Long.class),
-                        lower(rs.getString("status")), instant(rs, "date_ordered"), instant(rs, "accepted_at"),
+                        lower(rs.getString("status")), instant(rs, "created_at"), instant(rs, "accepted_at"),
                         rs.getString("rejection_reason"), rs.getBigDecimal("calculated_total")), page, size);
     }
 

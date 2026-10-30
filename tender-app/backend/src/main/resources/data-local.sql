@@ -4,11 +4,11 @@ INSERT INTO menu_items (name, price) VALUES ('Pasta', 12.50);
 INSERT INTO menu_items (name, price) VALUES ('Garden salad', 8.00);
 INSERT INTO menu_items (name, price) VALUES ('Tomato soup', 6.50);
 
-INSERT INTO orders (restaurant_id, date_ordered, status, total_price)
+INSERT INTO orders (restaurant_id, created_at, status, total_price)
 VALUES (1, CURRENT_TIMESTAMP, 'PLACED', 25.00);
-INSERT INTO orders (restaurant_id, date_ordered, status, accepted_at, total_price)
+INSERT INTO orders (restaurant_id, created_at, status, accepted_at, total_price)
 VALUES (1, CURRENT_TIMESTAMP, 'PREPARING', CURRENT_TIMESTAMP, 16.00);
-INSERT INTO orders (restaurant_id, date_ordered, status, accepted_at, total_price)
+INSERT INTO orders (restaurant_id, created_at, status, accepted_at, total_price)
 VALUES (1, CURRENT_TIMESTAMP, 'PREPARING', CURRENT_TIMESTAMP, 13.00);
 
 INSERT INTO order_lines (order_id, menu_item_id, quantity, unit_price)

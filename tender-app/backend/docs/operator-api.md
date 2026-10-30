@@ -200,7 +200,7 @@ or zero. This is an order total, not a payment or refund ledger.
 Queries use existing PostgreSQL tables without migrations or new entity mappings.
 The configured database needs `users`, `restaurants`, `customer_profiles`,
 `courier_profiles`, `orders`, and `order_lines`, including the existing entity
-columns `restaurants.address`, `restaurants.phone`, and `orders.date_ordered`.
+columns `restaurants.address`, `restaurants.phone`, and `orders.created_at`.
 The minimal local H2 startup script does not create customer/courier profile tables;
 these endpoints require them. Repository tests create their own isolated H2 schema
 and never run against the configured Supabase database.

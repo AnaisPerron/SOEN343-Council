@@ -2,7 +2,7 @@ CREATE TABLE users (id BIGINT PRIMARY KEY, name VARCHAR(100), email VARCHAR(255)
 CREATE TABLE restaurants (id BIGINT PRIMARY KEY, name VARCHAR(150), status VARCHAR(20), latitude DOUBLE PRECISION, longitude DOUBLE PRECISION, address VARCHAR(255), phone VARCHAR(20));
 CREATE TABLE customer_profiles (user_id BIGINT PRIMARY KEY REFERENCES users(id), td_cash_balance NUMERIC(12,2), latitude DOUBLE PRECISION, longitude DOUBLE PRECISION);
 CREATE TABLE courier_profiles (user_id BIGINT PRIMARY KEY REFERENCES users(id), status VARCHAR(20), latitude DOUBLE PRECISION, longitude DOUBLE PRECISION);
-CREATE TABLE orders (id BIGINT PRIMARY KEY, customer_id BIGINT, restaurant_id BIGINT, courier_id BIGINT, status VARCHAR(20), date_ordered TIMESTAMP WITH TIME ZONE, accepted_at TIMESTAMP WITH TIME ZONE, rejection_reason TEXT, total_price NUMERIC(10,2));
+CREATE TABLE orders (id BIGINT PRIMARY KEY, customer_id BIGINT, restaurant_id BIGINT, courier_id BIGINT, status VARCHAR(20), created_at TIMESTAMP WITH TIME ZONE, accepted_at TIMESTAMP WITH TIME ZONE, rejection_reason TEXT, total_price NUMERIC(10,2));
 CREATE TABLE order_lines (id BIGINT PRIMARY KEY, order_id BIGINT REFERENCES orders(id), quantity INTEGER, unit_price NUMERIC(10,2));
 INSERT INTO users VALUES
 (1, 'Customer One', 'one@example.test', '5145550101', 'customer', 'secret hash'),

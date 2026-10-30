@@ -33,7 +33,7 @@ public class Order {
     @Column(name = "restaurant_id", nullable = false)
     private Long restaurantId;
 
-    @Column(name = "date_ordered", nullable = false)
+    @Column(name = "created_at", nullable = false)
     private Date dateOrdered;
 
     @Column(name = "pickup_date")
