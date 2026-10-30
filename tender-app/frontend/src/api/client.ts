@@ -22,7 +22,7 @@ export async function postJson<T>(path: string, body: unknown, token?: string): 
   return requestJson<T>('POST', path, body, token);
 }
 
-export async function requestJson<T>(method: 'GET' | 'PATCH' | 'POST', path: string, body?: unknown, token?: string): Promise<T> {
+export async function requestJson<T>(method: 'GET' | 'PATCH' | 'POST' | 'PUT', path: string, body?: unknown, token?: string): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers.Authorization = `Bearer ${token}`;
 

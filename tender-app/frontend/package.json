@@ -46,7 +46,7 @@
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
-    "test": "node --experimental-strip-types --test src/tests/customer/restaurantSearch.test.ts src/tests/customer/restaurantOrderRules.test.ts src/tests/customer/menuCatalog.test.ts src/tests/customer/cartStore.test.ts src/tests/customer/orderApi.test.ts src/tests/customer/orderLifecycle.test.ts src/tests/auth/authApi.test.ts src/tests/auth/selectedRole.test.ts src/tests/auth/roleRoutes.test.ts src/tests/operator/operatorApi.test.ts src/tests/operator/operatorLogic.test.ts"
+    "test": "node --experimental-strip-types --test src/tests/customer/restaurantSearch.test.ts src/tests/customer/restaurantOrderRules.test.ts src/tests/customer/menuCatalog.test.ts src/tests/customer/cartStore.test.ts src/tests/customer/orderApi.test.ts src/tests/customer/orderLifecycle.test.ts src/tests/auth/authApi.test.ts src/tests/auth/selectedRole.test.ts src/tests/auth/roleRoutes.test.ts src/tests/operator/operatorApi.test.ts src/tests/operator/operatorLogic.test.ts src/tests/operator/operatorDashboard.test.ts"
   },
   "private": true
 }

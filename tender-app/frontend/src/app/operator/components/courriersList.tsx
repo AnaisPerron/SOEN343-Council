@@ -1,27 +1,22 @@
 import { Text, View } from 'react-native';
-import type { User } from '../../../types/users';
-import { courierProfilesMock } from '../../../mocks/users.mock';
+import type { OperatorCourier } from '../../../types/operator';
 import { styles } from './customers.styles';
 
 interface CourrierListProps {
-  courrier?: User[]; 
+  couriers?: OperatorCourier[];
 }
 
-export default function CouriersList({ courrier = [] }: CourrierListProps) {
-  
+export default function CouriersList({ couriers = [] }: CourrierListProps) {
+
 
   return (
     <View style={styles.wrapper}>
-      <Text style={styles.title}>Customers</Text>
+      <Text style={styles.title}>Couriers</Text>
       <Text style={styles.summary}>
-        {courrier.length} Registered {courrier.length === 1 ? 'Courier' : 'Courier'}
+        {couriers.length} Loaded {couriers.length === 1 ? 'Courier' : 'Couriers'}
       </Text>
 
-      {courrier.map(({ id, name, email, latitude, longitude }) => {
-        const profile = courierProfilesMock.find((p) => p.user_id === id);
-        const userLat = latitude ?? profile?.latitude;
-        const userLng = longitude ?? profile?.longitude;
-
+      {couriers.map(({ id, name, email, latitude, longitude, status }) => {
         return (
           <View key={id} style={styles.card}>
             <View style={styles.cardTop}>
@@ -36,14 +31,15 @@ export default function CouriersList({ courrier = [] }: CourrierListProps) {
 
             <Text style={styles.detail}>Email: {email}</Text>
             <Text style={styles.detail}>Courier ID: #{id}</Text>
+            <Text style={styles.detail}>Status: {status ?? 'Unknown'}</Text>
 
-            {userLat != null && userLng != null && (
+            {latitude != null && longitude != null && (
               <Text style={styles.detail}>
-                Location: {userLat}, {userLng}
+                Location: {latitude}, {longitude}
               </Text>
             )}
 
-            
+
           </View>
         );
       })}

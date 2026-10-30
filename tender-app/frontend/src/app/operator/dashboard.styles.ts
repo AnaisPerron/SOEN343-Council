@@ -6,6 +6,9 @@ import { StyleSheet } from 'react-native';
 const ACCENT = '#ef4444';
 
 export const styles = StyleSheet.create({
+  action: { alignSelf: 'flex-start', padding: 12, marginBottom: 12, borderRadius: 8, backgroundColor: '#fef2f2' },
+  error: { color: '#b91c1c', marginBottom: 12 },
+  notice: { color: '#6b7280', paddingVertical: 20 },
   page: { flex: 1, backgroundColor: '#fff' },
   content: {
     paddingTop: 0,

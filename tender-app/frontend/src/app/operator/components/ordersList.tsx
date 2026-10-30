@@ -1,6 +1,5 @@
 import { Text, TextStyle, View, ViewStyle } from 'react-native';
-import type { Order } from '../../../types/orders';
-import { orderLinesMock } from '../../../mocks/orders.mock';
+import type { OperatorOrder as Order } from '../../../types/operator';
 import { styles } from './orders.styles';
 
 interface OrderListProps {
@@ -16,6 +15,7 @@ const CHIP_STYLES: Record<Order['status'], ViewStyle> = {
   delivered: styles.chipDelivered,
   rejected: styles.chipRejected,
   cancelled: styles.chipCancelled,
+  refunded: styles.chipCancelled,
 };
 
 const CHIP_TEXT_STYLES: Record<Order['status'], TextStyle> = {
@@ -27,6 +27,7 @@ const CHIP_TEXT_STYLES: Record<Order['status'], TextStyle> = {
   delivered: styles.chipTextDelivered,
   rejected: styles.chipTextRejected,
   cancelled: styles.chipTextCancelled,
+  refunded: styles.chipTextCancelled,
 };
 
 const STATUS_LABEL: Record<Order['status'], string> = {
@@ -38,15 +39,10 @@ const STATUS_LABEL: Record<Order['status'], string> = {
   delivered: 'Delivered',
   rejected: 'Rejected',
   cancelled: 'Cancelled',
+  refunded: 'Refunded',
 };
 
 export default function OrderList({ orders }: OrderListProps) {
-  const calculateOrderTotal = (orderId: number) => {
-    const lines = orderLinesMock.filter((line) => line.order_id === orderId);
-    const total = lines.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
-    return total.toFixed(2);
-  };
-
   const activeCount = orders.filter((o) => 
     ['placed', 'accepted', 'preparing', 'ready', 'picked_up'].includes(o.status)
   ).length;
@@ -55,10 +51,10 @@ export default function OrderList({ orders }: OrderListProps) {
     <View style={styles.wrapper}>
       <Text style={styles.title}>Orders</Text>
       <Text style={styles.summary}>
-        {activeCount} active of {orders.length} total orders
+        {activeCount} active of {orders.length} loaded orders
       </Text>
 
-      {orders.map(({ id, customer_id, restaurant_id, courier_id, status, created_at, rejection_reason }) => (
+      {orders.map(({ id, customerId, restaurantId, courierId, status, dateOrdered, rejectionReason, totalPrice }) => (
         <View key={id} style={styles.card}>
           <View style={styles.cardTop}>
             <Text style={styles.name}>Order #{id}</Text>
@@ -71,24 +67,24 @@ export default function OrderList({ orders }: OrderListProps) {
           </View>
 
           <Text style={styles.detail}>
-            Restaurant ID: {restaurant_id} • Customer ID: {customer_id}
+            Restaurant ID: {restaurantId ?? 'Unknown'} • Customer ID: {customerId ?? 'Unknown'}
           </Text>
 
           <Text style={styles.detail}>
-            Courier ID: {courier_id ?? 'Unassigned'}
+            Courier ID: {courierId ?? 'Unassigned'}
           </Text>
 
           <Text style={styles.detail}>
-            Placed: {new Date(created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            Placed: {dateOrdered && !Number.isNaN(Date.parse(dateOrdered)) ? new Date(dateOrdered).toLocaleString() : 'Unknown'}
           </Text>
 
           <View style={styles.cardBottom}>
             <Text style={styles.totalLabel}>Total Amount:</Text>
-            <Text style={styles.totalValue}>${calculateOrderTotal(id)}</Text>
+            <Text style={styles.totalValue}>${totalPrice.toFixed(2)}</Text>
           </View>
 
-          {rejection_reason && (
-            <Text style={styles.rejectionText}>Reason: {rejection_reason}</Text>
+          {rejectionReason && (
+            <Text style={styles.rejectionText}>Reason: {rejectionReason}</Text>
           )}
         </View>
       ))}

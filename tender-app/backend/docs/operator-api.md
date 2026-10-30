@@ -1,7 +1,7 @@
 # Operator backend integration
 
 This document records the contracts for `feature/operator-backend`. Dashboard reads and restaurant status updates are implemented.
-Courier reassignment, billing ledgers, and restoration are deferred outside the current Phase II scope. The dashboard still displays mock data;
+Courier reassignment, billing ledgers, and restoration are deferred outside the current Phase II scope. The dashboard now reads authenticated API data;
 API helper tests mock HTTP responses and do not prove those routes exist.
 
 ## Existing endpoints to reuse
@@ -53,8 +53,8 @@ with stable ID ordering and an envelope containing `items`, `total`, `page`, and
 Treat only `idle` couriers as available. Missing profile data must be shown as
 unknown rather than fabricated from frontend fixtures.
 
-Responses use camelCase DTO fields and lowercase status values. Adapt the existing
-snake_case mock view models explicitly when connecting the dashboard. Handle
+Responses use camelCase DTO fields and lowercase status values. The operator frontend consumes these DTOs directly instead of using the
+snake_case mock view models. Handle
 nullable IDs/timestamps and every persisted order state, including `refunded`.
 Order totals must follow the shared backend calculation, not mock order lines.
 
@@ -96,7 +96,7 @@ eligibility helpers were removed from the frontend.
   operator layout waits for session restoration and redirects other roles or
   signed-out users. Dashboard identity comes from the authenticated account.
   Public registration rejects operator accounts; predefined accounts still log
-  in through the existing BCrypt/session flow. Dashboard lists remain mocked.
+  in through the existing BCrypt/session flow. Dashboard lists now use the authenticated read endpoints.
 - Restaurant preparation and delivery endpoints must remain unavailable to
   operators. Existing restaurant order routes require a matching staff account.
 - Courier reassignment needs an offline current courier, an eligible replacement,
@@ -117,16 +117,16 @@ eligibility helpers were removed from the frontend.
 1. Complete branch setup and dependency/test checks (done).
 2. Align existing profile/cancellation helper contracts and record missing APIs.
 3. Add operator backend authorization and login routing (done).
-4. Implement dashboard read endpoints (done); connect the frontend and remove mocks (pending).
-5. Implement restaurant pause/reopen (backend done; frontend controls pending).
+4. Implement dashboard read endpoints and connect the frontend without mocks (done).
+5. Implement restaurant pause/reopen and connect frontend controls (done).
 6. Customer cancellation remains supported; operator cancellation was removed from this Phase II scope.
 Courier reassignment, billing-ledger implementation, and initial-state restoration
 are not next steps for this Phase II checkpoint. The Phase II instructions limit
 implementation to REG and ORD and explicitly exclude DLV and the full role-scoped
 command surface. Verify the referenced Moodle requirements before expanding scope.
 
-The next work is frontend integration for implemented operator reads and restaurant
-status changes, followed by command/error logging and demo verification.
+The read and restaurant status UI integration is complete. The remaining work is
+command/error logging verification and live demo verification.
 See [operator-checkpoint.md](operator-checkpoint.md) for the current scope and state.
 
 

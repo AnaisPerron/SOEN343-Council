@@ -39,11 +39,13 @@ still needs checking before declaring the complete phase requirements satisfied.
   initial-state restoration are deferred. No reset endpoint exists.
 - Committed history was preserved. This checkpoint does not rewrite earlier work.
 
-## Current integration gaps
+## UI integration and remaining verification
 
-- Operator dashboard lists/counts still use frontend mocks.
-- Restaurant pause/reopen is implemented and tested on the backend, but the
-  dashboard controls still need connecting to the API.
+- Operator dashboard lists and full counts now come from authenticated backend
+  endpoints, with refresh, pagination, empty states, and errors. Missing balances
+  or availability are displayed as unknown, and order totals come from the backend.
+- Restaurant pause/reopen controls now call the backend and refresh after success.
+  Duplicate submissions are blocked, and expired sessions return to login.
 - Audit command/error logging against section 5.4 and rehearse role restrictions
   through the running UI after integration.
 - Billing uses a mock payment gateway, not a persistent billing ledger.
@@ -65,12 +67,15 @@ still needs checking before declaring the complete phase requirements satisfied.
 ## Validation
 
 Validation passed: 139 backend tests in a clean Maven run against H2 and mocks,
-74 frontend tests, and TypeScript checking. Supabase and the demo seed were not
+86 frontend tests, TypeScript checking, and a successful web export. Supabase and the demo seed were not
 used during verification.
 
 ## Next steps
 
-1. Connect the existing dashboard lists and counts to the read endpoints.
-2. Connect pause/reopen controls with loading and error feedback.
-3. Verify operator and non-operator permissions, logging, and the demo flow.
-4. Review and push the development branch when requested.
+1. Audit command/error logging against the Phase II requirements.
+2. Rehearse the live operator and non-operator flows using a safe database.
+3. Review and push the development branch when requested.
+
+The UI API tests mock network responses; no pause/reopen request was sent to
+Supabase during implementation. Restart the backend with the latest branch code
+without enabling the demo profile before manually testing the integration.

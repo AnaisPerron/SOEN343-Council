@@ -1,9 +1,12 @@
-import { Text, TextStyle, View, ViewStyle } from 'react-native';
-import type { Restaurant } from '../../../types/restaurant';
+import { Text, TextStyle, TouchableOpacity, View, ViewStyle } from 'react-native';
+import type { OperatorRestaurant as Restaurant, RestaurantStatus } from '../../../types/operator';
 import { styles } from './restaurants.styles';
 
 interface RestaurantListProps {
   restaurants: Restaurant[];
+  changingId: number | null;
+  disabled: boolean;
+  onStatusChange: (id: number, status: RestaurantStatus) => Promise<void>;
 }
 
 const CHIP_STYLES: Record<Restaurant['status'], ViewStyle> = {
@@ -24,14 +27,14 @@ const STATUS_LABEL: Record<Restaurant['status'], string> = {
   closed: 'Closed',
 };
 
-export default function RestaurantList({ restaurants }: RestaurantListProps) {
+export default function RestaurantList({ restaurants, changingId, disabled, onStatusChange }: RestaurantListProps) {
   const openCount = restaurants.filter((r) => r.status === 'open').length;
 
   return (
     <View style={styles.wrapper}>
       <Text style={styles.title}>Restaurants</Text>
       <Text style={styles.summary}>
-        {openCount} of {restaurants.length} open
+        {openCount} of {restaurants.length} loaded restaurants open
       </Text>
 
       {restaurants.map(({ id, name, status, latitude, longitude }) => (
@@ -47,6 +50,11 @@ export default function RestaurantList({ restaurants }: RestaurantListProps) {
           </View>
 
           <Text style={styles.detail}>Restaurant ID: {id}</Text>
+          <TouchableOpacity style={styles.action} disabled={disabled} accessibilityRole="button"
+            accessibilityLabel={`${status === 'open' ? 'Pause' : 'Reopen'} ${name}`}
+            onPress={() => void onStatusChange(id, status === 'open' ? 'paused' : 'open')}>
+            <Text style={styles.actionText}>{changingId === id ? 'Saving…' : status === 'open' ? 'Pause' : 'Reopen'}</Text>
+          </TouchableOpacity>
 
           {latitude !== null && longitude !== null && (
             <Text style={styles.detail}>
