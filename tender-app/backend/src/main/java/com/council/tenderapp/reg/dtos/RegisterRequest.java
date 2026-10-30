@@ -27,5 +27,11 @@ public record RegisterRequest(
         String phone,
 
         @NotNull(message = "Role is required")
-        Role role) {
+        Role role,
+        @Size(max = 255, message = "Address must be at most 255 characters")
+        String address) {
+
+    public RegisterRequest(String name, String email, String password, String phone, Role role) {
+        this(name, email, password, phone, role, null);
+    }
 }

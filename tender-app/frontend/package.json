@@ -17,6 +17,7 @@
     "expo-image": "~57.0.5",
     "expo-linking": "~57.0.13",
     "expo-router": "~57.0.28",
+    "expo-secure-store": "~15.0.8",
     "expo-splash-screen": "~57.0.10",
     "expo-status-bar": "~57.0.1",
     "expo-symbols": "~57.0.3",
@@ -45,7 +46,7 @@
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
-    "test": "node --experimental-strip-types --test src/tests/customer/restaurantSearch.test.ts src/tests/customer/restaurantOrderRules.test.ts src/tests/auth/authApi.test.ts"
+    "test": "node --experimental-strip-types --test src/tests/customer/restaurantSearch.test.ts src/tests/customer/restaurantOrderRules.test.ts src/tests/customer/menuCatalog.test.ts src/tests/customer/cartStore.test.ts src/tests/customer/orderApi.test.ts src/tests/customer/orderLifecycle.test.ts src/tests/auth/authApi.test.ts src/tests/auth/selectedRole.test.ts"
   },
   "private": true
 }

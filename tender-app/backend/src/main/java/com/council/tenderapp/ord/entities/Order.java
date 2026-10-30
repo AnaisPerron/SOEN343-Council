@@ -3,8 +3,6 @@ package com.council.tenderapp.ord.entities;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -16,6 +14,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import jakarta.persistence.Convert;
 
 @Entity
 @Table(name = "orders")
@@ -24,6 +23,12 @@ public class Order {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "customer_id")
+    private Long customerId;
+
+    @Column(name = "courier_id")
+    private Long courierId;
 
     @Column(name = "restaurant_id", nullable = false)
     private Long restaurantId;
@@ -37,8 +42,8 @@ public class Order {
     @Column(name = "date_delivered")
     private Date dateDelivered;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Convert(converter = OrderStatusConverter.class)
+    @Column(nullable = false, columnDefinition = "varchar(20)")
     private OrderStatus status;
 
     @Column(name = "accepted_at")
@@ -61,6 +66,15 @@ public class Order {
         this.dateOrdered = dateOrdered == null ? null : new Date(dateOrdered.getTime());
         this.status = status;
     }
+
+    public Order(Long customerId, Long restaurantId, OrderStatus status, BigDecimal totalPrice) {
+        this(restaurantId, new Date(), status);
+        this.customerId = customerId;
+        this.totalPrice = totalPrice;
+    }
+
+    public Long getCustomerId() { return customerId; }
+    public Long getCourierId() { return courierId; }
 
     public Long getId() {
         return id;

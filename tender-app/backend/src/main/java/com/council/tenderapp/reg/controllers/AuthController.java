@@ -3,6 +3,7 @@ package com.council.tenderapp.reg.controllers;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,6 +17,14 @@ import com.council.tenderapp.reg.dtos.RegisterResponse;
 import com.council.tenderapp.reg.exceptions.MissingSessionTokenException;
 import com.council.tenderapp.reg.services.LoginService;
 import com.council.tenderapp.reg.services.RegistrationService;
+import com.council.tenderapp.reg.services.SessionService;
+import com.council.tenderapp.reg.repositories.ProfileRepository;
+import com.council.tenderapp.ord.entities.Restaurant;
+import com.council.tenderapp.ord.repositories.RestaurantRepository;
+import com.council.tenderapp.reg.entities.Profile;
+import com.council.tenderapp.reg.entities.Role;
+import com.council.tenderapp.reg.security.Session;
+import org.springframework.web.server.ResponseStatusException;
 
 import jakarta.validation.Valid;
 
@@ -27,10 +36,17 @@ public class AuthController {
 
     private final RegistrationService registrationService;
     private final LoginService loginService;
+    private final SessionService sessionService;
+    private final ProfileRepository profiles;
+    private final RestaurantRepository restaurants;
 
-    public AuthController(RegistrationService registrationService, LoginService loginService) {
+    public AuthController(RegistrationService registrationService, LoginService loginService,
+            SessionService sessionService, ProfileRepository profiles, RestaurantRepository restaurants) {
         this.registrationService = registrationService;
         this.loginService = loginService;
+        this.sessionService = sessionService;
+        this.profiles = profiles;
+        this.restaurants = restaurants;
     }
 
     @PostMapping("/register")
@@ -44,14 +60,36 @@ public class AuthController {
         return loginService.login(request);
     }
 
+    @GetMapping("/session")
+    public LoginResponse session(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization) {
+        String token = bearerToken(authorization);
+        Session session = sessionService.find(token)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Session expired"));
+        Profile profile = profiles.findById(session.accountId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Account unavailable"));
+        if (session.role() == Role.STAFF) {
+            if (session.restaurantId() == null) {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Restaurant session unavailable");
+            }
+            Restaurant restaurant = restaurants.findById(session.restaurantId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Restaurant unavailable"));
+            return LoginResponse.from(session, profile, restaurant);
+        }
+        return LoginResponse.from(session, profile);
+    }
+
     // Logging out an unknown or expired token still succeeds, so retries are safe
     @PostMapping("/logout")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void logout(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization) {
+        loginService.logout(bearerToken(authorization));
+    }
+
+    private String bearerToken(String authorization) {
         if (authorization == null || !authorization.startsWith(BEARER_PREFIX)
                 || authorization.substring(BEARER_PREFIX.length()).isBlank()) {
             throw new MissingSessionTokenException();
         }
-        loginService.logout(authorization.substring(BEARER_PREFIX.length()).trim());
+        return authorization.substring(BEARER_PREFIX.length()).trim();
     }
 }

@@ -32,6 +32,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.council.tenderapp.config.SecurityConfig;
+import com.council.tenderapp.ord.repositories.RestaurantRepository;
+import com.council.tenderapp.ord.repositories.RestaurantStaffRepository;
 import com.council.tenderapp.reg.controllers.AuthController;
 import com.council.tenderapp.reg.entities.Profile;
 import com.council.tenderapp.reg.entities.Role;
@@ -75,6 +77,12 @@ class SessionGateTest {
 
     @MockitoBean
     private ProfileRepository repository;
+
+    @MockitoBean
+    private RestaurantRepository restaurantRepository;
+
+    @MockitoBean
+    private RestaurantStaffRepository restaurantStaffRepository;
 
     @MockitoBean
     private RegistrationService registrationService;

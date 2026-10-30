@@ -67,4 +67,9 @@ public class Profile {
     public String getPhone() {
         return phone;
     }
+
+    public void updateContact(String name, String phone) {
+        this.name = name.trim();
+        this.phone = phone.trim();
+    }
 }

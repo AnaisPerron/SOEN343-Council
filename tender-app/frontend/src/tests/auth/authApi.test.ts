@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { afterEach, describe, it, mock } from 'node:test';
 
-import { login, logout, register, toRegisterRequest } from '../../api/auth.ts';
+import { login, logout, register, restoreSession, toRegisterRequest, updateProfile } from '../../api/auth.ts';
 import { API_URL } from '../../api/client.ts';
 import type { RegistrationInput } from '../../types/auth.ts';
 
@@ -32,7 +32,7 @@ describe('registration api', () => {
     });
   });
 
-  it('registers restaurants as staff using the restaurant name', () => {
+  it('registers a restaurant with its name and address', () => {
     const request = toRegisterRequest({
       role: 'restaurant',
       restaurantName: 'Maple & Main',
@@ -43,6 +43,7 @@ describe('registration api', () => {
     });
     assert.equal(request.role, 'STAFF');
     assert.equal(request.name, 'Maple & Main');
+    assert.equal(request.address, '123 Main St, Montreal, Canada');
   });
 
   it('posts registration to the backend', async () => {
@@ -72,6 +73,37 @@ describe('registration api', () => {
   });
 });
 
+describe('profile api', () => {
+  afterEach(() => mock.restoreAll());
+
+  it('saves edited name and phone with the signed-in token', async () => {
+    const response = { id: 1, name: 'Alex Lee', email: 'alex@example.com', phone: '5145550199', role: 'CUSTOMER' };
+    const fetchMock = mockFetch(200, response);
+    assert.deepEqual(await updateProfile('saved-token', 'Alex Lee', '5145550199'), response);
+
+    const [url, init] = fetchMock.mock.calls[0].arguments as [string, RequestInit];
+    assert.equal(url, `${API_URL}/api/profile`);
+    assert.equal(init.method, 'PATCH');
+    assert.equal((init.headers as Record<string, string>).Authorization, 'Bearer saved-token');
+    assert.deepEqual(JSON.parse(init.body as string), { name: 'Alex Lee', phone: '5145550199' });
+  });
+
+  it('surfaces profile validation errors', async () => {
+    mockFetch(400, { fieldErrors: { phone: 'Phone must be a valid phone number' } });
+    await assert.rejects(updateProfile('saved-token', 'Alex', 'bad'), /Phone must be a valid phone number/);
+  });
+
+  it('sends an edited restaurant address with the profile update', async () => {
+    const fetchMock = mockFetch(200, { id: 1, name: 'Maple Bistro', email: 'hello@maple.example',
+      phone: '5145550199', role: 'STAFF', restaurantId: 42, address: '99 Rue St' });
+    await updateProfile('saved-token', 'Maple Bistro', '5145550199', '99 Rue St');
+    const [, init] = fetchMock.mock.calls[0].arguments as [string, RequestInit];
+    assert.deepEqual(JSON.parse(init.body as string), {
+      name: 'Maple Bistro', phone: '5145550199', address: '99 Rue St',
+    });
+  });
+});
+
 describe('login api', () => {
   afterEach(() => mock.restoreAll());
 
@@ -83,6 +115,8 @@ describe('login api', () => {
     email: 'hello@maple.example',
     phone: '5145550199',
     role: 'STAFF',
+    restaurantId: 42,
+    address: '123 Main St, Montreal, Canada',
   };
 
   it('posts credentials and maps the backend account to the app user', async () => {
@@ -94,7 +128,8 @@ describe('login api', () => {
     assert.deepEqual(JSON.parse(init.body as string), { email: 'hello@maple.example', password: 'restaurant-pass' });
     assert.deepEqual(session, {
       token: 'abc123',
-      user: { id: 1, role: 'restaurant', name: 'Maple & Main', email: 'hello@maple.example', phoneNumber: '5145550199' },
+      user: { id: 1, role: 'restaurant', name: 'Maple & Main', email: 'hello@maple.example',
+        phoneNumber: '5145550199', restaurantId: 42, address: '123 Main St, Montreal, Canada' },
     });
   });
 
@@ -125,5 +160,33 @@ describe('login api', () => {
     const [url, init] = fetchMock.mock.calls[0].arguments as [string, RequestInit];
     assert.equal(url, `${API_URL}/api/auth/logout`);
     assert.equal((init.headers as Record<string, string>).Authorization, 'Bearer abc123');
+  });
+
+  it('validates a saved token and restores its account', async () => {
+    const fetchMock = mockFetch(200, loginResponse);
+    const session = await restoreSession('abc123');
+    const [url, init] = fetchMock.mock.calls[0].arguments as [string, RequestInit];
+    assert.equal(url, `${API_URL}/api/auth/session`);
+    assert.equal(init.method, 'GET');
+    assert.equal((init.headers as Record<string, string>).Authorization, 'Bearer abc123');
+    assert.equal(session.user.role, 'restaurant');
+    assert.equal(session.user.restaurantId, 42);
+  });
+
+  it('restores through the profile endpoint when the running backend lacks the session endpoint', async () => {
+    const calls: { url: string; init: RequestInit }[] = [];
+    mock.method(globalThis, 'fetch', async (url: string | URL | Request, init: RequestInit) => {
+      calls.push({ url: String(url), init });
+      return new Response(JSON.stringify(calls.length === 1 ? {} : {
+        id: 1, name: 'Alex', email: 'alex@example.com', phone: '5145550123', role: 'CUSTOMER',
+      }), { status: calls.length === 1 ? 404 : 200 });
+    });
+
+    const session = await restoreSession('saved-token');
+    assert.equal(calls[0].url, `${API_URL}/api/auth/session`);
+    assert.equal(calls[1].url, `${API_URL}/api/profile`);
+    assert.equal((calls[1].init.headers as Record<string, string>).Authorization, 'Bearer saved-token');
+    assert.equal(session.user.role, 'customer');
+    assert.equal(session.token, 'saved-token');
   });
 });

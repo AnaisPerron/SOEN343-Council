@@ -58,6 +58,10 @@ public class OrderLine {
         return menuItem;
     }
 
+    public Long getMenuItemId() { return menuItem == null ? null : menuItem.getId(); }
+
+    public Long getOrderId() { return order == null ? null : order.getId(); }
+
     public void setMenuItem(MenuItem menuItem) {
         this.menuItem = menuItem;
     }

@@ -53,6 +53,8 @@ export interface AuthUser {
   name: string;
   email: string;
   phoneNumber: string;
+  restaurantId?: number;
+  address?: string;
 }
 
 export interface AuthSession {

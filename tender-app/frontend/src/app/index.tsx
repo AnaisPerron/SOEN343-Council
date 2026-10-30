@@ -1,10 +1,9 @@
-import Home from './customer/home';
+import { Redirect } from 'expo-router';
+import { ActivityIndicator, View } from 'react-native';
+import { useAuth } from '@/context/AuthContext';
+
 export default function IndexRoute() {
-  // TODO: Replace these placeholders with the real authentication and user-role state.
-  const isLoggedIn = true;
-  const userType = 'customer';
-  if (isLoggedIn && userType === 'customer') {
-    return <Home />;
-  }
-  return <Home />;
+  const { user, ready } = useAuth();
+  if (!ready) return <View style={{ flex: 1, justifyContent: 'center' }}><ActivityIndicator color="#D42F50" /></View>;
+  return <Redirect href={user ? user.role === 'customer' ? '/customer/home/home' : '/account' : '/auth/login'} />;
 }

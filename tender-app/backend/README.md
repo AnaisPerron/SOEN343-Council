@@ -63,6 +63,16 @@ restaurant profile is a demo context, not an authenticated account. Actions
 verify that the order belongs to the restaurant ID in the URL, but this is not
 an authenticated restaurant identity check; secure restaurant-only access
 requires the project's authentication system to be added separately.
+## Existing database upgrade
+
+Before starting this merged version against an existing PostgreSQL database,
+apply [`docs/order-lifecycle-merge.sql`](docs/order-lifecycle-merge.sql). It adds
+and backfills `orders.date_ordered` and allows the `refunded` lifecycle status.
+Apply [`docs/restaurant-profile.sql`](docs/restaurant-profile.sql) before deploying
+restaurant contact profiles to an existing database.
+The test suite uses an in-memory H2 database and does not apply this script to
+your configured database.
+
 ## Demo Data
 
 The `demo` Spring profile automatically loads `src/main/resources/demo/seed.sql` into PostgreSQL at startup.

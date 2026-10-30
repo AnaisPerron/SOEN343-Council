@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { restaurantsMock } from '../../mocks/restaurants.mock.ts';
-import { searchRestaurants } from '../../app/customer/restaurantSearch.ts';
+import { searchRestaurants } from '../../app/customer/services/restaurantSearch.ts';
 
 describe('searchRestaurants', () => {
   it('matches a restaurant name without regard to case', () => {

@@ -1,3 +1,5 @@
+import { readSessionToken } from '@/context/sessionStorage';
+
 export interface IncomingOrderLine {
   itemName: string;
   quantity: number;
@@ -43,12 +45,18 @@ function getApiBaseUrl(): string {
   return (process.env.EXPO_PUBLIC_API_URL?.trim() || 'http://localhost:8080').replace(/\/+$/, '');
 }
 
+async function authHeaders(): Promise<Record<string, string>> {
+  const token = await readSessionToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 export async function fetchOrders(
   restaurantId: string,
   queue: 'incoming' | 'preparation' | 'pickup',
 ): Promise<IncomingOrder[]> {
   const response = await fetch(
     `${getApiBaseUrl()}/api/restaurants/${encodeURIComponent(restaurantId)}/orders/${queue}`,
+    { headers: await authHeaders() },
   );
   if (!response.ok) {
     throw new Error(`Unable to load incoming orders (HTTP ${response.status}).`);
@@ -74,7 +82,10 @@ export async function transitionOrder(
     `${getApiBaseUrl()}/api/restaurants/${encodeURIComponent(restaurantId)}/orders/${orderId}/${action}`,
     {
       method: 'POST',
-      headers: action === 'reject' ? { 'Content-Type': 'application/json' } : undefined,
+      headers: {
+        ...await authHeaders(),
+        ...(action === 'reject' ? { 'Content-Type': 'application/json' } : {}),
+      },
       body: action === 'reject' ? JSON.stringify({ reason }) : undefined,
     },
   );
@@ -88,9 +99,7 @@ export function observeOrderStatus(
   restaurantId: string,
   onStatusChange: () => void,
 ): () => void {
-  const events = new EventSource(
-    `${getApiBaseUrl()}/api/restaurants/${encodeURIComponent(restaurantId)}/orders/events`,
-  );
-  events.onmessage = onStatusChange;
-  return () => events.close();
+  // EventSource cannot attach the bearer token; refresh the queue without putting it in a URL.
+  const timer = setInterval(onStatusChange, 5000);
+  return () => clearInterval(timer);
 }

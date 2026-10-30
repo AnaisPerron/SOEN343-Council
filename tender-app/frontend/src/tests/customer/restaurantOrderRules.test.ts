@@ -2,12 +2,15 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { restaurantsMock } from '../../mocks/restaurants.mock.ts';
+import { menuItemsMock } from '../../mocks/menus.mock.ts';
 import {
+  getCartOrderRestriction,
+  getMenuItemOrderRestriction,
   getRestaurantOrderRestriction,
   ORDER_ERROR_FADE_DELAY_MS,
   ORDER_ERROR_FADE_DURATION_MS,
   ORDER_RESTRICTION_CODE,
-} from '../../app/customer/restaurantOrderRules.ts';
+} from '../../app/customer/services/restaurantOrderRules.ts';
 
 describe('R-ORD-02 - ORD restaurant order restriction', () => {
   it('allows an open restaurant without showing a restriction', () => {
@@ -41,5 +44,27 @@ describe('R-ORD-02 - ORD restaurant order restriction', () => {
 
   it('configures the alert to disappear after two seconds total', () => {
     assert.equal(ORDER_ERROR_FADE_DELAY_MS + ORDER_ERROR_FADE_DURATION_MS, 2000);
+  });
+
+  it('blocks a cart when any restaurant is closed or paused', () => {
+    assert.equal(getCartOrderRestriction([1, 2], restaurantsMock), null);
+    assert.deepEqual(getCartOrderRestriction([1, 4], restaurantsMock), {
+      code: ORDER_RESTRICTION_CODE,
+      message: 'Orders are unavailable at Little Italy Pizza because it is closed.',
+    });
+    assert.deepEqual(getCartOrderRestriction([3, 1], restaurantsMock), {
+      code: ORDER_RESTRICTION_CODE,
+      message: 'Orders are unavailable at Café Nord because it is paused.',
+    });
+  });
+});
+
+describe('menu item availability restriction', () => {
+  it('allows an available item and rejects an unavailable item', () => {
+    assert.equal(getMenuItemOrderRestriction(menuItemsMock[0]), null);
+    assert.deepEqual(getMenuItemOrderRestriction(menuItemsMock[2]), {
+      code: ORDER_RESTRICTION_CODE,
+      message: 'Apple crumble is not available right now and cannot be added to your cart.',
+    });
   });
 });

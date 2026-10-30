@@ -22,6 +22,10 @@ import com.council.tenderapp.reg.entities.Profile;
 import com.council.tenderapp.reg.entities.Role;
 import com.council.tenderapp.reg.exceptions.InvalidCredentialsException;
 import com.council.tenderapp.reg.repositories.ProfileRepository;
+import com.council.tenderapp.ord.repositories.RestaurantRepository;
+import com.council.tenderapp.ord.repositories.RestaurantStaffRepository;
+import com.council.tenderapp.ord.entities.RestaurantStaff;
+import com.council.tenderapp.ord.entities.Restaurant;
 import com.council.tenderapp.reg.security.Session;
 
 @ExtendWith(MockitoExtension.class)
@@ -29,6 +33,12 @@ class LoginServiceTest {
 
     @Mock
     private ProfileRepository repository;
+
+    @Mock
+    private RestaurantRepository restaurantRepository;
+
+    @Mock
+    private RestaurantStaffRepository restaurantStaffRepository;
 
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
@@ -38,7 +48,7 @@ class LoginServiceTest {
     @BeforeEach
     void setUp() {
         sessionService = new SessionService(Duration.ofHours(1));
-        service = new LoginService(repository, passwordEncoder, sessionService);
+        service = new LoginService(repository, restaurantRepository, restaurantStaffRepository, passwordEncoder, sessionService);
     }
 
     private Profile profile(String password, Role role) {
@@ -93,5 +103,39 @@ class LoginServiceTest {
         // Hash used for every account in demo/seed.sql
         String seededHash = "$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi";
         assertThat(passwordEncoder.matches("DemoPass123!", seededHash)).isTrue();
+    }
+
+    @Test
+    void restaurantStaffUsesStoredRestaurantLinkInsteadOfDisplayName() {
+        when(repository.findByEmailIgnoreCase("jane@example.com"))
+                .thenReturn(Optional.of(profile("secret123", Role.STAFF)));
+        when(restaurantStaffRepository.findById(7L))
+                .thenReturn(Optional.of(new RestaurantStaff(7L, 42L)));
+        when(restaurantRepository.findById(42L))
+                .thenReturn(Optional.of(new Restaurant("Maple & Main", "open", null, null)));
+
+        LoginResponse response = service.login(new LoginRequest("jane@example.com", "secret123"));
+
+        assertThat(sessionService.find(response.token()).orElseThrow().restaurantId()).isEqualTo(42L);
+        assertThat(response.name()).isEqualTo("Maple & Main");
+    }
+
+    @Test
+    void olderUnlinkedRestaurantAccountGetsItsOwnRestaurant() {
+        when(repository.findByEmailIgnoreCase("jane@example.com"))
+                .thenReturn(Optional.of(profile("secret123", Role.STAFF)));
+        when(restaurantStaffRepository.findById(7L)).thenReturn(Optional.empty());
+        when(restaurantRepository.saveAndFlush(org.mockito.ArgumentMatchers.any(Restaurant.class)))
+                .thenAnswer(inv -> {
+                    Restaurant restaurant = inv.getArgument(0);
+                    ReflectionTestUtils.setField(restaurant, "id", 42L);
+                    return restaurant;
+                });
+        when(restaurantStaffRepository.saveAndFlush(org.mockito.ArgumentMatchers.any(RestaurantStaff.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        LoginResponse response = service.login(new LoginRequest("jane@example.com", "secret123"));
+
+        assertThat(sessionService.find(response.token()).orElseThrow().restaurantId()).isEqualTo(42L);
     }
 }

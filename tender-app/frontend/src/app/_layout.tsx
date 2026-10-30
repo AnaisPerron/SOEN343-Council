@@ -2,29 +2,39 @@ import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { CartProvider } from '@/context/CartContext';
+import { ItemCustomizationProvider } from '@/context/ItemCustomizationContext';
+import { OrdersProvider } from '@/context/OrdersContext';
 
 function RootNavigator() {
-  const { user } = useAuth();
-
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Protected guard={!user}>
-        <Stack.Screen name="auth/login" />
-        <Stack.Screen name="auth/register" />
-      </Stack.Protected>
-
-      <Stack.Protected guard={!!user}>
-        <Stack.Screen name="index" />
-      </Stack.Protected>
+      <Stack.Screen name="index" />
+      <Stack.Screen name="customer" />
+      <Stack.Screen name="auth/login" />
+      <Stack.Screen name="auth/register" />
+      <Stack.Screen name="profile" />
+      <Stack.Screen name="account" />
     </Stack>
   );
+}
+
+function SessionContent() {
+  const { user } = useAuth();
+  return <CartProvider key={user?.id ?? 'signed-out'}>
+    <OrdersProvider key={user?.id ?? 'signed-out'}>
+      <ItemCustomizationProvider>
+        <RootNavigator />
+      </ItemCustomizationProvider>
+    </OrdersProvider>
+  </CartProvider>;
 }
 
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <RootNavigator />
+        <SessionContent />
       </AuthProvider>
     </SafeAreaProvider>
   );

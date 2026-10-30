@@ -16,6 +16,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
+import { useAuth } from '@/context/AuthContext';
 import {
   fetchOrders,
   observeOrderStatus,
@@ -38,12 +39,14 @@ function formatOrderTime(timestamp: string | null, label: string): string {
 }
 
 export default function IncomingOrdersScreen() {
+  const { user } = useAuth();
   const params = useLocalSearchParams<{ restaurantId?: string | string[] }>();
   const routeRestaurantId = Array.isArray(params.restaurantId)
     ? params.restaurantId[0]
     : params.restaurantId;
-  const restaurantId =
-    routeRestaurantId?.trim() || process.env.EXPO_PUBLIC_RESTAURANT_ID?.trim() || '1';
+  const restaurantId = user?.role === 'restaurant' && user.restaurantId
+    ? String(user.restaurantId)
+    : routeRestaurantId?.trim() || process.env.EXPO_PUBLIC_RESTAURANT_ID?.trim() || '1';
   const [orders, setOrders] = useState<IncomingOrder[]>([]);
   const [queue, setQueue] = useState<'incoming' | 'preparation' | 'pickup'>('incoming');
   const [rejectingOrderId, setRejectingOrderId] = useState<number | null>(null);

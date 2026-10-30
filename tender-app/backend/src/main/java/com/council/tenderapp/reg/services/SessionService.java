@@ -38,10 +38,19 @@ public class SessionService {
     }
 
     public Session create(Long accountId, Role role) {
+        return createInternal(accountId, null, role);
+    }
+
+    public Session create(Long accountId, Long restaurantId, Role role) {
+        return createInternal(accountId, restaurantId, role);
+    }
+
+    // Shared core logic to avoid duplicate code
+    private Session createInternal(Long accountId, Long restaurantId, Role role) {
         Instant now = clock.instant();
         sessions.values().removeIf(session -> session.isExpiredAt(now));
 
-        Session session = new Session(newToken(), accountId, role, now.plus(ttl));
+        Session session = new Session(newToken(), accountId, restaurantId, role, now.plus(ttl));
         sessions.put(session.token(), session);
         return session;
     }
