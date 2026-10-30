@@ -1,15 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DetailPage } from '../customer/components/DetailPage';
 import { styles as customerStyles } from '../customer/restaurant/restaurant.styles';
 import { useAuth } from '@/context/AuthContext';
-import { loadRestaurantMenu, saveRestaurantMenu, uploadMenuPhoto, type MenuItem, type RestaurantMenu } from '@/api/restaurantMenu';
-import { resolvePhotoUrl } from '@/api/customerCatalog';
+import { loadRestaurantMenu, saveRestaurantMenu, type MenuItem, type RestaurantMenu } from '@/api/restaurantMenu';
 import { CoverImagePicker } from '@/components/restaurant/CoverImagePicker';
 import { readSessionToken } from '@/context/sessionStorage';
 import { readRestaurantCover, writeRestaurantCover } from '@/storage/restaurantCover';
+import { clearRestaurantItemPhoto, readRestaurantItemPhoto, writeRestaurantItemPhoto } from '@/storage/restaurantItemPhoto';
 
 const newItem = (): MenuItem => ({ id: null, name: '', description: '', category: '', price: 0, status: 'available', photoUrl: null, options: [] });
 const emptyRestaurantMenu = (restaurantId: number, name: string): RestaurantMenu => ({ restaurantId, name, status: 'closed', address: '', deliveryFee: 0, coverUrl: null, menuName: 'Menu', items: [] });
@@ -27,6 +27,15 @@ export default function EditMenu() {
   const [expanded, setExpanded] = useState<number | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const backendCover = useRef<string | null>(null);
+  const backendPhotos = useRef(new Map<number, string | null>());
+
+  const withLocalPhotos = useCallback((loaded: RestaurantMenu): RestaurantMenu => ({
+    ...loaded,
+    items: loaded.items.map((item) => {
+      const localPhoto = item.id == null || !user ? undefined : readRestaurantItemPhoto(user.id, item.id);
+      return localPhoto === undefined ? item : { ...item, photoUrl: localPhoto };
+    }),
+  }), [user?.id]);
 
   const createMenu = () => {
     const draft = emptyRestaurantMenu(user?.restaurantId ?? 0, user?.name ?? '');
@@ -44,12 +53,14 @@ export default function EditMenu() {
     }).then((loaded) => {
       if (!loaded || !active) return;
       backendCover.current = loaded.coverUrl;
+      backendPhotos.current = new Map(loaded.items.filter((item) => item.id != null).map((item) => [item.id!, item.photoUrl]));
       const localCover = readRestaurantCover(user.id);
-      setMenu(localCover === undefined ? loaded : { ...loaded, coverUrl: localCover });
+      const withCover = localCover === undefined ? loaded : { ...loaded, coverUrl: localCover };
+      setMenu(withLocalPhotos(withCover));
     }).catch((error) => { if (active) setMessage(error instanceof Error ? error.message : 'Could not load menu.'); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [ready, user?.role, user?.id]);
+  }, [ready, user?.role, user?.id, withLocalPhotos]);
 
   const update = (changes: Partial<RestaurantMenu>) => setMenu((current) => current && { ...current, ...changes });
   const updateItem = (index: number, changes: Partial<MenuItem>) => setMenu((current) => current && {
@@ -68,13 +79,34 @@ export default function EditMenu() {
     catch { setMessage('Cover removed for this session, but browser storage is full.'); }
     update({ coverUrl: null });
   };
-  // Picked photos stay as data URIs until save, when they are uploaded to the backend.
   const selectItemPhoto = (index: number, dataUri: string) => {
+    if (!token || !user || !menu) return;
     setMessage('');
+    const itemId = menu.items[index]?.id;
+    if (itemId != null) {
+      try { writeRestaurantItemPhoto(user.id, itemId, dataUri); }
+      catch { setMessage('Image selected for this session, but browser storage is full.'); }
+    }
     updateItem(index, { photoUrl: dataUri });
   };
-  const changeItemPhotoUrl = (index: number, photoUrl: string) => updateItem(index, { photoUrl });
-  const removeItemPhoto = (index: number) => updateItem(index, { photoUrl: null });
+  const changeItemPhotoUrl = (index: number, photoUrl: string) => {
+    if (!token || !user || !menu) return;
+    const itemId = menu.items[index]?.id;
+    if (itemId != null) {
+      try { clearRestaurantItemPhoto(user.id, itemId); }
+      catch { setMessage('Photo URL changed for this session, but browser storage is unavailable.'); }
+    }
+    updateItem(index, { photoUrl });
+  };
+  const removeItemPhoto = (index: number) => {
+    if (!token || !user || !menu) return;
+    const itemId = menu.items[index]?.id;
+    if (itemId != null) {
+      try { writeRestaurantItemPhoto(user.id, itemId, null); }
+      catch { setMessage('Photo removed for this session, but browser storage is full.'); }
+    }
+    updateItem(index, { photoUrl: null });
+  };
   const save = async () => {
     if (!menu || !token || saving) return;
     if (!menu.name.trim() || menu.items.some((item) => !item.name.trim() || !item.category.trim() || item.price < 0 || item.options.some((option) => !option.name.trim() || option.additionalCost < 0))) {
@@ -82,16 +114,27 @@ export default function EditMenu() {
     }
     setSaving(true); setMessage('');
     try {
-        const items = await Promise.all(menu.items.map(async (item) => item.photoUrl?.startsWith('data:')
-          ? { ...item, photoUrl: await uploadMenuPhoto(token, item.photoUrl) }
-          : item));
-        // Keep uploaded paths in state so a failed menu save does not re-upload them.
-        setMenu((current) => current && { ...current, items: current.items.map((item, index) => item === menu.items[index] ? items[index] : item) });
-        const saved = await saveRestaurantMenu(token, { ...menu, menuName: menu.menuName.trim() || 'Menu', coverUrl: backendCover.current, items });
+        const existingIds = new Set(menu.items.map((item) => item.id).filter((id): id is number => id != null));
+        const saved = await saveRestaurantMenu(token, { ...menu, menuName: menu.menuName.trim() || 'Menu', coverUrl: backendCover.current, items: menu.items.map((item) => ({
+          ...item,
+          photoUrl: item.photoUrl?.startsWith('data:') ? (item.id == null ? null : backendPhotos.current.get(item.id) ?? null) : item.photoUrl,
+        })) });
         backendCover.current = saved.coverUrl;
+        backendPhotos.current = new Map(saved.items.filter((item) => item.id != null).map((item) => [item.id!, item.photoUrl]));
+        const createdItems = saved.items.filter((item) => item.id != null && !existingIds.has(item.id));
+        let createdIndex = 0;
+        let photoStorageFull = false;
+        menu.items.forEach((item) => {
+          if (item.id != null) return;
+          const created = createdItems[createdIndex++];
+          if (created?.id == null || !item.photoUrl?.startsWith('data:') || !user) return;
+          try { writeRestaurantItemPhoto(user.id, created.id, item.photoUrl); }
+          catch { photoStorageFull = true; }
+        });
         const localCover = user ? readRestaurantCover(user.id) : undefined;
-        setMenu(localCover === undefined ? saved : { ...saved, coverUrl: localCover });
-        setMessage('Menu saved.');
+        const withCover = localCover === undefined ? saved : { ...saved, coverUrl: localCover };
+        setMenu(withLocalPhotos(withCover));
+        setMessage(photoStorageFull ? 'Menu saved. A photo is available for this session, but browser storage is full.' : 'Menu saved. Picked images stay on this device.');
     }
     catch (error) { setMessage(error instanceof Error ? error.message : 'Could not save menu.'); }
     finally { setSaving(false); }
@@ -128,7 +171,7 @@ export default function EditMenu() {
       {categories.map((category) => <View key={category} style={customerStyles.categorySection}>
         <Text style={customerStyles.categoryHeading}>{category}</Text>
         <View style={customerStyles.itemGrid}>{menu.items.map((item, index) => (item.category.trim() || 'Menu') === category && <Pressable key={item.id ?? `new-${index}`} style={customerStyles.menuCard} accessibilityRole="button" onPress={() => setExpanded(expanded === index ? null : index)}>
-          <View style={customerStyles.itemImageWrap}>{item.photoUrl ? <Image source={{ uri: resolvePhotoUrl(item.photoUrl)! }} style={customerStyles.itemImage} /> : <View style={customerStyles.itemImageFallback}><Text style={customerStyles.itemImageFallbackText}>Tender</Text></View>}</View>
+          <View style={customerStyles.itemImageWrap}>{item.photoUrl ? <Image source={{ uri: item.photoUrl }} style={customerStyles.itemImage} /> : <View style={customerStyles.itemImageFallback}><Text style={customerStyles.itemImageFallbackText}>Tender</Text></View>}</View>
           <View style={customerStyles.itemTitleRow}><Text style={customerStyles.itemName}>{item.name || 'New item'}</Text></View>
           {!!item.description && <Text style={customerStyles.itemDescription} numberOfLines={2}>{item.description}</Text>}
           {item.status === 'sold_out' && <Text style={customerStyles.itemAvailability}>Sold out</Text>}
@@ -143,6 +186,7 @@ export default function EditMenu() {
         <Field label="Category" value={menu.items[expanded].category} placeholder="e.g. Pizza" onChangeText={(category) => updateItem(expanded, { category })} />
         <Field label="Price ($)" value={menu.items[expanded].price ? String(menu.items[expanded].price) : ''} placeholder="0.00" onChangeText={(value) => updateItem(expanded, { price: Number(value) || 0 })} keyboardType="decimal-pad" />
         <CoverImagePicker label="Menu item photo" onSelect={(dataUri) => selectItemPhoto(expanded, dataUri)} onError={setMessage} />
+        <Text style={local.coverNote}>Picked item photos stay on this device.</Text>
         {!!menu.items[expanded].photoUrl && <Pressable accessibilityRole="button" onPress={() => removeItemPhoto(expanded)}><Text style={local.link}>Remove item photo</Text></Pressable>}
         <Field label="Photo URL" value={menu.items[expanded].photoUrl?.startsWith('data:') ? '' : menu.items[expanded].photoUrl ?? ''} placeholder="https://example.com/pizza.jpg" onChangeText={(photoUrl) => changeItemPhotoUrl(expanded, photoUrl)} />
         <Text style={local.label}>Availability</Text><View style={local.chips}><Chip label="Available" selected={menu.items[expanded].status === 'available'} onPress={() => updateItem(expanded, { status: 'available' })} /><Chip label="Sold out" selected={menu.items[expanded].status === 'sold_out'} onPress={() => updateItem(expanded, { status: 'sold_out' })} /></View>
