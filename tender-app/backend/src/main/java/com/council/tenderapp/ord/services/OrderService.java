@@ -1,7 +1,10 @@
 package com.council.tenderapp.ord.services;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -16,6 +19,8 @@ import com.council.tenderapp.ord.dto.response.OrderResponse;
 import com.council.tenderapp.ord.entities.Order;
 import com.council.tenderapp.ord.entities.OrderStatus;
 import com.council.tenderapp.ord.repositories.OrderRepository;
+import com.council.tenderapp.reg.entities.Profile;
+import com.council.tenderapp.reg.repositories.ProfileRepository;
 
 @Service
 public class OrderService {
@@ -26,45 +31,44 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final OrderStatusPublisher orderStatusPublisher;
+    private final ProfileRepository profileRepository;
 
-    public OrderService(OrderRepository orderRepository, OrderStatusPublisher orderStatusPublisher) {
+    public OrderService(
+        OrderRepository orderRepository,
+        OrderStatusPublisher orderStatusPublisher,
+        ProfileRepository profileRepository
+    ) {
         this.orderRepository = orderRepository;
         this.orderStatusPublisher = orderStatusPublisher;
+        this.profileRepository = profileRepository;
     }
 
     @Transactional(readOnly = true)
     public List<OrderResponse> getAllOrders(Long restaurantId) {
         // Read the database on every refresh so terminal statuses remain visible.
         log.info("Loading restaurant orders: restaurantId={}", restaurantId);
-        return orderRepository.findByRestaurantIdOrderByDateOrderedAscIdAsc(restaurantId)
-            .stream().map(this::toResponse).toList();
+        return toResponses(orderRepository.findByRestaurantIdOrderByDateOrderedAscIdAsc(restaurantId));
     }
 
     @Transactional(readOnly = true)
     public List<OrderResponse> getPreparationQueue(Long restaurantId) {
-        return orderRepository
-            .findByRestaurantIdAndStatusInOrderByAcceptedAtAscIdAsc(restaurantId, PREPARATION_STATUSES)
-            .stream()
-            .map(this::toResponse)
-            .toList();
+        return toResponses(orderRepository.findByRestaurantIdAndStatusInOrderByAcceptedAtAscIdAsc(
+            restaurantId, PREPARATION_STATUSES
+        ));
     }
 
     @Transactional(readOnly = true)
     public List<OrderResponse> getIncomingOrders(Long restaurantId) {
-        return orderRepository
-            .findByRestaurantIdAndStatusOrderByDateOrderedAscIdAsc(restaurantId, OrderStatus.PLACED)
-            .stream()
-            .map(this::toResponse)
-            .toList();
+        return toResponses(orderRepository.findByRestaurantIdAndStatusOrderByDateOrderedAscIdAsc(
+            restaurantId, OrderStatus.PLACED
+        ));
     }
 
     @Transactional(readOnly = true)
     public List<OrderResponse> getPickupQueue(Long restaurantId) {
-        return orderRepository
-            .findByRestaurantIdAndStatusOrderByDateOrderedAscIdAsc(restaurantId, OrderStatus.READY)
-            .stream()
-            .map(this::toResponse)
-            .toList();
+        return toResponses(orderRepository.findByRestaurantIdAndStatusOrderByDateOrderedAscIdAsc(
+            restaurantId, OrderStatus.READY
+        ));
     }
 
     @Transactional
@@ -201,6 +205,32 @@ public class OrderService {
     }
 
     private OrderResponse toResponse(Order order) {
+        Profile customer = order.getCustomerId() == null
+            ? null
+            : profileRepository.findById(order.getCustomerId()).orElse(null);
+        return toResponse(order, customer);
+    }
+
+    // Load all customers for a list in one query instead of one per order.
+    private List<OrderResponse> toResponses(List<Order> orders) {
+        List<Long> customerIds = orders.stream()
+            .map(Order::getCustomerId)
+            .filter(Objects::nonNull)
+            .distinct()
+            .toList();
+        Map<Long, Profile> customers = customerIds.isEmpty()
+            ? Map.of()
+            : profileRepository.findAllById(customerIds).stream()
+                .collect(Collectors.toMap(Profile::getId, Function.identity()));
+        return orders.stream()
+            .map(order -> toResponse(
+                order,
+                order.getCustomerId() == null ? null : customers.get(order.getCustomerId())
+            ))
+            .toList();
+    }
+
+    private OrderResponse toResponse(Order order, Profile customer) {
         List<OrderLineResponse> orderLines = order.getOrderLines().stream()
             .map(line ->
                 new OrderLineResponse(line.getMenuItem().getName(), line.getQuantity(), line.getUnitPrice())
@@ -214,6 +244,8 @@ public class OrderService {
             order.getAcceptedAt(),
             order.getRejectionReason(),
             order.getTotalPrice(),
+            customer == null ? null : customer.getName(),
+            customer == null ? null : customer.getPhone(),
             orderLines
         );
     }

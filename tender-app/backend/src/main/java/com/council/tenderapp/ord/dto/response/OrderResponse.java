@@ -15,6 +15,8 @@ public class OrderResponse {
     private final Date acceptedAt;
     private final String rejectionReason;
     private final BigDecimal totalPrice;
+    private final String customerName;
+    private final String customerPhone;
     private final List<OrderLineResponse> orderLines;
 
     public OrderResponse(
@@ -25,6 +27,8 @@ public class OrderResponse {
         Date acceptedAt,
         String rejectionReason,
         BigDecimal totalPrice,
+        String customerName,
+        String customerPhone,
         List<OrderLineResponse> orderLines
     ) {
         this.id = id;
@@ -34,6 +38,8 @@ public class OrderResponse {
         this.acceptedAt = acceptedAt == null ? null : new Date(acceptedAt.getTime());
         this.rejectionReason = rejectionReason;
         this.totalPrice = totalPrice;
+        this.customerName = customerName;
+        this.customerPhone = customerPhone;
         this.orderLines = List.copyOf(orderLines);
     }
 
@@ -61,6 +67,14 @@ public class OrderResponse {
 
     public BigDecimal getTotalPrice() {
         return totalPrice;
+    }
+
+    public String getCustomerName() {
+        return customerName;
+    }
+
+    public String getCustomerPhone() {
+        return customerPhone;
     }
 
     public List<OrderLineResponse> getOrderLines() {
