@@ -40,11 +40,6 @@ public class OrderCancellationService {
         return cancel(order);
     }
 
-    @PreAuthorize("hasRole('OPERATOR')")
-    public void cancelForOperator(Long orderId) {
-        cancel(lockedOrder(orderId));
-    }
-
     private Order lockedOrder(Long orderId) {
         return orders.findWithLockById(orderId)
                 .orElseThrow(() -> new OrderNotFoundException("Order not found with id: " + orderId));

@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { afterEach, describe, it, mock } from 'node:test';
 
-import { cancelOrder, changeRestaurantStatus, updateOperatorProfile } from '../../app/operator/operatorApi.ts';
+import { changeRestaurantStatus, updateOperatorProfile } from '../../app/operator/operatorApi.ts';
 import { API_URL, ApiError } from '../../api/client.ts';
 
 function mockFetch(status: number, body: unknown) {
@@ -11,15 +11,6 @@ function mockFetch(status: number, body: unknown) {
 
 describe('operator api', () => {
   afterEach(() => mock.restoreAll());
-
-  it('cancels an order with a POST and the bearer token', async () => {
-    const fetchMock = mockFetch(200, {});
-    await cancelOrder(5, 'tok');
-    const [url, init] = fetchMock.mock.calls[0].arguments as [string, RequestInit];
-    assert.equal(url, `${API_URL}/api/operator/orders/5/cancel`);
-    assert.equal(init.method, 'POST');
-    assert.equal((init.headers as Record<string, string>).Authorization, 'Bearer tok');
-  });
 
   it('changes a restaurant status with a PUT and the new status', async () => {
     const fetchMock = mockFetch(200, {});
@@ -32,7 +23,7 @@ describe('operator api', () => {
 
   it('turns a 403 from a non-operator into an ApiError', async () => {
     mockFetch(403, { message: 'role:CUSTOMER does not have permission' });
-    await assert.rejects(cancelOrder(5, 'tok'), (e: ApiError) => e.status === 403);
+    await assert.rejects(changeRestaurantStatus(3, 'paused', 'tok'), (e: ApiError) => e.status === 403);
   });
 
   it('turns a 409 into an ApiError carrying the server message', async () => {
@@ -43,7 +34,7 @@ describe('operator api', () => {
 
   it('reports an unreachable server with status 0', async () => {
     mock.method(globalThis, 'fetch', async () => { throw new Error('down'); });
-    await assert.rejects(cancelOrder(5, 'tok'), (e: ApiError) => e.status === 0);
+    await assert.rejects(changeRestaurantStatus(3, 'paused', 'tok'), (e: ApiError) => e.status === 0);
   });
 });
 

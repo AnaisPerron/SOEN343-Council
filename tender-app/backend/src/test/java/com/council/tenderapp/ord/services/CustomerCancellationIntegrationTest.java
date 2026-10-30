@@ -1,4 +1,4 @@
-package com.council.tenderapp.operator;
+package com.council.tenderapp.ord.services;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -41,14 +41,9 @@ import com.council.tenderapp.ord.exceptions.InvalidOrderStateException;
 import com.council.tenderapp.ord.exceptions.OrderAccessDeniedException;
 import com.council.tenderapp.ord.exceptions.OrderNotFoundException;
 import com.council.tenderapp.ord.repositories.OrderRepository;
-import com.council.tenderapp.ord.services.CustomerOrderService;
-import com.council.tenderapp.ord.services.OrderCancellationService;
-import com.council.tenderapp.ord.services.OrderService;
-import com.council.tenderapp.ord.services.OrderStatusPublisher;
 
 @SpringBootTest
-class OrderCancellationIntegrationTest {
-    @Autowired private OrderCancellationService cancellations;
+class CustomerCancellationIntegrationTest {
     @Autowired private CustomerOrderService customerOrders;
     @Autowired private OrderRepository orders;
     @Autowired private OrderService restaurantOrders;
@@ -60,7 +55,7 @@ class OrderCancellationIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        authenticate("OPERATOR");
+        authenticate("CUSTOMER");
         orderId = orders.saveAndFlush(new Order(1L, 901L, OrderStatus.PLACED, new BigDecimal("14.50"))).getId();
     }
 
@@ -73,7 +68,7 @@ class OrderCancellationIntegrationTest {
 
     private void authenticate(String role) {
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
-                8L, null, List.of(new SimpleGrantedAuthority("ROLE_" + role))));
+                1L, null, List.of(new SimpleGrantedAuthority("ROLE_" + role))));
     }
 
     private long eventCount() {
@@ -81,8 +76,8 @@ class OrderCancellationIntegrationTest {
     }
 
     @Test
-    void operatorCancelsAnotherCustomersOrderAndRecordsOneEventAfterCommit() {
-        cancellations.cancelForOperator(orderId);
+    void customerCancelsOwnOrderAndRecordsOneEventAfterCommit() {
+        customerOrders.cancelOrder(1L, orderId);
         Order saved = orders.findById(orderId).orElseThrow();
         assertThat(saved.getStatus()).isEqualTo(OrderStatus.CANCELLED);
         assertThat(saved.getCustomerId()).isEqualTo(1);
@@ -102,7 +97,7 @@ class OrderCancellationIntegrationTest {
     @EnumSource(value = OrderStatus.class, mode = EnumSource.Mode.EXCLUDE, names = "PLACED")
     void everyOtherOrderStateIsRejectedWithoutEvents(OrderStatus state) {
         jdbc.update("UPDATE orders SET status = ? WHERE id = ?", state.name().toLowerCase(Locale.ROOT), orderId);
-        assertThatThrownBy(() -> cancellations.cancelForOperator(orderId)).isInstanceOf(InvalidOrderStateException.class);
+        assertThatThrownBy(() -> customerOrders.cancelOrder(1L, orderId)).isInstanceOf(InvalidOrderStateException.class);
         assertThat(orders.findById(orderId).orElseThrow().getStatus()).isEqualTo(state);
         assertThat(eventCount()).isZero();
         verifyNoInteractions(publisher);
@@ -110,8 +105,8 @@ class OrderCancellationIntegrationTest {
 
     @Test
     void repeatedCancellationDoesNotAddAnotherEvent() {
-        cancellations.cancelForOperator(orderId);
-        assertThatThrownBy(() -> cancellations.cancelForOperator(orderId)).isInstanceOf(InvalidOrderStateException.class);
+        customerOrders.cancelOrder(1L, orderId);
+        assertThatThrownBy(() -> customerOrders.cancelOrder(1L, orderId)).isInstanceOf(InvalidOrderStateException.class);
         assertThat(eventCount()).isEqualTo(1);
         verify(publisher, times(1)).publish(any(), any(),
                 anyString(), isNull());
@@ -120,7 +115,7 @@ class OrderCancellationIntegrationTest {
     @Test
     void rollbackRestoresStateAndSuppressesEventsAndNotifications() {
         new TransactionTemplate(transactionManager).executeWithoutResult(transaction -> {
-            cancellations.cancelForOperator(orderId);
+            customerOrders.cancelOrder(1L, orderId);
             verifyNoInteractions(publisher);
             transaction.setRollbackOnly();
         });
@@ -130,10 +125,10 @@ class OrderCancellationIntegrationTest {
     }
 
     @Test
-    void missingOrderIsNotFoundAndNonOperatorsAreForbidden() {
-        assertThatThrownBy(() -> cancellations.cancelForOperator(Long.MAX_VALUE)).isInstanceOf(OrderNotFoundException.class);
-        authenticate("CUSTOMER");
-        assertThatThrownBy(() -> cancellations.cancelForOperator(orderId)).isInstanceOf(AccessDeniedException.class);
+    void missingOrderIsNotFoundAndOperatorsCannotUseCustomerCancellation() {
+        assertThatThrownBy(() -> customerOrders.cancelOrder(1L, Long.MAX_VALUE)).isInstanceOf(OrderNotFoundException.class);
+        authenticate("OPERATOR");
+        assertThatThrownBy(() -> customerOrders.cancelOrder(1L, orderId)).isInstanceOf(AccessDeniedException.class);
         assertThat(eventCount()).isZero();
     }
 
@@ -152,10 +147,10 @@ class OrderCancellationIntegrationTest {
         var executor = Executors.newFixedThreadPool(2);
         var start = new CountDownLatch(1);
         Callable<String> attempt = () -> {
-            authenticate("OPERATOR");
+            authenticate("CUSTOMER");
             try {
                 if (!start.await(5, TimeUnit.SECONDS)) throw new IllegalStateException("Timed out");
-                cancellations.cancelForOperator(orderId);
+                customerOrders.cancelOrder(1L, orderId);
                 return "cancelled";
             } catch (InvalidOrderStateException conflict) {
                 return "conflict";

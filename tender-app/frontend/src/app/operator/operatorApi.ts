@@ -1,4 +1,4 @@
-import { API_URL, ApiError, postJson } from '../../api/client.ts';
+import { API_URL, ApiError } from '../../api/client.ts';
 import { updateProfile, type RegisterResponse } from '../../api/auth.ts';
 import type { RestaurantStatus } from '../../types/restaurant.ts';
 
@@ -11,7 +11,6 @@ export type ProfileResponse = RegisterResponse;
 
 // Operator action paths are contracts for endpoints that still need implementation.
 export const operatorPaths = {
-  cancelOrder: (orderId: number) => `/api/operator/orders/${orderId}/cancel`,
   restaurantStatus: (restaurantId: number) => `/api/operator/restaurants/${restaurantId}/status`,
   profile: '/api/profile',
 };
@@ -34,11 +33,6 @@ async function putJson<T>(path: string, body: unknown, token: string): Promise<T
     throw new ApiError(response.status, message, fieldErrors);
   }
   return (await response.json().catch(() => null)) as T;
-}
-
-/** UC-ORD-05: an operator cancels an active order. */
-export async function cancelOrder(orderId: number, token: string): Promise<void> {
-  await postJson<void>(operatorPaths.cancelOrder(orderId), {}, token);
 }
 
 /** UC-ORD-06: an operator sets a restaurant to open, paused or closed. */

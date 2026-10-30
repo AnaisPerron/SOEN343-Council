@@ -55,17 +55,8 @@ export function getOperatorDisplayName(operator: User | undefined): string {
 
 export const RESTAURANT_STATUSES: RestaurantStatus[] = ['open', 'paused', 'closed'];
 
-export function canOperatorCancel(status: Order['status']): boolean {
-  // Matches the existing order state machine; later states cannot transition to cancelled.
-  return status === 'placed';
-}
-
 export function availableStatusChanges(current: RestaurantStatus): RestaurantStatus[] {
   return RESTAURANT_STATUSES.filter((status) => status !== current);
-}
-
-export function markOrderCancelled(orders: Order[], orderId: number): Order[] {
-  return orders.map((o) => (o.id === orderId ? { ...o, status: 'cancelled' } : o));
 }
 
 export function applyRestaurantStatus(

@@ -12,13 +12,11 @@ import {
   applyRestaurantStatus,
   availableStatusChanges,
   calculateOrderTotal,
-  canOperatorCancel,
   countActiveOrders,
   countOpenRestaurants,
   formatRegisteredSummary,
   getCustomerBalance,
   getOperatorDisplayName,
-  markOrderCancelled,
   profileFromResponse,
   toOperatorUser,
   validateProfileUpdate,
@@ -105,28 +103,6 @@ describe('operator dashboard - signed-in operator', () => {
   it('shows the operator name, or "Operator" as a fallback', () => {
     assert.equal(getOperatorDisplayName(toOperatorUser(operatorAuth)), 'Olivia Operator');
     assert.equal(getOperatorDisplayName(undefined), 'Operator');
-  });
-});
-
-describe('operator actions - cancel order (UC-ORD-05)', () => {
-  it('allows cancellation before restaurant acceptance', () => {
-    assert.equal(canOperatorCancel('placed'), true);
-  });
-
-  it('does not offer transitions that the backend state machine rejects', () => {
-    for (const status of ['accepted', 'preparing', 'ready', 'picked_up', 'delivered', 'cancelled', 'rejected'] as const) {
-      assert.equal(canOperatorCancel(status), false, status);
-    }
-  });
-
-  it('marks only the chosen order as cancelled without changing the original list', () => {
-    const before = ordersMock.map((o) => ({ ...o }));
-    const target = ordersMock.find((o) => canOperatorCancel(o.status))!;
-    const after = markOrderCancelled(ordersMock, target.id);
-    assert.equal(after.find((o) => o.id === target.id)!.status, 'cancelled');
-    assert.equal(after.filter((o) => o.status === 'cancelled').length,
-      before.filter((o) => o.status === 'cancelled').length + 1);
-    assert.deepEqual(ordersMock, before);
   });
 });
 

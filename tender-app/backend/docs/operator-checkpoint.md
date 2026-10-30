@@ -1,0 +1,76 @@
+# Phase II operator checkpoint
+
+Branch: `feature/operator-backend`.
+
+## Scope
+
+The Phase II instructions, sections 5.2 and 5.4, require REG (R-REG-01 through
+R-REG-03), ORD (R-ORD-01 through R-ORD-05), and enough dashboard functionality
+to demonstrate them. Pages 6 and 7 exclude DLV and the full role-scoped command
+surface. Appendix A lists broader role permissions, not a requirement to build
+every operator action for this phase.
+
+The operator focus for this checkpoint is predefined login, access to all orders,
+restaurant pause/reopen, and role restrictions. The exact Moodle REG/ORD text
+still needs checking before declaring the complete phase requirements satisfied.
+
+## Implemented
+
+- Existing BCrypt login accepts predefined operator accounts. Public registration
+  cannot create operators.
+- Operator API paths and services require an operator session. Operator pages
+  redirect other roles and signed-out users.
+- Operator login opens the dashboard and displays the authenticated account.
+- Read endpoints provide full summary counts and paginated restaurants, orders,
+  customers, and couriers. Account lists support the existing dashboard.
+- Restaurant status updates accept open, paused, or closed. They preserve existing
+  orders and other restaurant fields. Paused/closed restaurants fail the existing
+  new-order availability check.
+- Customer cancellation retains its ownership check and placed-only transition.
+- Customer cancellation records its event transactionally and notifies observers
+  after commit. Rollback and concurrent cancellation are tested.
+
+## Removed or deferred
+
+- All uncommitted courier reassignment files and edits were removed.
+- Operator cancellation endpoints, API helpers, and eligibility helpers were removed.
+  Customer cancellation and its transaction/concurrency coverage remain.
+- Courier assignment, courier pickup/delivery, billing-ledger infrastructure, and
+  initial-state restoration are deferred. No reset endpoint exists.
+- Committed history was preserved. This checkpoint does not rewrite earlier work.
+
+## Current integration gaps
+
+- Operator dashboard lists/counts still use frontend mocks.
+- Restaurant pause/reopen is implemented and tested on the backend, but the
+  dashboard controls still need connecting to the API.
+- Audit command/error logging against section 5.4 and rehearse role restrictions
+  through the running UI after integration.
+- Billing uses a mock payment gateway, not a persistent billing ledger.
+
+## Database and seed
+
+- Backend timestamps map to the existing `orders.created_at` column. Java/API
+  fields remain named `dateOrdered`.
+- Supabase's order status constraint was expanded to accept `refunded`. This was
+  a constraint-only migration and did not update order rows.
+- The local seed reflects the inspected Supabase schema: no menu name, existing
+  opening_hour/closing_hour columns, and an operator_profiles row for Olivia.
+- Seed image URLs use the backend at localhost:8080. Other devices need a reachable
+  backend origin.
+- The seed remains on standby and has not been executed. It resets fifteen tables
+  if run; do not run it against shared data as part of the remaining work.
+- No new Supabase changes were made for this rollback/checkpoint.
+
+## Validation
+
+Validation passed: 139 backend tests in a clean Maven run against H2 and mocks,
+74 frontend tests, and TypeScript checking. Supabase and the demo seed were not
+used during verification.
+
+## Next steps
+
+1. Connect the existing dashboard lists and counts to the read endpoints.
+2. Connect pause/reopen controls with loading and error feedback.
+3. Verify operator and non-operator permissions, logging, and the demo flow.
+4. Review and push the development branch when requested.

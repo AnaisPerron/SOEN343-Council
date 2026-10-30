@@ -1,7 +1,7 @@
 # Operator backend integration
 
-This document records the contracts for `feature/operator-backend`. Dashboard reads, restaurant status updates, and operator cancellation are implemented.
-Courier reassignment, billing ledgers, and restoration remain pending. The dashboard still displays mock data;
+This document records the contracts for `feature/operator-backend`. Dashboard reads and restaurant status updates are implemented.
+Courier reassignment, billing ledgers, and restoration are deferred outside the current Phase II scope. The dashboard still displays mock data;
 API helper tests mock HTTP responses and do not prove those routes exist.
 
 ## Existing endpoints to reuse
@@ -31,7 +31,7 @@ The frontend must not report them as successful or silently send an ignored fiel
 ## Operator endpoint access
 
 The security filter now requires the existing bearer session with
-`ROLE_OPERATOR` for all `/api/operator/**` routes. Dashboard reads, restaurant status updates, and cancellation are implemented; other actions are still pending. No caller-supplied role or customer ID can grant access.
+`ROLE_OPERATOR` for all `/api/operator/**` routes. Dashboard reads and restaurant status updates are implemented; courier reassignment, billing ledgers, and restoration are deferred. No caller-supplied role or customer ID can grant access.
 Return 401 for missing/invalid/expired tokens, 403 for other account roles,
 400 for invalid inputs, 404 for missing targets, and 409 for state conflicts.
 Reuse the existing error response conventions (`message`, optional `fieldErrors`).
@@ -82,40 +82,15 @@ and all existing orders. After the update completes, the existing
 restaurants. It does not cancel orders or retroactively stop requests that already
 passed that check. Reopening does not add opening-hours scheduling behavior.
 
-### Operator cancellation implemented
+### Customer cancellation
 
-Retain the teammate's helper contract:
+`POST /api/orders/{id}/cancel` remains customer-only and ownership-checked.
+Cancellation is limited to placed orders, locks the order row, records one event,
+and notifies observers after commit. Operators cannot use this endpoint and have
+no separate cancellation endpoint. The unused operator cancellation API and
+eligibility helpers were removed from the frontend.
 
-```http
-POST /api/operator/orders/{orderId}/cancel
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{}
-```
-
-Return 204 on success. Initially permit only `placed -> cancelled`, matching the
-existing `OrderStatus` state machine and customer cancellation rule. Return 409
-for other states. The frontend eligibility helper follows that same restriction.
-Broader administrative cancellation requires an explicit state/refund policy
-before changing this rule.
-
-An operator may target another customer's order. `OrderCancellationService`
-provides separate role-checked customer and operator entry points and shares the
-locked transition and event logic. The existing customer endpoint still passes
-the authenticated customer ID and enforces ownership. The operator endpoint never
-pretends that the operator owns the order.
-
-Cancellation acquires the same order-row write lock used for restaurant actions,
-validates the current state, transitions through the entity, and records one
-`order_cancelled` event via `PreparationQueueService`. Observer notifications are
-published only after a successful transaction commit for both customer and
-operator cancellations. Rollback restores the order/event state and suppresses
-notifications. Repeated cancellation returns 409 rather than creating another event.
-Order records, line snapshots, and totals remain intact. This does not perform a
-refund or create billing-ledger entries; the current gateway has no refund API.
-
-## Remaining requirements and prerequisites
+## Phase II boundary and deferred features
 
 - Operator login and restored sessions now route to `/operator/dashboard`. The
   operator layout waits for session restoration and redirects other roles or
@@ -137,18 +112,22 @@ refund or create billing-ledger entries; the current gateway has no refund API.
   It must be tested only in a disposable database. Do not execute the demo seed
   or any restoration against the configured Supabase database during development.
 
-## Integration sequence
+## Implementation checkpoint
 
 1. Complete branch setup and dependency/test checks (done).
 2. Align existing profile/cancellation helper contracts and record missing APIs.
 3. Add operator backend authorization and login routing (done).
 4. Implement dashboard read endpoints (done); connect the frontend and remove mocks (pending).
 5. Implement restaurant pause/reopen (backend done; frontend controls pending).
-6. Implement operator cancellation through shared order logic (backend done; frontend controls pending).
-7. Implement validated courier reassignment.
-8. Define and implement billing-ledger storage and reads.
-9. Define and implement restoration in an isolated test environment.
-10. Verify full operator flows and forbidden customer/staff/courier operations.
+6. Customer cancellation remains supported; operator cancellation was removed from this Phase II scope.
+Courier reassignment, billing-ledger implementation, and initial-state restoration
+are not next steps for this Phase II checkpoint. The Phase II instructions limit
+implementation to REG and ORD and explicitly exclude DLV and the full role-scoped
+command surface. Verify the referenced Moodle requirements before expanding scope.
+
+The next work is frontend integration for implemented operator reads and restaurant
+status changes, followed by command/error logging and demo verification.
+See [operator-checkpoint.md](operator-checkpoint.md) for the current scope and state.
 
 
 ### Read response examples
