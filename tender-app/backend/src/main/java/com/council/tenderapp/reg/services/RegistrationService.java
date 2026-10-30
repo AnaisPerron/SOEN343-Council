@@ -7,6 +7,7 @@ import org.springframework.core.NestedExceptionUtils;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.council.tenderapp.reg.dtos.RegisterRequest;
@@ -40,7 +41,9 @@ public class RegistrationService {
 
     @Transactional
     public RegisterResponse register(RegisterRequest request) {
-        
+        if (request.role() == Role.OPERATOR) {
+            throw new AccessDeniedException("Operator accounts must be predefined");
+        }
         String email = request.email().trim().toLowerCase(Locale.ROOT);
         if (repository.existsByEmailIgnoreCase(email)) {
             throw new DuplicateEmailException(email);

@@ -55,6 +55,17 @@ class RestaurantOrderControllerTest {
     }
 
     @Test
+    void operatorsCannotPrepareOrDeliverOrders() throws Exception {
+        for (String action : List.of("prepare", "ready", "picked-up", "delivered")) {
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                    "/api/restaurants/1/orders/42/" + action)
+                    .header(HttpHeaders.AUTHORIZATION, bearer(1L, Role.OPERATOR)))
+                    .andExpect(status().isForbidden());
+        }
+        verifyNoInteractions(orderService);
+    }
+
+    @Test
     void unauthenticatedRequestsAreRejected() throws Exception {
         mockMvc.perform(get("/api/restaurants/1/orders/incoming"))
                 .andExpect(status().isUnauthorized());
