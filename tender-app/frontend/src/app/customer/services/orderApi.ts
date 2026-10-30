@@ -1,4 +1,5 @@
 import type { RestaurantCartGroup } from '../cart/cartStore';
+import type { OrderHistoryEntry } from './orderLifecycle';
 
 /** Body of POST /api/orders: one order per restaurant. */
 export interface OrderSubmission {
@@ -43,6 +44,17 @@ async function postWithToken<T>(endpoint: string, token: string, body: unknown, 
     throw new Error(fieldError ?? data?.message ?? `${failure} (${response.status}).`);
   }
   return data as T;
+}
+
+export async function fetchOrderHistory(
+  endpoint: string,
+  token: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<OrderHistoryEntry[]> {
+  const response = await fetchImpl(endpoint, { headers: { Authorization: `Bearer ${token}` } });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(data?.message ?? `Could not load your orders (${response.status}).`);
+  return data as OrderHistoryEntry[];
 }
 
 export async function sendOrder(

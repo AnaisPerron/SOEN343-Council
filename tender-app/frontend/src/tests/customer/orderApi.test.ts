@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { sendOrder, sendOrderCancellation, toOrderSubmission, type OrderSubmission } from '../../app/customer/services/orderApi.ts';
+import { fetchOrderHistory, sendOrder, sendOrderCancellation, toOrderSubmission, type OrderSubmission } from '../../app/customer/services/orderApi.ts';
+import { formatOrderStatus, fromOrderHistory } from '../../app/customer/services/orderLifecycle.ts';
 
 const order: OrderSubmission = {
   restaurantId: 1,
@@ -61,5 +62,30 @@ describe('order backend request', () => {
     const result = await sendOrderCancellation('https://api.example.test/api/orders/9006/cancel', 'token-1', fakeFetch);
     assert.equal(requestedOptions?.body, undefined);
     assert.equal(result.status, 'cancelled');
+  });
+
+  it('loads order history with the session token and maps it for the history screen', async () => {
+    let requestedOptions: RequestInit | undefined;
+    const entry = {
+      orderId: 16, restaurantId: 1, restaurantName: 'Metro Pizza', status: 'picked_up', total: 19, placedAt: '2026-10-29T23:12:20Z',
+      rejectionReason: null, lines: [{ name: 'Pepperoni Pizza', quantity: 1, unitPrice: 19, options: ['Extra cheese'] }],
+    };
+    const fakeFetch: typeof fetch = async (_url, options) => {
+      requestedOptions = options;
+      return new Response(JSON.stringify([entry]), { status: 200 });
+    };
+
+    const [loaded] = await fetchOrderHistory('https://api.example.test/api/orders', 'token-1', fakeFetch);
+    assert.deepEqual(requestedOptions?.headers, { Authorization: 'Bearer token-1' });
+    const order = fromOrderHistory(loaded);
+    assert.equal(order.id, '16');
+    assert.equal(order.restaurantName, 'Metro Pizza');
+    assert.deepEqual(order.items?.[0].options, ['Extra cheese']);
+    assert.equal(formatOrderStatus(order.status), 'Picked up');
+  });
+
+  it('reports why order history could not be loaded', async () => {
+    const fakeFetch: typeof fetch = async () => new Response(JSON.stringify({ message: 'Access denied' }), { status: 403 });
+    await assert.rejects(fetchOrderHistory('https://api.example.test/api/orders', 'token-1', fakeFetch), /Access denied/);
   });
 });
