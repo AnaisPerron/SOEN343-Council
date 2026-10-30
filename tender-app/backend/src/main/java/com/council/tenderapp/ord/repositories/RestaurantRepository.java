@@ -5,6 +5,8 @@ import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.repository.query.Param;
 
 import com.council.tenderapp.ord.dtos.RestaurantBrowseProjection;
 import com.council.tenderapp.ord.entities.Restaurant;
@@ -24,4 +26,8 @@ public interface RestaurantRepository extends JpaRepository<Restaurant, Long> {
     List<RestaurantBrowseProjection> findRestaurantBrowseByStatus(String status);
 
     Optional<Restaurant> findByName(String name);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("UPDATE Restaurant r SET r.status = :status WHERE r.id = :restaurantId")
+    int updateStatusById(@Param("restaurantId") Long restaurantId, @Param("status") String status);
 }

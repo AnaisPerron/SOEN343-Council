@@ -1,7 +1,7 @@
 # Operator backend integration
 
-This document records the contracts for `feature/operator-backend`. Dashboard read routes are implemented. Administrative action
-routes below are still pending. The dashboard still displays mock data;
+This document records the contracts for `feature/operator-backend`. Dashboard read routes and restaurant status updates are implemented. Other
+administrative action routes below are still pending. The dashboard still displays mock data;
 API helper tests mock HTTP responses and do not prove those routes exist.
 
 ## Existing endpoints to reuse
@@ -31,7 +31,7 @@ The frontend must not report them as successful or silently send an ignored fiel
 ## Operator endpoint access
 
 The security filter now requires the existing bearer session with
-`ROLE_OPERATOR` for all `/api/operator/**` routes. The read endpoints below are implemented; administrative actions are still pending. No caller-supplied role or customer ID can grant access.
+`ROLE_OPERATOR` for all `/api/operator/**` routes. The read endpoints and restaurant status update endpoint are implemented; other actions are still pending. No caller-supplied role or customer ID can grant access.
 Return 401 for missing/invalid/expired tokens, 403 for other account roles,
 400 for invalid inputs, 404 for missing targets, and 409 for state conflicts.
 Reuse the existing error response conventions (`message`, optional `fieldErrors`).
@@ -58,7 +58,7 @@ snake_case mock view models explicitly when connecting the dashboard. Handle
 nullable IDs/timestamps and every persisted order state, including `refunded`.
 Order totals must follow the shared backend calculation, not mock order lines.
 
-### Restaurant status
+### Restaurant status implemented
 
 Retain the teammate's helper contract:
 
@@ -70,10 +70,17 @@ Content-Type: application/json
 { "status": "paused" }
 ```
 
-Allow only `open`, `paused`, or `closed`. Return 204 on success; the client refreshes
-the list and summary. Setting the same state can be an idempotent success.
-Preserve existing orders. Reuse `BrowseService.checkRestaurantOpen` for new-order
-restrictions; do not bypass these restrictions through the operator UI.
+Accepts exactly `open`, `paused`, or `closed`. Returns 204 on success; the client
+refreshes the list and summary. Repeating the same status is an idempotent success.
+Missing/null/unsupported status values, malformed bodies, and nonpositive IDs
+return 400. A missing restaurant returns 404. Operator access is enforced by both
+the security filter and the transactional service.
+
+The update changes only the status column, preserving other restaurant details
+and all existing orders. After the update completes, the existing
+`BrowseService.checkRestaurantOpen` check rejects new orders for paused or closed
+restaurants. It does not cancel orders or retroactively stop requests that already
+passed that check. Reopening does not add opening-hours scheduling behavior.
 
 ### Operator cancellation
 
@@ -128,7 +135,7 @@ integrating this action so restaurant views do not retain stale queue entries.
 2. Align existing profile/cancellation helper contracts and record missing APIs.
 3. Add operator backend authorization and login routing (done).
 4. Implement dashboard read endpoints (done); connect the frontend and remove mocks (pending).
-5. Implement restaurant pause/reopen.
+5. Implement restaurant pause/reopen (backend done; frontend controls pending).
 6. Implement operator cancellation through shared order logic.
 7. Implement validated courier reassignment.
 8. Define and implement billing-ledger storage and reads.
