@@ -34,6 +34,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         Collection<OrderStatus> statuses
     );
 
+    // Customer history, newest first.
+    List<Order> findByCustomerIdOrderByDateOrderedDescIdDesc(Long customerId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT o FROM Order o WHERE o.id = :orderId")
     Optional<Order> findByIdForUpdate(@Param("orderId") Long orderId);
