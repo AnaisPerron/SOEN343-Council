@@ -82,13 +82,15 @@ class OperatorDashboardRepositoryTest {
     }
 
     @Test
-    void orderTotalsFollowLineSnapshotsThenStoredTotalThenZero() {
+    void orderTotalsFollowStoredTotalThenLineSnapshotsThenZero() {
         var result = repository.orders(0, 50);
         assertThat(result.total()).isEqualTo(3);
         assertThat(result.items()).extracting(OrderSummary::id).containsExactly(10L, 20L, 30L);
-        assertThat(result.items().get(0).totalPrice()).isEqualByComparingTo("25.00");
+        assertThat(result.items().get(0).totalPrice()).isEqualByComparingTo("99.00");
         assertThat(result.items().get(1).totalPrice()).isEqualByComparingTo("12.50");
         assertThat(result.items().get(2).totalPrice()).isEqualByComparingTo("0");
+        jdbc.update("UPDATE orders SET total_price = NULL WHERE id = 10");
+        assertThat(repository.orders(0, 50).items().get(0).totalPrice()).isEqualByComparingTo("25.00");
         assertThat(result.items().get(1).status()).isEqualTo("refunded");
         assertThat(repository.orders(1, 1).items()).extracting(OrderSummary::id).containsExactly(20L);
     }

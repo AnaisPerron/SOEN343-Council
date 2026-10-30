@@ -15,7 +15,7 @@ export const styles = StyleSheet.create({
   content: { paddingHorizontal: 22, paddingTop: 30, paddingBottom: 44, width: '100%', maxWidth: 760, alignSelf: 'center' },
   sectionTitle: { fontFamily: font, color: ink, fontSize: 24, fontWeight: '900', marginBottom: 24 },
   restaurantBlock: { borderBottomWidth: 1, borderBottomColor: '#E6E1E2', paddingBottom: 17, marginBottom: 19, gap: 12 },
-  restaurantName: { fontFamily: font, color: ink, fontSize: 18, fontWeight: '900', marginBottom: 3 },
+  restaurantName: { fontFamily: 'LoveLight', color: ink, fontSize: 28, fontWeight: '400', marginBottom: 3 },
   itemRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 16 },
   itemName: { flex: 1, fontFamily: font, color: '#6E6265', fontSize: 13, lineHeight: 19 },
   itemPrice: { fontFamily: font, color: ink, fontSize: 13, fontWeight: '700', fontVariant: ['tabular-nums'] },

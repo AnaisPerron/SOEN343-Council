@@ -34,7 +34,7 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
 
-            Optional<Session> sessionOpt = sessionService.find(token); //uses session service to verufy token
+            Optional<Session> sessionOpt = sessionService.find(token); //uses session service to verify token
             if (sessionOpt.isPresent()) {
                 Session session = sessionOpt.get();
 
@@ -44,9 +44,9 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter
 
                 UsernamePasswordAuthenticationToken authentication = 
                     new UsernamePasswordAuthenticationToken(session.accountId(), null, authorities);
-                authentication.setDetails(session.restaurantId());
+                authentication.setDetails(session);
+
                 CommandLoggingFilter.recordActor(request, session.accountId(), session.role().name());
-                
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
         }

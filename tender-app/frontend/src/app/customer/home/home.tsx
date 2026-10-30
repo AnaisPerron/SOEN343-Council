@@ -3,7 +3,6 @@ import { useRouter } from 'expo-router';
 import {
   Animated,
   Image,
-  type ImageSourcePropType,
   Platform,
   ScrollView,
   Text,
@@ -14,9 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCart } from '@/context/CartContext';
-import { restaurantsMock } from '@/mocks/restaurants.mock';
-import { menusMock, menuItemsMock } from '@/mocks/menus.mock';
-import { restaurantDisplayMock } from '@/mocks/restaurantDisplay.mock';
+import { useCatalog } from '@/context/CatalogContext';
 import type { Restaurant } from '@/types/restaurant';
 import { styles } from './home.styles';
 import { searchRestaurants } from '../services/restaurantSearch';
@@ -34,73 +31,26 @@ import {
 const tenderLogo = require('../../../../assets/tender-logo.png');
 {/*Placeholder for now. TODO: for later phases, must be linked to user profile, map, etc.. */}
 const sections = [
-  {
-    title: 'Top picks for you',
-    note: 'A little something for every craving',
-    ids: [1, 2, 3, 4],
-  },
-  {
-    title: 'Open near me',
-    note: 'Ready when you are',
-    ids: [2, 1, 3],
-  },
-  {
-    title: 'For cheap treats',
-    note: 'Good food, easy on the wallet',
-    ids: [4, 2, 1],
-  },
-  {
-    title: 'Feeling fancy?',
-    note: 'Make tonight feel like an occasion',
-    ids: [1, 3, 2],
-  },
-  {
-    title: 'For your sweet tooth',
-    note: 'Save room for something sweet',
-    ids: [3, 4, 2],
-  },
+  { title: 'Top picks for you', note: 'A little something for every craving' },
+  { title: 'Open near me', note: 'Ready when you are' },
+  { title: 'For cheap treats', note: 'Good food, easy on the wallet' },
+  { title: 'Feeling fancy?', note: 'Make tonight feel like an occasion' },
+  { title: 'For your sweet tooth', note: 'Save room for something sweet' },
 ];
 
-// Keep demo ratings tied to restaurant IDs so they stay consistent across sections.
-const mockRatings: Record<number, number> = {
-  1: 4.8,
-  2: 4.6,
-  3: 4.9,
-  4: 4.7,
-};
+// Rotate the list per section so the placeholder rows do not all start with the same restaurant.
+const rotate = <T,>(list: T[], offset: number) =>
+  list.length === 0 ? list : [...list.slice(offset % list.length), ...list.slice(0, offset % list.length)];
 
-// Static requires let Metro bundle each local menu photo into the app.
-const menuItemPhotos: Record<number, ImageSourcePropType> = {
-  1001: require('../../../mocks/menu-items-imgs/maple-glazed-chicken-sandwich.jpg'),
-  1002: require('../../../mocks/menu-items-imgs/truffle.jpg'),
-  1003: require('../../../mocks/menu-items-imgs/apple-crumble.jpg'),
-  2001: require('../../../mocks/menu-items-imgs/harvest-grain-bowl.jpg'),
-  2002: require('../../../mocks/menu-items-imgs/miso-tofu-bowl.jpg'),
-  3001: require('../../../mocks/menu-items-imgs/smoked-salmon-bagel.jpg'),
-  4001: require('../../../mocks/menu-items-imgs/margherita-pizza.jpg'),
-};
-
-// Keep card display data derived once from the shared restaurant and menu fixtures.
-const restaurantCardsById = new Map<number, RestaurantCardData>(
-  restaurantsMock.map((restaurant) => [
-    restaurant.id,
-    {
-      restaurant,
-      rating: mockRatings[restaurant.id],
-      reviewCount: restaurantDisplayMock[restaurant.id]?.reviewCount ?? 0,
-      coverOptions: menuItemsMock
-        .filter((menuItem) => menusMock.some((menu) =>
-          menu.id === menuItem.menu_id && menu.restaurant_id === restaurant.id,
-        ))
-        .map((menuItem) => menuItemPhotos[menuItem.id])
-        .filter((photo): photo is ImageSourcePropType => photo !== undefined),
-    },
-  ] as const),
-);
+const toCardData = (restaurant: Restaurant): RestaurantCardData => ({
+  restaurant,
+  coverOptions: restaurant.photoUrl ? [{ uri: restaurant.photoUrl }] : [],
+});
 
 export default function CustomerHome() {
   const router = useRouter();
   const { lines } = useCart();
+  const { restaurants, restaurantsStatus, restaurantsError, reloadRestaurants } = useCatalog();
   const cartCount = lines.reduce((count, line) => count + line.quantity, 0);
   const { width } = useWindowDimensions();
   const compact = width < 600;
@@ -111,10 +61,8 @@ export default function CustomerHome() {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const normalizedQuery = searchQuery.trim().toLocaleLowerCase();
   const isMobileSearch = Platform.OS !== 'web' && (isSearchFocused || normalizedQuery.length > 0);
-  // Search the full restaurant fixture so matches are not limited to one curated row.
-  const searchResults: RestaurantCardData[] = searchRestaurants(restaurantsMock, normalizedQuery)
-    .map((restaurant) => restaurantCardsById.get(restaurant.id)!)
-    .filter(Boolean);
+  // Search the full restaurant list so matches are not limited to one curated row.
+  const searchResults: RestaurantCardData[] = searchRestaurants(restaurants, normalizedQuery).map(toCardData);
   useEffect(() => () => {
     // Clear the pending dismissal if the home screen unmounts while the alert is visible.
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -233,7 +181,18 @@ export default function CustomerHome() {
         </View>
 
 
-        {normalizedQuery ? (
+        {restaurantsStatus === 'loading' ? (
+          <Text style={styles.catalogStatus}>Loading restaurants...</Text>
+        ) : restaurantsStatus === 'error' ? (
+          <View>
+            <Text style={styles.catalogStatus}>{restaurantsError}</Text>
+            <TouchableOpacity onPress={reloadRestaurants} accessibilityRole="button">
+              <Text style={styles.retryText}>Try again</Text>
+            </TouchableOpacity>
+          </View>
+        ) : restaurants.length === 0 ? (
+          <Text style={styles.catalogStatus}>No restaurants are open right now.</Text>
+        ) : normalizedQuery ? (
           <RestaurantSection
             title="Search results"
             note={`${searchResults.length} ${searchResults.length === 1 ? 'restaurant' : 'restaurants'}`}
@@ -243,9 +202,7 @@ export default function CustomerHome() {
             onRestaurantPress={handleRestaurantPress}
           />
         ) : sections.map((section, index) => {
-          const items: RestaurantCardData[] = section.ids
-            .map((id) => restaurantCardsById.get(id)!)
-            .filter(Boolean);
+          const items: RestaurantCardData[] = rotate(restaurants, index).map(toCardData);
 
           return (
             <RestaurantSection

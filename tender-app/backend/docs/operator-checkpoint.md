@@ -67,15 +67,27 @@ still needs checking before declaring the complete phase requirements satisfied.
 
 ## Validation
 
-Validation passed: 150 backend tests in a clean Maven run against H2 and mocks,
-86 frontend tests, TypeScript checking, and a successful web export. Supabase and the demo seed were not
+Validation passed after merging dev: 158 backend tests in a clean Maven run against H2
+and mocks, 100 frontend tests, TypeScript checking, and a successful web export. Supabase and the demo seed were not
 used during verification.
 
 ## Next steps
 
-1. Rehearse the live operator and non-operator flows using a safe database.
+1. Recheck customer browsing and operator pause/reopen together after the dev merge.
+   Customer browsing now uses the backend catalog and shows only open restaurants.
+   Reload the customer page after changing a restaurant status.
 2. Review and push the development branch when requested.
 
 The UI API tests mock network responses; no pause/reopen request was sent to
 Supabase during implementation. Restart the backend with the latest branch code
 without enabling the demo profile before manually testing the integration.
+
+## Dev integration
+
+Merged dev at `5512bcc` into the operator backend branch while retaining operator
+authorization, dashboard controls, customer cancellation, and command logging.
+Restaurant accounts route to the new restaurant screens. Authentication details
+carry the full session required by those controllers. Operator totals now use the
+stored total first, matching the shared order calculation including add-ons.
+A missing restaurant item photo storage helper was added to complete the imported
+menu screen. No seed or database reset was run.

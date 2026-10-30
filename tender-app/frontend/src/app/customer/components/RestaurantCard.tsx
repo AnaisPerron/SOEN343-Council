@@ -11,8 +11,9 @@ import { styles } from './RestaurantCard.styles';
 
 export interface RestaurantCardData {
   restaurant: Restaurant;
-  rating: number;
-  reviewCount: number;
+  // Optional until the restaurant API exposes ratings.
+  rating?: number;
+  reviewCount?: number;
   coverOptions: ImageSourcePropType[];
 }
 
@@ -76,11 +77,13 @@ export default function RestaurantCard({
           <Text numberOfLines={1} style={styles.cardTitle}>{restaurant.name}</Text>
         </View>
         <Text style={[styles.cardDetail, statusStyle]}>{statusText}</Text>
-        <View style={styles.ratingRow}>
-          <Text style={styles.ratingStar}>★</Text>
-          <Text style={styles.ratingValue}>{rating.toFixed(1)}</Text>
-          <Text style={styles.reviewCount}>({reviewCount} reviews)</Text>
-        </View>
+        {rating != null && (
+          <View style={styles.ratingRow}>
+            <Text style={styles.ratingStar}>★</Text>
+            <Text style={styles.ratingValue}>{rating.toFixed(1)}</Text>
+            <Text style={styles.reviewCount}>({reviewCount ?? 0} reviews)</Text>
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );

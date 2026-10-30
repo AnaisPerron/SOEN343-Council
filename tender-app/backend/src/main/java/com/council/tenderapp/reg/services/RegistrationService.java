@@ -30,13 +30,16 @@ public class RegistrationService {
     private final PasswordEncoder passwordEncoder;
     private final RestaurantRepository restaurantRepository;
     private final RestaurantStaffRepository restaurantStaffRepository;
+    private final CustomerProfileService customerProfileService;
 
     public RegistrationService(ProfileRepository repository, PasswordEncoder passwordEncoder,
-            RestaurantRepository restaurantRepository, RestaurantStaffRepository restaurantStaffRepository) {
+            RestaurantRepository restaurantRepository, RestaurantStaffRepository restaurantStaffRepository,
+            CustomerProfileService customerProfileService) {
         this.repository = repository;
         this.passwordEncoder = passwordEncoder;
         this.restaurantRepository = restaurantRepository;
         this.restaurantStaffRepository = restaurantStaffRepository;
+        this.customerProfileService = customerProfileService;
     }
 
     @Transactional
@@ -63,6 +66,9 @@ public class RegistrationService {
                         restaurantWithDetails(saved.getName(), request.phone(), request.address()));
                 restaurantStaffRepository.saveAndFlush(new RestaurantStaff(saved.getId(), restaurant.getId()));
                 return RegisterResponse.from(saved, restaurant);
+            }
+            if (saved.getRole() == Role.CUSTOMER) {
+                customerProfileService.ensureExists(saved.getId());
             }
             return RegisterResponse.from(saved);
         } catch (DataIntegrityViolationException ex) {

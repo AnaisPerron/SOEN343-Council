@@ -152,8 +152,12 @@ public class Order {
     }
 
     public BigDecimal getTotalPrice() {
+        // The stored total includes add-on costs, which order lines do not carry.
+        if (totalPrice != null) {
+            return totalPrice;
+        }
         if (orderLines == null || orderLines.isEmpty()) {
-            return totalPrice == null ? BigDecimal.ZERO : totalPrice;
+            return BigDecimal.ZERO;
         }
         return orderLines.stream()
             .map(line -> line.getUnitPrice().multiply(BigDecimal.valueOf(line.getQuantity())))

@@ -172,9 +172,8 @@ null profile fields. Summary account counts include those accounts.
 
 Order items contain `id`, `customerId`, `restaurantId`, `courierId`, `status`,
 `dateOrdered`, `acceptedAt`, `rejectionReason`, and `totalPrice`. Dates are UTC ISO
-strings or null. Totals follow `Order.getTotalPrice`: line snapshot quantities
-multiplied by unit prices take precedence; without lines, use the stored total
-or zero. This is an order total, not a payment or refund ledger.
+strings or null. Totals follow `Order.getTotalPrice`: the stored total takes precedence because it includes add-ons; otherwise use
+line snapshot quantities multiplied by unit prices, or zero without lines. This is an order total, not a payment or refund ledger.
 
 Queries use existing PostgreSQL tables without migrations or new entity mappings.
 The configured database needs `users`, `restaurants`, `customer_profiles`,

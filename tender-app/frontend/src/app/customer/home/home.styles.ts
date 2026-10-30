@@ -195,6 +195,8 @@ export const styles = StyleSheet.create({
     fontWeight: '600',
   },
   // Center the temporary R-ORD-02 message above the current app screen.
+  catalogStatus: { fontFamily: roundedFont, color: '#8E7A7E', fontSize: 15, textAlign: 'center', paddingVertical: 24 },
+  retryText: { fontFamily: roundedFont, color: '#FF4458', fontWeight: '800', textAlign: 'center' },
   orderErrorOverlay: {
     position: 'absolute',
     top: 0,

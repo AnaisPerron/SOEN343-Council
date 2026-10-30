@@ -3,6 +3,7 @@ package com.council.tenderapp.ord;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Date;
+import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +20,16 @@ class OrderRepositoryTest {
 
     @Autowired
     private OrderRepository orderRepository;
+
+    @Test
+    void customerHistoryContainsOnlyTheCustomersOrders() {
+        Order first = orderRepository.save(new Order(101L, 701L, OrderStatus.PLACED, BigDecimal.TEN));
+        Order other = orderRepository.save(new Order(102L, 701L, OrderStatus.PLACED, BigDecimal.TEN));
+        orderRepository.flush();
+        assertThat(orderRepository.findByCustomerIdOrderByDateOrderedDescIdDesc(101L))
+            .extracting(Order::getId).contains(first.getId()).doesNotContain(other.getId());
+    }
+
 
     @Test
     void incomingOrdersArePlacedOnlyForRestaurantAndOrderedByArrivalTime() {

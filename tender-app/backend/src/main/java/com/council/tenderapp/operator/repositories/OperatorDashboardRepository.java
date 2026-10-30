@@ -72,8 +72,8 @@ public class OperatorDashboardRepository {
         return page("SELECT COUNT(*) FROM orders", """
                 SELECT o.id, o.customer_id, o.restaurant_id, o.courier_id, o.status,
                     o.created_at, o.accepted_at, o.rejection_reason,
-                    COALESCE((SELECT SUM(l.quantity * l.unit_price) FROM order_lines l
-                        WHERE l.order_id = o.id), o.total_price, 0) AS calculated_total
+                    COALESCE(o.total_price, (SELECT SUM(l.quantity * l.unit_price) FROM order_lines l
+                        WHERE l.order_id = o.id), 0) AS calculated_total
                 FROM orders o ORDER BY o.id LIMIT ? OFFSET ?
                 """, (rs, row) -> new OrderSummary(rs.getLong("id"), rs.getObject("customer_id", Long.class),
                         rs.getObject("restaurant_id", Long.class), rs.getObject("courier_id", Long.class),

@@ -11,7 +11,8 @@ public record MenuItemDto(
     BigDecimal price,
     String description,
     Boolean available,
-    String photoUrl
+    String photoUrl,
+    String category
 ) {
     public MenuItemDto(MenuItem menuItem) {
         this(
@@ -21,7 +22,8 @@ public record MenuItemDto(
             menuItem.getPrice(),
             menuItem.getDescription(),
             "available".equals(menuItem.getStatus()),
-            menuItem.getPhotoUrl()
+            menuItem.getPhotoUrl(),
+            menuItem.getCategory()
         );
     }
 }

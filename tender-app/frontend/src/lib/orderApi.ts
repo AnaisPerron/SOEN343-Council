@@ -100,6 +100,6 @@ export function observeOrderStatus(
   onStatusChange: () => void,
 ): () => void {
   // EventSource cannot attach the bearer token; refresh the queue without putting it in a URL.
-  const timer = setInterval(onStatusChange, 5000);
+  const timer = setInterval(onStatusChange, 30000);
   return () => clearInterval(timer);
 }

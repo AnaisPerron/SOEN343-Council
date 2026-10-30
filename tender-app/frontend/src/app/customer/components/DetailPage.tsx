@@ -1,4 +1,4 @@
-import type { ReactNode, RefObject } from 'react';
+import type { ComponentRef, ReactNode, RefObject } from 'react';
 import {
   Image,
   type ImageSourcePropType,
@@ -17,7 +17,7 @@ interface DetailPageProps {
   coverHeight: number;
   children: ReactNode;
   foreground?: ReactNode;
-  scrollRef?: RefObject<ScrollView | null>;
+  scrollRef?: RefObject<ComponentRef<typeof ScrollView> | null>;
   onScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
 }
 

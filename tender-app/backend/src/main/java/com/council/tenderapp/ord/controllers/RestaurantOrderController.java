@@ -20,7 +20,7 @@ import com.council.tenderapp.ord.services.OrderService;
 @RestController
 @CrossOrigin(origins = "${app.cors.allowed-origin:http://localhost:8081}")
 @RequestMapping("/api/restaurants/{restaurantId}/orders")
-@PreAuthorize("hasRole('STAFF') and authentication.details == #restaurantId")
+@PreAuthorize("hasRole('STAFF') and authentication.details.restaurantId == #restaurantId")
 public class RestaurantOrderController {
     private final OrderService orderService;
     private final DashboardObserver dashboardObserver;
@@ -28,6 +28,12 @@ public class RestaurantOrderController {
     public RestaurantOrderController(OrderService orderService, DashboardObserver dashboardObserver) {
         this.orderService = orderService;
         this.dashboardObserver = dashboardObserver;
+    }
+
+    // Expose all statuses to the dashboard, including completed and rejected orders.
+    @GetMapping
+    public List<OrderResponse> getAllOrders(@PathVariable Long restaurantId) {
+        return orderService.getAllOrders(restaurantId);
     }
 
     @GetMapping({"/preparation", "/arrival-queue"})

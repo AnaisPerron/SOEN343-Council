@@ -1,7 +1,7 @@
 import { homeRoute } from '@/lib/roleRoutes';
 import { useState } from 'react';
 import { Redirect, useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AccountMenu from '@/components/AccountMenu';
 import { useAuth } from '@/context/AuthContext';
@@ -15,13 +15,15 @@ export default function ProfileScreen() {
 }
 
 function ProfileForm({ user }: { user: AuthUser }) {
-  const { saveProfile } = useAuth();
+  const { saveProfile, deleteAccount } = useAuth();
   const router = useRouter();
   const [name, setName] = useState(user.name);
   const [phone, setPhone] = useState(user.phoneNumber);
   const [address, setAddress] = useState(user.address ?? '');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const save = async () => {
     if (saving) return;
@@ -44,10 +46,9 @@ function ProfileForm({ user }: { user: AuthUser }) {
       <AccountMenu />
     </View>
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <Text style={styles.title}>{user.role === 'restaurant' ? 'Restaurant profile' : 'Profile'}</Text>
+      {user.role === 'restaurant' ? <><Text style={styles.label}>Restaurant name</Text><TextInput style={styles.nameHeading} value={name} onChangeText={setName} accessibilityLabel="Restaurant name" autoCapitalize="words" maxLength={100} /></> : <Text style={styles.title}>Profile</Text>}
       <Text style={styles.subtitle}>{user.role === 'restaurant' ? 'Your restaurant details' : 'Your account details'}</Text>
-      <Text style={styles.label}>{user.role === 'restaurant' ? 'Restaurant name' : 'Name'}</Text>
-      <TextInput style={styles.input} value={name} onChangeText={setName} accessibilityLabel="Name" autoCapitalize="words" maxLength={100} />
+      {user.role !== 'restaurant' && <><Text style={styles.label}>Name</Text><TextInput style={[styles.input, user.role === 'customer' && styles.customerName]} value={name} onChangeText={setName} accessibilityLabel="Name" autoCapitalize="words" maxLength={100} /></>}
       <Text style={styles.label}>Phone number</Text>
       <TextInput style={styles.input} value={phone} onChangeText={setPhone} accessibilityLabel="Phone number" keyboardType="phone-pad" maxLength={20} />
       {user.role === 'restaurant' ? <>
@@ -60,7 +61,27 @@ function ProfileForm({ user }: { user: AuthUser }) {
       <Pressable style={[styles.save, saving && styles.disabled]} disabled={saving} onPress={save} accessibilityRole="button">
         {saving ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.saveText}>Save changes</Text>}
       </Pressable>
+      {user.role !== 'Operator' && <View style={styles.dangerSection}>
+        <Text style={styles.dangerTitle}>Delete account</Text>
+        <Text style={styles.dangerDescription}>Permanently remove your account{user.role === 'customer' ? ' and order history' : ''}. This cannot be undone.</Text>
+        <Pressable style={styles.deleteButton} accessibilityRole="button" onPress={() => setConfirmDelete(true)}><Text style={styles.deleteText}>Delete account</Text></Pressable>
+      </View>}
     </ScrollView>
+    <Modal transparent visible={confirmDelete} animationType="fade" onRequestClose={() => { if (!deleting) setConfirmDelete(false); }}>
+      <View style={styles.backdrop}><View style={styles.dialog}>
+        <Text style={styles.dangerTitle}>Permanently delete your account?</Text>
+        <Text style={styles.dangerDescription}>Your account{user.role === 'customer' ? ' and order history' : ''} will be permanently deleted. You will be signed out.</Text>
+        {message ? <Text style={styles.message} accessibilityRole="alert">{message}</Text> : null}
+        <View style={styles.dialogActions}>
+          <Pressable disabled={deleting} onPress={() => { setConfirmDelete(false); setMessage(''); }}><Text style={styles.back}>Cancel</Text></Pressable>
+          <Pressable disabled={deleting} style={[styles.deleteButton, deleting && styles.disabled]} onPress={async () => {
+            setDeleting(true); setMessage('');
+            try { await deleteAccount(); router.replace('/auth/login'); }
+            catch (error) { setMessage(error instanceof Error ? error.message : 'Could not delete account'); setDeleting(false); }
+          }}><Text style={styles.deleteText}>{deleting ? 'Deleting…' : 'Delete permanently'}</Text></Pressable>
+        </View>
+      </View></View>
+    </Modal>
   </SafeAreaView>;
 }
 
@@ -70,6 +91,8 @@ const styles = StyleSheet.create({
   back: { color: '#B52F4B', fontWeight: '700', fontSize: 16 },
   content: { width: '100%', maxWidth: 560, alignSelf: 'center', padding: 24, paddingBottom: 60 },
   title: { fontSize: 32, fontWeight: '800', color: '#38252A' },
+  nameHeading: { fontFamily: 'LoveLight', fontSize: 42, fontWeight: '400', color: '#38252A', borderBottomWidth: 1, borderBottomColor: '#D9B9BF', paddingVertical: 6 },
+  customerName: { fontFamily: 'LoveLight', fontSize: 30, fontWeight: '400' },
   subtitle: { marginTop: 6, marginBottom: 28, color: '#79525A', fontSize: 15 },
   label: { color: '#38252A', fontWeight: '700', marginBottom: 8, marginTop: 18 },
   input: { borderWidth: 1, borderColor: '#E9D7DA', borderRadius: 12, backgroundColor: '#FFFFFF', padding: 14, fontSize: 16, color: '#38252A' },
@@ -78,4 +101,12 @@ const styles = StyleSheet.create({
   save: { backgroundColor: '#D42F50', borderRadius: 14, padding: 16, alignItems: 'center', marginTop: 25 },
   disabled: { opacity: 0.65 },
   saveText: { color: '#FFFFFF', fontWeight: '800', fontSize: 16 },
+  dangerSection: { marginTop: 40, borderTopWidth: 1, borderColor: '#E9D7DA', paddingTop: 24 },
+  dangerTitle: { color: '#78283A', fontSize: 18, fontWeight: '800' },
+  dangerDescription: { color: '#79525A', marginTop: 8, lineHeight: 21 },
+  deleteButton: { borderWidth: 1, borderColor: '#B52F4B', borderRadius: 10, paddingVertical: 12, paddingHorizontal: 16, alignSelf: 'flex-start', marginTop: 16 },
+  deleteText: { color: '#B52F4B', fontWeight: '800' },
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 },
+  dialog: { backgroundColor: '#FFF', borderRadius: 16, padding: 24, width: '100%', maxWidth: 480, alignSelf: 'center' },
+  dialogActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 20, marginTop: 12 },
 });

@@ -71,6 +71,10 @@ public class SessionService {
         sessions.remove(token);
     }
 
+    public void invalidateAccount(Long accountId) {
+        sessions.values().removeIf(session -> session.accountId().equals(accountId));
+    }
+
     private String newToken() {
         byte[] bytes = new byte[TOKEN_BYTES];
         random.nextBytes(bytes);
