@@ -10,6 +10,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.council.tenderapp.reg.services.SessionService;
+import com.council.tenderapp.technicalservices.logging.CommandLoggingFilter;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -44,6 +45,7 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter
                 UsernamePasswordAuthenticationToken authentication = 
                     new UsernamePasswordAuthenticationToken(session.accountId(), null, authorities);
                 authentication.setDetails(session.restaurantId());
+                CommandLoggingFilter.recordActor(request, session.accountId(), session.role().name());
                 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }

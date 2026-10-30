@@ -35,7 +35,6 @@ public class SecurityConfig
     private final SessionService sessionService;
 
     public SecurityConfig(SessionService sessionService) {
-        System.out.println("++++++ security config read!!");
         this.sessionService = sessionService;
     }
 

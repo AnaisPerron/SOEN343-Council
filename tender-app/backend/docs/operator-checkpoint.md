@@ -46,8 +46,9 @@ still needs checking before declaring the complete phase requirements satisfied.
   or availability are displayed as unknown, and order totals come from the backend.
 - Restaurant pause/reopen controls now call the backend and refresh after success.
   Duplicate submissions are blocked, and expired sessions return to login.
-- Audit command/error logging against section 5.4 and rehearse role restrictions
-  through the running UI after integration.
+- Central command/error logging now covers API requests, security rejections, and
+  asynchronous errors without recording credentials. See [command-logging.md](command-logging.md).
+  A manual UI rehearsal and role-permission verification remain.
 - Billing uses a mock payment gateway, not a persistent billing ledger.
 
 ## Database and seed
@@ -66,15 +67,14 @@ still needs checking before declaring the complete phase requirements satisfied.
 
 ## Validation
 
-Validation passed: 139 backend tests in a clean Maven run against H2 and mocks,
+Validation passed: 150 backend tests in a clean Maven run against H2 and mocks,
 86 frontend tests, TypeScript checking, and a successful web export. Supabase and the demo seed were not
 used during verification.
 
 ## Next steps
 
-1. Audit command/error logging against the Phase II requirements.
-2. Rehearse the live operator and non-operator flows using a safe database.
-3. Review and push the development branch when requested.
+1. Rehearse the live operator and non-operator flows using a safe database.
+2. Review and push the development branch when requested.
 
 The UI API tests mock network responses; no pause/reopen request was sent to
 Supabase during implementation. Restart the backend with the latest branch code
