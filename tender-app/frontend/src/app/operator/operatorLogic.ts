@@ -1,6 +1,6 @@
 import type { Order, OrderLine } from '../../types/orders';
 import type { Restaurant, RestaurantStatus } from '../../types/restaurant';
-import type { ProfileResponse, ProfileUpdateRequest } from './operatorTypes';
+import type { ProfileResponse, ProfileUpdateRequest } from './operatorApi';
 import type { AuthUser } from '../../types/auth';
 import type { CustomerProfile, User } from '../../types/users';
 
