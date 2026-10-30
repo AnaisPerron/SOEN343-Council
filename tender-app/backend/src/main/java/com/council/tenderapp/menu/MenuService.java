@@ -2,6 +2,7 @@ package com.council.tenderapp.menu;
 
 import java.math.BigDecimal;
 import java.sql.PreparedStatement;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -65,18 +66,12 @@ public class MenuService {
     private long insert(String sql, Object... values) {
         GeneratedKeyHolder keys = new GeneratedKeyHolder();
         jdbc.update(connection -> {
-            // Name the key column: Postgres otherwise returns every column and getKey() rejects it.
-            PreparedStatement statement = connection.prepareStatement(sql, new String[] {"id"});
+            PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
             for (int index = 0; index < values.length; index++) statement.setObject(index + 1, values[index]);
             return statement;
         }, keys);
         if (keys.getKey() == null) throw new IllegalStateException("Insert did not return an ID");
         return keys.getKey().longValue();
-    }
-
-    @Transactional
-    public long insertPhoto(long accountId, String contentType, byte[] data) {
-        return insert("insert into menu_photos (restaurant_id, content_type, data) values (?, ?, ?)", ownedRestaurant(accountId), contentType, data);
     }
 
     @Transactional

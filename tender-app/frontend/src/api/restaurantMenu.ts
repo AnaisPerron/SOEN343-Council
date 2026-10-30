@@ -22,20 +22,3 @@ async function request(method: 'GET' | 'PUT', token: string, body?: RestaurantMe
 
 export const loadRestaurantMenu = (token: string) => request('GET', token);
 export const saveRestaurantMenu = (token: string, menu: RestaurantMenu) => request('PUT', token, menu);
-
-/** Uploads a picked image (data URI) and returns the backend path to store as the item's photoUrl. */
-export async function uploadMenuPhoto(token: string, dataUri: string): Promise<string> {
-  let response: Response;
-  try {
-    response = await fetch(`${API_URL}/api/restaurant/menu/photos`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dataUri }),
-    });
-  } catch {
-    throw new ApiError(0, `Cannot reach the server at ${API_URL}`);
-  }
-  const data = await response.json().catch(() => null);
-  if (!response.ok) throw new ApiError(response.status, data?.message ?? `Photo upload failed (${response.status})`);
-  return (data as { url: string }).url;
-}
