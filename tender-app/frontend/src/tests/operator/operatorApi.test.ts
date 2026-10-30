@@ -50,20 +50,21 @@ describe('operator api', () => {
 describe('operator profile api', () => {
   afterEach(() => mock.restoreAll());
 
-  it('sends only the changed fields with a PUT and returns the updated profile', async () => {
+  it('sends the current name and changed phone with PATCH and the session token', async () => {
     const updated = { id: 8, name: 'Olivia', email: 'o@demo.test', phone: '5145550199', role: 'OPERATOR' };
     const fetchMock = mockFetch(200, updated);
-    const result = await updateOperatorProfile({ phone: '5145550199' }, 'tok');
+    const result = await updateOperatorProfile({ name: 'Olivia', phone: '5145550199' }, 'tok');
     const [url, init] = fetchMock.mock.calls[0].arguments as [string, RequestInit];
     assert.equal(url, `${API_URL}/api/profile`);
-    assert.equal(init.method, 'PUT');
-    assert.deepEqual(JSON.parse(init.body as string), { phone: '5145550199' });
+    assert.equal(init.method, 'PATCH');
+    assert.equal((init.headers as Record<string, string>).Authorization, 'Bearer tok');
+    assert.deepEqual(JSON.parse(init.body as string), { name: 'Olivia', phone: '5145550199' });
     assert.deepEqual(result, updated);
   });
 
   it('turns a validation error into an ApiError with the field message', async () => {
     mockFetch(400, { message: 'Validation failed', fieldErrors: { phone: 'must be a valid phone number' } });
-    await assert.rejects(updateOperatorProfile({ phone: 'x' }, 'tok'),
+    await assert.rejects(updateOperatorProfile({ name: 'Olivia', phone: 'x' }, 'tok'),
       (e: ApiError) => e.status === 400 && e.message === 'must be a valid phone number');
   });
 });

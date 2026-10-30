@@ -1,20 +1,15 @@
 import { API_URL, ApiError, postJson } from '../../api/client.ts';
+import { updateProfile, type RegisterResponse } from '../../api/auth.ts';
 import type { RestaurantStatus } from '../../types/restaurant.ts';
 
 export interface ProfileUpdateRequest {
-  phone?: string;
-  password?: string;
-}
-
-export interface ProfileResponse {
-  id: number;
   name: string;
-  email: string;
   phone: string;
-  role: string;
 }
 
-// backend paths
+export type ProfileResponse = RegisterResponse;
+
+// Operator action paths are contracts for endpoints that still need implementation.
 export const operatorPaths = {
   cancelOrder: (orderId: number) => `/api/operator/orders/${orderId}/cancel`,
   restaurantStatus: (restaurantId: number) => `/api/operator/restaurants/${restaurantId}/status`,
@@ -51,7 +46,7 @@ export async function changeRestaurantStatus(restaurantId: number, status: Resta
   await putJson<void>(operatorPaths.restaurantStatus(restaurantId), { status }, token);
 }
 
-/** UC-REG-03: the operator updates their phone number and/or password. */
+/** Uses the existing PATCH /api/profile contract. Password updates are not supported. */
 export function updateOperatorProfile(request: ProfileUpdateRequest, token: string): Promise<ProfileResponse> {
-  return putJson<ProfileResponse>(operatorPaths.profile, request, token);
+  return updateProfile(token, request.name, request.phone);
 }

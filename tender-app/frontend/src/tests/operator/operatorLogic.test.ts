@@ -109,14 +109,12 @@ describe('operator dashboard - signed-in operator', () => {
 });
 
 describe('operator actions - cancel order (UC-ORD-05)', () => {
-  it('allows cancelling any order that is not finished', () => {
-    for (const status of ['placed', 'accepted', 'preparing', 'ready', 'picked_up'] as const) {
-      assert.equal(canOperatorCancel(status), true, status);
-    }
+  it('allows cancellation before restaurant acceptance', () => {
+    assert.equal(canOperatorCancel('placed'), true);
   });
 
-  it('does not allow cancelling delivered, cancelled or rejected orders', () => {
-    for (const status of ['delivered', 'cancelled', 'rejected'] as const) {
+  it('does not offer transitions that the backend state machine rejects', () => {
+    for (const status of ['accepted', 'preparing', 'ready', 'picked_up', 'delivered', 'cancelled', 'rejected'] as const) {
       assert.equal(canOperatorCancel(status), false, status);
     }
   });
@@ -151,11 +149,9 @@ describe('operator actions - restaurant status (UC-ORD-06)', () => {
 describe('operator profile (UC-REG-03)', () => {
   const current = { id: 8, name: 'Olivia', email: 'o@demo.test', phone: '+15145550108', role: 'operator' as const };
 
-  it('sends only the fields that changed', () => {
+  it('keeps the name when sending a changed phone number', () => {
     assert.deepEqual(validateProfileUpdate({ phone: '5145550199', password: '' }, current),
-      { ok: true, request: { phone: '5145550199' } });
-    assert.deepEqual(validateProfileUpdate({ phone: '', password: 'newpassword1' }, current),
-      { ok: true, request: { password: 'newpassword1' } });
+      { ok: true, request: { name: 'Olivia', phone: '5145550199' } });
   });
 
   it('accepts a phone with spaces, dashes and a plus sign', () => {
@@ -169,10 +165,19 @@ describe('operator profile (UC-REG-03)', () => {
     assert.ok(result.errors.phone);
   });
 
-  it('rejects passwords shorter than 8 or longer than 72 characters', () => {
-    assert.ok(!validateProfileUpdate({ phone: '', password: 'short' }, current).ok);
-    assert.ok(!validateProfileUpdate({ phone: '', password: 'x'.repeat(73) }, current).ok);
-    assert.ok(validateProfileUpdate({ phone: '', password: 'x'.repeat(72) }, current).ok);
+  it('rejects password changes because the backend does not support them', () => {
+    const result = validateProfileUpdate({ phone: '5145550199', password: 'newpassword1' }, current);
+    assert.ok(!result.ok);
+    assert.equal(result.errors.password, 'Password changes are not supported yet.');
+  });
+
+  it('requires the current operator profile before updating contact details', () => {
+    const result = validateProfileUpdate({ phone: '5145550199', password: '' });
+    assert.ok(!result.ok);
+    assert.ok(result.errors.form);
+    assert.ok(!validateProfileUpdate({ phone: '5145550199', password: '' }, {
+      ...current, role: 'customer',
+    }).ok);
   });
 
   it('asks for a change when nothing changed', () => {
@@ -188,9 +193,11 @@ describe('operator profile (UC-REG-03)', () => {
     assert.ok(result.errors.phone && result.errors.password);
   });
 
-  it('never lets the role change: the response is always shown as operator', () => {
-    const user = profileFromResponse({ id: 8, name: 'Olivia', email: 'o@demo.test', phone: '5145550199', role: 'CUSTOMER' });
+  it('maps an operator response and refuses a different account role', () => {
+    const response = { id: 8, name: 'Olivia', email: 'o@demo.test', phone: '5145550199', role: 'OPERATOR' as const };
+    const user = profileFromResponse(response);
     assert.equal(user.role, 'operator');
     assert.equal(user.phone, '5145550199');
+    assert.throws(() => profileFromResponse({ ...response, role: 'CUSTOMER' }), /not an operator account/);
   });
 });

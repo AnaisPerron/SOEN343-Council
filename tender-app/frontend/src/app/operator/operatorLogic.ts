@@ -55,10 +55,9 @@ export function getOperatorDisplayName(operator: User | undefined): string {
 
 export const RESTAURANT_STATUSES: RestaurantStatus[] = ['open', 'paused', 'closed'];
 
-const NOT_CANCELLABLE: Order['status'][] = ['delivered', 'cancelled', 'rejected'];
-
 export function canOperatorCancel(status: Order['status']): boolean {
-  return !NOT_CANCELLABLE.includes(status);
+  // Matches the existing order state machine; later states cannot transition to cancelled.
+  return status === 'placed';
 }
 
 export function availableStatusChanges(current: RestaurantStatus): RestaurantStatus[] {
@@ -89,28 +88,34 @@ export function validateProfileUpdate(
   current?: User,
 ): ProfileValidation {
   const errors: ProfileErrors = {};
-  const request: ProfileUpdateRequest = {};
+  let changedPhone: string | undefined;
 
   const phone = input.phone.trim();
   if (phone !== '' && phone !== (current?.phone ?? '')) {
     const digits = phone.replace(/[\s\-().]/g, '').replace(/^\+/, '');
-    if (/^\d{10,15}$/.test(digits)) request.phone = phone;
+    if (/^\d{10,15}$/.test(digits)) changedPhone = phone;
     else errors.phone = 'Enter a valid phone number (10 to 15 digits).';
   }
 
   if (input.password !== '') {
-    if (input.password.length >= 8 && input.password.length <= 72) request.password = input.password;
-    else errors.password = 'Password must be 8 to 72 characters.';
+    errors.password = 'Password changes are not supported yet.';
   }
 
-  if (Object.keys(errors).length === 0 && Object.keys(request).length === 0) {
-    errors.form = 'Change your phone number or password first.';
+  if (!current || current.role !== 'operator' || !current.name.trim()) {
+    errors.form = 'Please sign in with an operator account again.';
+  } else if (Object.keys(errors).length === 0 && !changedPhone) {
+    errors.form = 'Change your phone number first.';
   }
-  return Object.keys(errors).length > 0 ? { ok: false, errors } : { ok: true, request };
+  if (Object.keys(errors).length > 0 || !current || !changedPhone) {
+    return { ok: false, errors };
+  }
+  // The backend requires both fields, even when only the phone changed.
+  return { ok: true, request: { name: current.name, phone: changedPhone } };
 }
 
-/** backend inegratiobn*/
+/** Preserve the backend role check instead of relabelling other accounts as operators. */
 export function profileFromResponse(response: ProfileResponse): User {
+  if (response.role !== 'OPERATOR') throw new Error('This is not an operator account');
   return {
     id: response.id,
     name: response.name,
