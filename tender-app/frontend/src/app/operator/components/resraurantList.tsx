@@ -1,9 +1,12 @@
-import { Text, TextStyle, View, ViewStyle } from 'react-native';
+import { Text, TextStyle, View, ViewStyle,TouchableOpacity } from 'react-native';
 import type { Restaurant } from '../../../types/restaurant';
 import { styles } from './restaurants.styles';
+import { availableStatusChanges, countOpenRestaurants } from '../operatorLogic';
 
 interface RestaurantListProps {
   restaurants: Restaurant[];
+  onChangeStatus?: (restaurantId: number, status: Restaurant['status']) => void;
+  busyRestaurantId?: number | null;
 }
 
 const CHIP_STYLES: Record<Restaurant['status'], ViewStyle> = {
@@ -24,8 +27,8 @@ const STATUS_LABEL: Record<Restaurant['status'], string> = {
   closed: 'Closed',
 };
 
-export default function RestaurantList({ restaurants }: RestaurantListProps) {
-  const openCount = restaurants.filter((r) => r.status === 'open').length;
+export default function RestaurantList({ restaurants, onChangeStatus, busyRestaurantId = null }: RestaurantListProps) {
+  const openCount = countOpenRestaurants(restaurants);
 
   return (
     <View style={styles.wrapper}>
@@ -52,6 +55,22 @@ export default function RestaurantList({ restaurants }: RestaurantListProps) {
             <Text style={styles.detail}>
               Location: {latitude}, {longitude}
             </Text>
+          )}
+
+          {onChangeStatus && (
+            <View style={styles.actionsRow}>
+              {availableStatusChanges(status).map((next) => (
+                <TouchableOpacity
+                  key={next}
+                  accessibilityRole="button"
+                  style={[styles.actionButton, busyRestaurantId === id && styles.actionButtonDisabled]}
+                  disabled={busyRestaurantId === id}
+                  onPress={() => onChangeStatus(id, next)}
+                >
+                  <Text style={styles.actionButtonText}>Set {STATUS_LABEL[next]}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           )}
         </View>
       ))}

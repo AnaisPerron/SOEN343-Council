@@ -1,10 +1,13 @@
-import { Text, TextStyle, View, ViewStyle } from 'react-native';
+import { Text, TextStyle, View, ViewStyle,TouchableOpacity } from 'react-native';
 import type { Order } from '../../../types/orders';
 import { orderLinesMock } from '../../../mocks/orders.mock';
 import { styles } from './orders.styles';
+import { calculateOrderTotal, canOperatorCancel, countActiveOrders } from '../operatorLogic';
 
 interface OrderListProps {
   orders: Order[];
+  onCancel?: (orderId: number) => void;
+  busyOrderId?: number | null;
 }
 
 const CHIP_STYLES: Record<Order['status'], ViewStyle> = {
@@ -40,16 +43,8 @@ const STATUS_LABEL: Record<Order['status'], string> = {
   cancelled: 'Cancelled',
 };
 
-export default function OrderList({ orders }: OrderListProps) {
-  const calculateOrderTotal = (orderId: number) => {
-    const lines = orderLinesMock.filter((line) => line.order_id === orderId);
-    const total = lines.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
-    return total.toFixed(2);
-  };
-
-  const activeCount = orders.filter((o) => 
-    ['placed', 'accepted', 'preparing', 'ready', 'picked_up'].includes(o.status)
-  ).length;
+export default function OrderList({ orders, onCancel, busyOrderId = null }: OrderListProps) {
+  const activeCount = countActiveOrders(orders);
 
   return (
     <View style={styles.wrapper}>
@@ -84,11 +79,26 @@ export default function OrderList({ orders }: OrderListProps) {
 
           <View style={styles.cardBottom}>
             <Text style={styles.totalLabel}>Total Amount:</Text>
-            <Text style={styles.totalValue}>${calculateOrderTotal(id)}</Text>
+            <Text style={styles.totalValue}>${calculateOrderTotal(id, orderLinesMock)}</Text>
           </View>
 
           {rejection_reason && (
             <Text style={styles.rejectionText}>Reason: {rejection_reason}</Text>
+          )}
+
+          {onCancel && canOperatorCancel(status) && (
+            <View style={styles.actionsRow}>
+              <TouchableOpacity
+                accessibilityRole="button"
+                style={[styles.actionButton, busyOrderId === id && styles.actionButtonDisabled]}
+                disabled={busyOrderId === id}
+                onPress={() => onCancel(id)}
+              >
+                <Text style={styles.actionButtonText}>
+                  {busyOrderId === id ? 'Cancelling...' : 'Cancel order'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           )}
         </View>
       ))}

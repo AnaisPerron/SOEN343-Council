@@ -153,4 +153,28 @@ export const styles = StyleSheet.create({
   chipTextPickedUp: {
     color: '#283593',
   },
+
+  actionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  },
+  actionButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#D42F50',
+    backgroundColor: '#FFFFFF',
+  },
+  actionButtonDisabled: {
+    opacity: 0.5,
+  },
+  actionButtonText: {
+    fontFamily: roundedFont,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#D42F50',
+  },
 });

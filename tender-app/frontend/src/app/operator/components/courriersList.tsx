@@ -2,6 +2,7 @@ import { Text, View } from 'react-native';
 import type { User } from '../../../types/users';
 import { courierProfilesMock } from '../../../mocks/users.mock';
 import { styles } from './customers.styles';
+import { formatRegisteredSummary } from '../operatorLogic';
 
 interface CourrierListProps {
   courrier?: User[]; 
@@ -12,9 +13,9 @@ export default function CouriersList({ courrier = [] }: CourrierListProps) {
 
   return (
     <View style={styles.wrapper}>
-      <Text style={styles.title}>Customers</Text>
+      <Text style={styles.title}>Couriers</Text>
       <Text style={styles.summary}>
-        {courrier.length} Registered {courrier.length === 1 ? 'Courier' : 'Courier'}
+        {formatRegisteredSummary(courrier.length, 'Courier')}
       </Text>
 
       {courrier.map(({ id, name, email, latitude, longitude }) => {

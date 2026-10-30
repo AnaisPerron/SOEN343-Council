@@ -2,22 +2,18 @@ import { Text, View } from 'react-native';
 import type { User } from '../../../types/users';
 import { customerProfilesMock } from '../../../mocks/users.mock';
 import { styles } from './customers.styles';
+import { formatRegisteredSummary, getCustomerBalance } from '../operatorLogic';
 
 interface CustomerListProps {
   customers?: User[]; 
 }
 
 export default function CustomerList({ customers = [] }: CustomerListProps) {
-  const getCustomerBalance = (userId: number) => {
-    const profile = customerProfilesMock.find((p) => p.user_id === userId);
-    return profile?.td_cash_balance != null ? profile.td_cash_balance.toFixed(2) : '0.00';
-  };
-
   return (
     <View style={styles.wrapper}>
       <Text style={styles.title}>Customers</Text>
       <Text style={styles.summary}>
-        {customers.length} Registered {customers.length === 1 ? 'Customer' : 'Customers'}
+        {formatRegisteredSummary(customers.length, 'Customer')}
       </Text>
 
       {customers.map(({ id, name, email, latitude, longitude }) => {
@@ -49,7 +45,7 @@ export default function CustomerList({ customers = [] }: CustomerListProps) {
             <View style={styles.cardBottom}>
               <Text style={styles.totalLabel}>TD Cash Balance:</Text>
               <Text style={styles.totalValue}>
-                ${getCustomerBalance(id)}
+                ${getCustomerBalance(id, customerProfilesMock)}
               </Text>
             </View>
           </View>
