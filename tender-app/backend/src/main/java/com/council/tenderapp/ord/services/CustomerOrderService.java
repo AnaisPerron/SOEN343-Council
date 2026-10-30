@@ -20,10 +20,7 @@ import com.council.tenderapp.ord.entities.Order;
 import com.council.tenderapp.ord.entities.OrderLine;
 import com.council.tenderapp.ord.entities.OrderStatus;
 import com.council.tenderapp.ord.exceptions.InvalidOrderException;
-import com.council.tenderapp.ord.exceptions.InvalidOrderStateException;
 import com.council.tenderapp.ord.exceptions.MenuItemUnavailableException;
-import com.council.tenderapp.ord.exceptions.OrderAccessDeniedException;
-import com.council.tenderapp.ord.exceptions.OrderNotFoundException;
 import com.council.tenderapp.ord.repositories.MenuItemRepository;
 import com.council.tenderapp.ord.repositories.OrderRepository;
 import com.council.tenderapp.technicalservices.payment.PaymentDeclinedException;
@@ -37,15 +34,17 @@ public class CustomerOrderService {
     private final OrderRepository orderRepository;
     private final PaymentGateway paymentGateway;
     private final PreparationQueueService preparationQueueService;
+    private final OrderCancellationService cancellations;
 
     public CustomerOrderService(BrowseService browseService, MenuItemRepository menuItemRepository,
             OrderRepository orderRepository, PaymentGateway paymentGateway,
-            PreparationQueueService preparationQueueService) {
+            PreparationQueueService preparationQueueService, OrderCancellationService cancellations) {
         this.browseService = browseService;
         this.menuItemRepository = menuItemRepository;
         this.orderRepository = orderRepository;
         this.paymentGateway = paymentGateway;
         this.preparationQueueService = preparationQueueService;
+        this.cancellations = cancellations;
     }
 
     @Transactional
@@ -95,22 +94,6 @@ public class CustomerOrderService {
 
     @Transactional
     public OrderStatusResponseDto cancelOrder(Long customerId, Long orderId) {
-        Order order = orderRepository.findWithLockById(orderId)
-                .orElseThrow(() -> new OrderNotFoundException("Order not found with id: " + orderId));
-        if (!customerId.equals(order.getCustomerId())) {
-            throw new OrderAccessDeniedException("Order " + orderId + " does not belong to this customer");
-        }
-        if (order.getStatus() != OrderStatus.PLACED) {
-            throw new InvalidOrderStateException("Order " + orderId
-                    + " cannot be cancelled because it is " + order.getStatus().name().toLowerCase());
-        }
-
-        String previousStatus = order.getStatus().name().toLowerCase();
-        Instant cancelledAt = Instant.now();
-        order.transitionTo(OrderStatus.CANCELLED);
-        orderRepository.save(order);
-        preparationQueueService.remove(order, previousStatus, cancelledAt);
-        return new OrderStatusResponseDto(order.getId(), previousStatus,
-                order.getStatus().name().toLowerCase(), cancelledAt);
+        return cancellations.cancelForCustomer(customerId, orderId);
     }
 }

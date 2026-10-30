@@ -1,7 +1,7 @@
 # Operator backend integration
 
-This document records the contracts for `feature/operator-backend`. Dashboard read routes and restaurant status updates are implemented. Other
-administrative action routes below are still pending. The dashboard still displays mock data;
+This document records the contracts for `feature/operator-backend`. Dashboard reads, restaurant status updates, and operator cancellation are implemented.
+Courier reassignment, billing ledgers, and restoration remain pending. The dashboard still displays mock data;
 API helper tests mock HTTP responses and do not prove those routes exist.
 
 ## Existing endpoints to reuse
@@ -31,7 +31,7 @@ The frontend must not report them as successful or silently send an ignored fiel
 ## Operator endpoint access
 
 The security filter now requires the existing bearer session with
-`ROLE_OPERATOR` for all `/api/operator/**` routes. The read endpoints and restaurant status update endpoint are implemented; other actions are still pending. No caller-supplied role or customer ID can grant access.
+`ROLE_OPERATOR` for all `/api/operator/**` routes. Dashboard reads, restaurant status updates, and cancellation are implemented; other actions are still pending. No caller-supplied role or customer ID can grant access.
 Return 401 for missing/invalid/expired tokens, 403 for other account roles,
 400 for invalid inputs, 404 for missing targets, and 409 for state conflicts.
 Reuse the existing error response conventions (`message`, optional `fieldErrors`).
@@ -82,7 +82,7 @@ and all existing orders. After the update completes, the existing
 restaurants. It does not cancel orders or retroactively stop requests that already
 passed that check. Reopening does not add opening-hours scheduling behavior.
 
-### Operator cancellation
+### Operator cancellation implemented
 
 Retain the teammate's helper contract:
 
@@ -100,12 +100,20 @@ for other states. The frontend eligibility helper follows that same restriction.
 Broader administrative cancellation requires an explicit state/refund policy
 before changing this rule.
 
-An operator may target another customer's order, so do not call the customer
-controller or pass the operator ID as a customer ID. Reuse shared transactional
-logic: lock the order, validate state, transition through the entity, and record
-the cancellation via `PreparationQueueService`. Preserve customer ownership
-checks on the existing customer endpoint. Evaluate observer notifications when
-integrating this action so restaurant views do not retain stale queue entries.
+An operator may target another customer's order. `OrderCancellationService`
+provides separate role-checked customer and operator entry points and shares the
+locked transition and event logic. The existing customer endpoint still passes
+the authenticated customer ID and enforces ownership. The operator endpoint never
+pretends that the operator owns the order.
+
+Cancellation acquires the same order-row write lock used for restaurant actions,
+validates the current state, transitions through the entity, and records one
+`order_cancelled` event via `PreparationQueueService`. Observer notifications are
+published only after a successful transaction commit for both customer and
+operator cancellations. Rollback restores the order/event state and suppresses
+notifications. Repeated cancellation returns 409 rather than creating another event.
+Order records, line snapshots, and totals remain intact. This does not perform a
+refund or create billing-ledger entries; the current gateway has no refund API.
 
 ## Remaining requirements and prerequisites
 
@@ -136,7 +144,7 @@ integrating this action so restaurant views do not retain stale queue entries.
 3. Add operator backend authorization and login routing (done).
 4. Implement dashboard read endpoints (done); connect the frontend and remove mocks (pending).
 5. Implement restaurant pause/reopen (backend done; frontend controls pending).
-6. Implement operator cancellation through shared order logic.
+6. Implement operator cancellation through shared order logic (backend done; frontend controls pending).
 7. Implement validated courier reassignment.
 8. Define and implement billing-ledger storage and reads.
 9. Define and implement restoration in an isolated test environment.

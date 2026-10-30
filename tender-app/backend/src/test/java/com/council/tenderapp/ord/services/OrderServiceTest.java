@@ -62,11 +62,15 @@ class OrderServiceTest {
     @Mock
     private PreparationQueueService preparationQueueService;
 
+    @Mock
+    private OrderStatusPublisher publisher;
+
     private CustomerOrderService service;
 
     @BeforeEach
     void setUp() {
-        service = new CustomerOrderService(browseService, menuItemRepository, orderRepository, paymentGateway, preparationQueueService);
+        service = new CustomerOrderService(browseService, menuItemRepository, orderRepository, paymentGateway, preparationQueueService,
+                new OrderCancellationService(orderRepository, preparationQueueService, publisher));
     }
 
     private static MenuItem item(Long id, String name, String price, String status) {
