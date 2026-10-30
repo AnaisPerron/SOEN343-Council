@@ -35,9 +35,10 @@ public class MenuService {
                 (rs, n) -> new Object[] {rs.getString(1), rs.getString(2), rs.getString(3), rs.getBigDecimal(4), rs.getString(5)}, restaurantId);
         if (restaurants.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found");
         Object[] restaurant = restaurants.get(0);
-        var menus = jdbc.query("select id, name from menus where restaurant_id = ? order by id", (rs, n) -> new Object[] {rs.getLong(1), rs.getString(2)}, restaurantId);
+        // Menus no longer have a name column; each restaurant has a single menu.
+        var menuIds = jdbc.query("select id from menus where restaurant_id = ? order by id", (rs, n) -> rs.getLong(1), restaurantId);
         List<Item> items = new ArrayList<>();
-        for (Object[] menu : menus) {
+        for (Long menuId : menuIds) {
             items.addAll(jdbc.query("select id, name, description, category, price, status, photo_url from menu_items where menu_id = ? order by id",
                 (rs, n) -> {
                     long itemId = rs.getLong(1);
@@ -45,11 +46,11 @@ public class MenuService {
                         (optionRs, index) -> new Option(optionRs.getLong(1), optionRs.getString(2), optionRs.getBigDecimal(3)), itemId);
                     return new Item(itemId, rs.getString(2), rs.getString(3) == null ? "" : rs.getString(3),
                         rs.getString(4) == null ? "Menu" : rs.getString(4), rs.getBigDecimal(5), rs.getString(6), rs.getString(7), options);
-                }, menu[0]));
+                }, menuId));
         }
         return new MenuDocument(restaurantId, (String) restaurant[0], (String) restaurant[1],
             restaurant[2] == null ? "" : (String) restaurant[2], restaurant[3] == null ? BigDecimal.ZERO : (BigDecimal) restaurant[3],
-            (String) restaurant[4], menus.isEmpty() ? "Menu" : (String) menus.get(0)[1], items);
+            (String) restaurant[4], "Menu", items);
     }
 
     private static String required(String value, String label) {
@@ -83,8 +84,7 @@ public class MenuService {
         jdbc.update("update restaurants set name = ?, status = ?, address = ?, delivery_fee = ?, cover_url = ? where id = ?",
             required(document.name(), "Restaurant name"), status, document.address(), price(document.deliveryFee() == null ? BigDecimal.ZERO : document.deliveryFee(), "Delivery fee"), document.coverUrl(), restaurantId);
         var menuIds = jdbc.query("select id from menus where restaurant_id = ? order by id", (rs, n) -> rs.getLong(1), restaurantId);
-        long menuId = menuIds.isEmpty() ? insert("insert into menus (restaurant_id, name) values (?, ?)", restaurantId, required(document.menuName(), "Menu name")) : menuIds.get(0);
-        if (!menuIds.isEmpty()) jdbc.update("update menus set name = ? where id = ?", required(document.menuName(), "Menu name"), menuId);
+        long menuId = menuIds.isEmpty() ? insert("insert into menus (restaurant_id) values (?)", restaurantId) : menuIds.get(0);
         if (document.items() == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Items are required");
         for (Item item : document.items()) {
             String itemStatus = required(item.status(), "Item status");
