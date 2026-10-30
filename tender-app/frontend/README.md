@@ -2,6 +2,28 @@
 
 Minimal Expo app for Tender, built with React Native and Expo Router.
 
+## Incoming orders
+
+The home route opens the restaurant order dashboard and automatically loads the
+arrival queue for the active demo restaurant (`restaurantId=1`). The restaurant
+ID can be overridden with `EXPO_PUBLIC_RESTAURANT_ID` or a
+`/incoming-orders?restaurantId=<id>` route parameter. Choose the Arriving,
+Preparing, or Awaiting pickup queue. Awaiting pickup shows orders in `READY`
+status. The screen displays arrival time, status, each order line's
+quantity and unit price, and the calculated order total. Incoming orders can be
+accepted, rejected with a reason, or cancelled. Accepted orders appear in
+Preparing with their acceptance time and can be started; preparing orders can
+then be marked ready. Incoming and preparation queues are ordered by received
+and accepted time, respectively. Actions are submitted immediately and display
+an in-page success message when complete.
+
+The backend defaults to an in-memory demo database with sample orders. Start it
+from `tender-app/backend` with `./mvnw spring-boot:run`. The API defaults to
+`http://localhost:8080`; override it with `EXPO_PUBLIC_API_URL` when the app
+runs on a device or emulator that cannot reach the host via `localhost`. The
+screen uses the restaurant order queue and lifecycle endpoints under
+`/api/restaurants/{restaurantId}/orders`.
+
 ## Run
 
 Install dependencies:
