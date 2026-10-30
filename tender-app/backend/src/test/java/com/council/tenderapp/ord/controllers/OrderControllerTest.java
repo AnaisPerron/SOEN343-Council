@@ -7,7 +7,6 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -67,10 +66,10 @@ class OrderControllerTest {
 
     @Test
     void historyUsesAuthenticatedCustomerAndRejectsOtherRoles() throws Exception {
-        when(orderService.getHistory(7L)).thenReturn(List.of());
+        when(historyService.getOrders(7L)).thenReturn(List.of());
         mockMvc.perform(get(PLACE_ORDER).header(HttpHeaders.AUTHORIZATION, bearer(Role.CUSTOMER)))
             .andExpect(status().isOk()).andExpect(jsonPath("$").isArray());
-        verify(orderService).getHistory(7L);
+        verify(historyService).getOrders(7L);
         for (Role role : List.of(Role.COURIER, Role.STAFF, Role.OPERATOR)) {
             mockMvc.perform(get(PLACE_ORDER).header(HttpHeaders.AUTHORIZATION, bearer(role)))
                 .andExpect(status().isForbidden());
@@ -105,12 +104,6 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$[0].lines[0].options[0]").value("Extra cheese"));
     }
 
-    @Test
-    void staffCannotListCustomerOrders() throws Exception {
-        mockMvc.perform(get(PLACE_ORDER).header(HttpHeaders.AUTHORIZATION, bearer(Role.STAFF)))
-                .andExpect(status().isForbidden());
-        verifyNoInteractions(historyService);
-    }
 
     @Test
     void nonCustomerRolesAreForbidden() throws Exception {

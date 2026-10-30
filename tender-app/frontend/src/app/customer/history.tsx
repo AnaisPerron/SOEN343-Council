@@ -1,22 +1,30 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Redirect, useFocusEffect, useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AccountMenu from '@/components/AccountMenu';
 import { useAuth } from '@/context/AuthContext';
 import { useOrders } from '@/context/OrdersContext';
 import { useCatalog } from '@/context/CatalogContext';
-import { formatOrderStatus } from './services/orderLifecycle';
+import { formatOrderStatus, type CustomerOrderStatus } from './services/orderLifecycle';
+
+const lifecycle: CustomerOrderStatus[] = ['placed', 'accepted', 'preparing', 'ready', 'picked_up', 'delivered'];
 
 export default function CustomerHistory() {
-  const { user } = useAuth();
+  const { user, ready } = useAuth();
   const { orders, historyStatus, historyError, refreshOrders, cancelOrder } = useOrders();
   const { restaurants } = useCatalog();
   const router = useRouter();
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancelErrors, setCancelErrors] = useState<Record<string, string>>({});
-  // Reload whenever the page is shown so restaurant status changes appear without signing in again.
+  const [expanded, setExpanded] = useState<string | null>(null);
+  // Reload whenever the page is shown, then poll so restaurant status changes appear while it stays open.
   useFocusEffect(refreshOrders);
+  useEffect(() => {
+    const timer = setInterval(refreshOrders, 10000);
+    return () => clearInterval(timer);
+  }, [refreshOrders]);
+  if (!ready) return <View style={styles.center}><ActivityIndicator /></View>;
   if (!user) return <Redirect href="/auth/login" />;
   if (user.role !== 'customer') return <Redirect href="/account" />;
 
@@ -30,50 +38,59 @@ export default function CustomerHistory() {
   };
 
   return <SafeAreaView style={styles.page}>
-    <View style={styles.header}>
-      <Pressable onPress={() => router.replace('/customer/home/home')} accessibilityRole="button"><Text style={styles.back}>‹ Back</Text></Pressable>
-      <AccountMenu />
-    </View>
     <ScrollView contentContainerStyle={styles.content}>
-      <Text style={styles.title}>History</Text>
+      <View style={styles.header}>
+        <Pressable onPress={() => router.replace('/customer/home/home')} accessibilityRole="button"><Text style={styles.back}>‹ Back</Text></Pressable>
+        <AccountMenu />
+      </View>
+      <Text style={styles.title}>Order history</Text>
       <View style={styles.subtitleRow}>
         <Text style={styles.subtitle}>Your orders</Text>
         <Pressable onPress={refreshOrders} accessibilityRole="button"><Text style={styles.refresh}>Refresh</Text></Pressable>
       </View>
-      {historyStatus === 'error' && <Text style={styles.error} accessibilityRole="alert">{historyError}</Text>}
-      {orders.length === 0 ? <Text style={styles.empty}>{historyStatus === 'loading' ? 'Loading your orders...' : 'You have no orders yet.'}</Text> : orders.map((order) => {
-        const restaurantName = order.restaurantName ?? restaurants.find((entry) => entry.id === order.restaurantId)?.name ?? 'Restaurant';
-        return <View key={order.id} style={styles.card}>
-          <Text style={styles.restaurant}>{restaurantName}</Text>
-          <Text style={styles.detail}>Order #{order.id}{order.createdAt ? ` · ${new Date(order.createdAt).toLocaleString()}` : ''}</Text>
-          <Text style={styles.detail}>${order.total.toFixed(2)} · {formatOrderStatus(order.status)}</Text>
-          {order.items?.map((item, index) => <Text key={index} style={styles.item}>
-            {item.quantity} × {item.name}{item.options.length > 0 ? ` (${item.options.join(', ')})` : ''}
-          </Text>)}
-          {order.status === 'rejected' && !!order.rejectionReason && <Text style={styles.detail}>Reason: {order.rejectionReason}</Text>}
-          {order.status === 'placed' && <Pressable onPress={() => cancel(order.id)} disabled={cancellingId !== null} accessibilityRole="button" style={styles.cancel}><Text style={styles.cancelText}>{cancellingId === order.id ? 'Cancelling...' : 'Cancel order'}</Text></Pressable>}
-          {!!cancelErrors[order.id] && <Text style={styles.error} accessibilityRole="alert">{cancelErrors[order.id]}</Text>}
-        </View>;
-      })}
+      {historyStatus === 'error' && <Text style={styles.message} accessibilityRole="alert">{historyError}</Text>}
+      {orders.length === 0
+        ? historyStatus === 'loading' ? <ActivityIndicator /> : <Text style={styles.empty}>{historyStatus === 'error' ? 'Orders could not be loaded.' : 'You have no orders yet.'}</Text>
+        : orders.map((order) => {
+          const restaurantName = order.restaurantName ?? restaurants.find((entry) => entry.id === order.restaurantId)?.name ?? 'Restaurant';
+          const current = lifecycle.indexOf(order.status);
+          return <View key={order.id} style={styles.card}>
+            <Pressable accessibilityRole="button" accessibilityLabel={`View order ${order.id} details`} onPress={() => setExpanded(expanded === order.id ? null : order.id)}>
+              <View style={styles.top}><Text style={styles.orderTitle}>Order #{order.id}</Text>{!!order.createdAt && <Text style={styles.muted}>{new Date(order.createdAt).toLocaleDateString()}</Text>}</View>
+              <Text style={styles.restaurant}>{restaurantName}</Text>
+              {current >= 0 && <ScrollView horizontal showsHorizontalScrollIndicator={false}><View style={styles.rail}>{lifecycle.map((step, index) => <View key={step} style={styles.step}><View style={[styles.dot, current >= index && styles.dotComplete]} /><Text style={styles.stepLabel}>{formatOrderStatus(step)}</Text></View>)}</View></ScrollView>}
+              {order.items?.map((item, index) => <Text key={index} style={styles.item}>
+                {item.quantity} × {item.name}{item.options.length > 0 ? ` (${item.options.join(', ')})` : ''}
+              </Text>)}
+              <View style={styles.bottom}><Text style={styles.badge}>{formatOrderStatus(order.status)}</Text><Text style={styles.total}>${order.total.toFixed(2)}</Text></View>
+              {expanded === order.id && <View style={styles.details}>
+                {!!order.createdAt && <Text style={styles.muted}>Placed {new Date(order.createdAt).toLocaleString()}</Text>}
+                {order.items?.map((item, index) => <Text key={index} style={styles.muted}>{item.quantity} × {item.name} · ${(item.quantity * item.unitPrice).toFixed(2)}</Text>)}
+                {!!order.rejectionReason && <Text style={styles.muted}>Reason: {order.rejectionReason}</Text>}
+              </View>}
+            </Pressable>
+            {order.status === 'placed' && <Pressable onPress={() => cancel(order.id)} disabled={cancellingId !== null} accessibilityRole="button" style={styles.cancel}><Text style={styles.cancelText}>{cancellingId === order.id ? 'Cancelling…' : 'Cancel order'}</Text></Pressable>}
+            {!!cancelErrors[order.id] && <Text style={styles.message} accessibilityRole="alert">{cancelErrors[order.id]}</Text>}
+          </View>;
+        })}
     </ScrollView>
   </SafeAreaView>;
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: '#FFFAF9' },
-  header: { height: 64, maxWidth: 800, width: '100%', alignSelf: 'center', paddingHorizontal: 22, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', zIndex: 10 },
-  back: { color: '#B52F4B', fontWeight: '700', fontSize: 16 },
-  content: { width: '100%', maxWidth: 600, alignSelf: 'center', padding: 24, paddingBottom: 60 },
-  title: { fontSize: 32, fontWeight: '800', color: '#38252A' },
-  subtitleRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 6, marginBottom: 24 },
-  subtitle: { color: '#79525A', fontSize: 15 },
-  refresh: { color: '#B52F4B', fontWeight: '700' },
-  item: { color: '#38252A', fontSize: 14, marginTop: 6 },
-  empty: { color: '#79525A', fontSize: 16, paddingVertical: 25 },
-  card: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#F3D1D7', borderRadius: 16, padding: 18, marginBottom: 12 },
-  restaurant: { color: '#38252A', fontFamily: 'LoveLight', fontSize: 28, fontWeight: '400', marginBottom: 8 },
-  detail: { color: '#79525A', fontSize: 14, marginTop: 4 },
-  cancel: { alignSelf: 'flex-start', marginTop: 14, paddingVertical: 8 },
-  cancelText: { color: '#B52F4B', fontWeight: '700' },
-  error: { color: '#B52F4B', fontSize: 14, marginTop: 4 },
+  page: { flex: 1, backgroundColor: '#F7F7F5' }, center: { flex: 1, justifyContent: 'center' },
+  content: { width: '100%', maxWidth: 800, alignSelf: 'center', padding: 22, paddingBottom: 80 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28, zIndex: 10 }, back: { color: '#5A626B', fontWeight: '700' },
+  title: { color: '#242930', fontSize: 36, fontWeight: '800' },
+  subtitleRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 8, marginBottom: 24 },
+  subtitle: { color: '#69717A' }, refresh: { color: '#5A626B', fontWeight: '700' },
+  empty: { color: '#68737C', padding: 24, backgroundColor: '#FFF' }, message: { color: '#A83B4B', marginTop: 8, marginBottom: 12 },
+  card: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#DDE2E3', borderRadius: 8, padding: 16, marginBottom: 14 },
+  top: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, orderTitle: { color: '#273039', fontSize: 17, fontWeight: '800' },
+  restaurant: { color: '#38414A', fontSize: 14, fontWeight: '600', marginTop: 4 },
+  muted: { color: '#68737C', fontSize: 12, marginTop: 6 }, rail: { flexDirection: 'row', minWidth: 380, marginVertical: 18 }, step: { flex: 1, alignItems: 'center' },
+  dot: { width: 17, height: 17, borderRadius: 9, borderWidth: 1, borderColor: '#C8CDD0', backgroundColor: '#F3F4F4' }, dotComplete: { backgroundColor: '#3A9B59', borderColor: '#3A9B59' }, stepLabel: { color: '#68737C', fontSize: 9, marginTop: 5 },
+  item: { color: '#273039', fontSize: 15, fontWeight: '700', marginBottom: 6 }, bottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 12 },
+  badge: { color: '#35414B', fontWeight: '800', backgroundColor: '#EDF0F2', overflow: 'hidden', padding: 6, borderRadius: 5 }, total: { color: '#273039', fontWeight: '800', fontSize: 17 },
+  details: { borderTopWidth: 1, borderTopColor: '#E8ECEE', marginTop: 16, paddingTop: 8 }, cancel: { alignSelf: 'flex-end', marginTop: 16, borderWidth: 1, borderColor: '#A83B4B', borderRadius: 6, padding: 10 }, cancelText: { color: '#A83B4B', fontWeight: '800' },
 });

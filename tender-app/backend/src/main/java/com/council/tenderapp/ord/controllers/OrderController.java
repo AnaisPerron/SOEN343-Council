@@ -8,7 +8,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,8 +20,6 @@ import com.council.tenderapp.ord.dtos.OrderStatusResponseDto;
 import com.council.tenderapp.ord.dtos.PlaceOrderRequestDto;
 import com.council.tenderapp.ord.services.CustomerOrderHistoryService;
 import com.council.tenderapp.ord.services.CustomerOrderService;
-import com.council.tenderapp.ord.dto.response.OrderResponse;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -39,12 +36,6 @@ public class OrderController {
     @PreAuthorize("hasRole('CUSTOMER')")
     public List<CustomerOrderDto> myOrders(@AuthenticationPrincipal Long customerId) {
         return historyService.getOrders(customerId);
-    }
-
-    @GetMapping
-    @PreAuthorize("hasRole('CUSTOMER')")
-    public List<OrderResponse> history(@AuthenticationPrincipal Long customerId) {
-        return orderService.getHistory(customerId);
     }
 
     @PostMapping
