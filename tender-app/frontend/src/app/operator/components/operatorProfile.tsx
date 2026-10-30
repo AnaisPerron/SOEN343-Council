@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Modal, Pressable, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { ApiError } from '../../../api/client';
 import type { User } from '../../../types/users';
-import type { ProfileUpdateRequest } from '../operatorTypes';
+import type { ProfileUpdateRequest } from '../operatorApi';
 import { validateProfileUpdate, type ProfileErrors } from '../operatorLogic';
 import { styles } from './profile.styles';
 
@@ -69,7 +69,6 @@ export default function OperatorProfile({ visible, operatorUser, onClose, onLogo
     <Modal visible={visible} transparent animationType="fade" onRequestClose={close}>
       <Pressable style={styles.modalBackdrop} onPress={close}>
         <Pressable style={styles.profileCard} onPress={(e) => e.stopPropagation()}>
-          {/* Close (X) button */}
           <TouchableOpacity
             style={styles.closeButton}
             onPress={close}

@@ -4,8 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/AuthContext';
 import { styles } from './dashboard.styles';
 import { ApiError } from '@/api/client';
-import { cancelOrder, changeRestaurantStatus, updateOperatorProfile } from './operatorApi';
-import type { ProfileUpdateRequest } from './operatorTypes';
+import { cancelOrder, changeRestaurantStatus, updateOperatorProfile, type ProfileUpdateRequest } from './operatorApi';
 import type { User } from '../../types/users';
 import type { Restaurant } from '@/types/restaurant';
 import { restaurantsMock } from '../../mocks/restaurants.mock';
@@ -48,7 +47,7 @@ export default function OperatorHome() {
     text: e instanceof ApiError ? e.message : fallback,
   });
 
-  // UC-REG-03
+  // UC-REG-03: errors are thrown on purpose so the profile form can show them
   const handleSaveProfile = async (request: ProfileUpdateRequest) => {
     if (!token) throw new Error('You are signed out.');
     setUpdatedProfile(profileFromResponse(await updateOperatorProfile(request, token)));
@@ -106,7 +105,6 @@ export default function OperatorHome() {
           </TouchableOpacity>
         </View>
         
-        {/* Dashboard Statistics */}
         <View style={styles.statsContainer}>
           
           <TouchableOpacity 

@@ -1,6 +1,6 @@
 import type { Order, OrderLine } from '../../types/orders';
 import type { Restaurant, RestaurantStatus } from '../../types/restaurant';
-import type { ProfileResponse, ProfileUpdateRequest } from './operatorTypes';
+import type { ProfileResponse, ProfileUpdateRequest } from './operatorApi';
 import type { AuthUser } from '../../types/auth';
 import type { CustomerProfile, User } from '../../types/users';
 
@@ -61,6 +61,7 @@ export function canOperatorCancel(status: Order['status']): boolean {
   return !NOT_CANCELLABLE.includes(status);
 }
 
+/** UC-ORD-06 precondition: the new status must differ from the current one. */
 export function availableStatusChanges(current: RestaurantStatus): RestaurantStatus[] {
   return RESTAURANT_STATUSES.filter((status) => status !== current);
 }
@@ -109,7 +110,6 @@ export function validateProfileUpdate(
   return Object.keys(errors).length > 0 ? { ok: false, errors } : { ok: true, request };
 }
 
-/** backend inegratiobn*/
 export function profileFromResponse(response: ProfileResponse): User {
   return {
     id: response.id,
