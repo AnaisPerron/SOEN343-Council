@@ -66,8 +66,8 @@ requires the project's authentication system to be added separately.
 ## Existing database upgrade
 
 Before starting this merged version against an existing PostgreSQL database,
-apply [`docs/order-lifecycle-merge.sql`](docs/order-lifecycle-merge.sql). It adds
-and backfills `orders.date_ordered` and allows the `refunded` lifecycle status.
+apply [`docs/order-lifecycle-merge.sql`](docs/order-lifecycle-merge.sql). It
+allows the `refunded` lifecycle status without changing order rows or timestamps.
 Apply [`docs/restaurant-profile.sql`](docs/restaurant-profile.sql) before deploying
 restaurant contact profiles to an existing database.
 The test suite uses an in-memory H2 database and does not apply this script to
@@ -134,11 +134,10 @@ The reset list also includes `order_items` because its foreign key references
 orders, and `auth_sessions` to remove stale persisted demo sessions. Those two
 tables are cleared but not populated. The `health_check` table is preserved.
 The current schema snapshot is recorded in [docs/schema.txt](docs/schema.txt).
-This aligns the seed with the database, not every backend mapping: Supabase
-currently has `orders.created_at` and no `orders.date_ordered`, while this branch's
-order entity and dashboard queries use `date_ordered`. Its order-status constraint
-also does not currently include `refunded`. Those application/schema differences
-need separate reconciliation; this update does not alter Supabase.
+The backend maps its Java `dateOrdered` field to `orders.created_at`, preserving
+the existing API field name. Dashboard queries also read `created_at`, so there
+is no duplicate `date_ordered` column. The lifecycle migration expands the status
+constraint to include `refunded`; it does not perform refunds or reseed data.
 
 The demo seed retains open, paused, and closed restaurant scenarios, so its
 restaurant statuses and generated IDs can differ from the frontend mock state.

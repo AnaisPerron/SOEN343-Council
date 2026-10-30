@@ -412,7 +412,7 @@ CREATE TABLE public.orders (
     submission_fingerprint character varying(64),
     created_at timestamp without time zone NOT NULL,
     status_changed_at timestamp(6) without time zone,
-    CONSTRAINT chk_order_status CHECK (((status)::text = ANY (ARRAY[('placed'::character varying)::text, ('accepted'::character varying)::text, ('preparing'::character varying)::text, ('ready'::character varying)::text, ('picked_up'::character varying)::text, ('delivered'::character varying)::text, ('cancelled'::character varying)::text, ('rejected'::character varying)::text])))
+    CONSTRAINT chk_order_status CHECK (((status)::text = ANY ((ARRAY['placed'::character varying, 'accepted'::character varying, 'preparing'::character varying, 'ready'::character varying, 'picked_up'::character varying, 'delivered'::character varying, 'cancelled'::character varying, 'rejected'::character varying, 'refunded'::character varying])::text[])))
 );
 
 
