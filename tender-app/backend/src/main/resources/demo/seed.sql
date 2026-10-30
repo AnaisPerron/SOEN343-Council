@@ -1,5 +1,5 @@
 -- Demo seed for REG and ORD. Requires the existing database schema.
--- WARNING: Deletes and replaces all data in the 12 tables below.
+-- warning deletes and replaces all data in the fifteen tables below
 -- Run ONLY against a demo database.
 -- TRUNCATE RESTART IDENTITY ensures consistent data on every run.
 -- Executed in a transaction; errors roll back all changes.
@@ -12,6 +12,9 @@
 BEGIN;
 
 TRUNCATE TABLE
+    auth_sessions,
+    operator_profiles,
+    order_items,
     order_line_options,
     order_events,
     order_lines,
@@ -46,37 +49,40 @@ INSERT INTO customer_profiles (user_id, td_cash_balance, latitude, longitude) VA
 (2, 40.00, 45.5140, -73.5620),
 (3, 22.50, 45.4970, -73.5800);
 
+INSERT INTO operator_profiles (user_id) VALUES
+(8);
+
 INSERT INTO courier_profiles (user_id, latitude, longitude, status) VALUES
 (6, 45.5090, -73.5730, 'idle'),
 (7, 45.5180, -73.5610, 'offline');
 
 -- ---------------- ORD: RESTAURANTS / MENUS ----------------
 -- Open = can order; paused/closed = reject new orders
-INSERT INTO restaurants (name, status, latitude, longitude) VALUES
-('Maple & Main', 'open', 45.5100, -73.5700), -- 1
-('Green Bowl Kitchen', 'paused', 45.5150, -73.5600), -- 2
-('Café Nord', 'closed', 45.5010, -73.5840), -- 3
-('Little Italy Pizza', 'open', 45.5352, -73.6132); -- 4
+INSERT INTO restaurants (name, status, latitude, longitude, opening_hour, closing_hour) VALUES
+('Maple & Main', 'open', 45.5100, -73.5700, TIME '09:00', TIME '22:00'), -- 1
+('Green Bowl Kitchen', 'paused', 45.5150, -73.5600, TIME '09:00', TIME '17:00'), -- 2
+('Café Nord', 'closed', 45.5010, -73.5840, TIME '09:00', TIME '17:00'), -- 3
+('Little Italy Pizza', 'open', 45.5352, -73.6132, TIME '09:00', TIME '22:00'); -- 4
 
 INSERT INTO restaurant_staff (user_id, restaurant_id) VALUES
 (4, 1), (5, 2), (9, 3);
 
-INSERT INTO menus (restaurant_id, name) VALUES
-(1, 'Maple & Main Menu'), -- 1
-(2, 'Green Bowl Menu'), -- 2
-(3, 'Café Nord Menu'), -- 3
-(4, 'Little Italy Menu'); -- 4
+INSERT INTO menus (restaurant_id) VALUES
+(1),
+(2),
+(3),
+(4);
 
--- Same dishes and photos as the frontend fixtures. URLs are relative to the backend origin.
+-- menu photos are served by the backend
 -- The sold-out crumble is intentionally included for negative-case testing.
 INSERT INTO menu_items (menu_id, name, price, status, photo_url) VALUES
-(1, 'Maple-glazed chicken sandwich', 14.50, 'available', '/menu-items-imgs/maple-glazed-chicken-sandwich.jpg'), -- 1
-(1, 'Truffle fries', 6.25, 'available', '/menu-items-imgs/truffle.jpg'), -- 2
-(1, 'Apple crumble', 7.00, 'sold_out', '/menu-items-imgs/apple-crumble.jpg'), -- 3
-(2, 'Harvest grain bowl', 15.75, 'available', '/menu-items-imgs/harvest-grain-bowl.jpg'), -- 4
-(2, 'Miso tofu bowl', 14.00, 'available', '/menu-items-imgs/miso-tofu-bowl.jpg'), -- 5
-(3, 'Smoked salmon bagel', 12.50, 'available', '/menu-items-imgs/smoked-salmon-bagel.jpg'), -- 6
-(4, 'Margherita pizza', 17.00, 'available', '/menu-items-imgs/margherita-pizza.jpg'); -- 7
+(1, 'Maple-glazed chicken sandwich', 14.50, 'available', 'http://localhost:8080/menu-items-imgs/maple-glazed-chicken-sandwich.jpg'), -- 1
+(1, 'Truffle fries', 6.25, 'available', 'http://localhost:8080/menu-items-imgs/truffle.jpg'), -- 2
+(1, 'Apple crumble', 7.00, 'sold_out', 'http://localhost:8080/menu-items-imgs/apple-crumble.jpg'), -- 3
+(2, 'Harvest grain bowl', 15.75, 'available', 'http://localhost:8080/menu-items-imgs/harvest-grain-bowl.jpg'), -- 4
+(2, 'Miso tofu bowl', 14.00, 'available', 'http://localhost:8080/menu-items-imgs/miso-tofu-bowl.jpg'), -- 5
+(3, 'Smoked salmon bagel', 12.50, 'available', 'http://localhost:8080/menu-items-imgs/smoked-salmon-bagel.jpg'), -- 6
+(4, 'Margherita pizza', 17.00, 'available', 'http://localhost:8080/menu-items-imgs/margherita-pizza.jpg'); -- 7
 
 INSERT INTO menu_item_options (menu_item_id, name, additional_cost) VALUES
 (1, 'Add avocado', 2.00), -- 1

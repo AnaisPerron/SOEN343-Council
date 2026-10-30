@@ -77,7 +77,7 @@ your configured database.
 
 The `demo` Spring profile automatically loads `src/main/resources/demo/seed.sql` into PostgreSQL at startup.
 
-**Warning:** Every demo startup clears and reseeds all 12 tables. Use a dedicated demo database/branch. Normal startup preserves existing data.
+**Warning:** Every demo startup clears and reseeds the 15 tables listed in the seed. Use a dedicated demo database/branch. Normal startup preserves existing data.
 
 ### Setup
 
@@ -115,12 +115,30 @@ Maven copies `../frontend/src/mocks/menu-items-imgs/*.jpg` into the backend's
 static resources when building, so the images are included in the packaged JAR.
 Unauthenticated GET requests can load `/menu-items-imgs/<filename>.jpg`.
 
-Seeded `photo_url` values are relative to the backend origin. For example,
-`/menu-items-imgs/truffle.jpg` is served at
-`http://localhost:8080/menu-items-imgs/truffle.jpg` during local development.
-API clients should resolve these paths against the backend URL, rather than
-the frontend URL (use the computer's LAN address when testing on a phone).
-These images are served by the running backend; they are not uploaded to Supabase Storage.
+Seeded `photo_url` values are full backend URLs, for example
+`http://localhost:8080/menu-items-imgs/truffle.jpg`. These work when the browser
+and backend run on the same computer. For a phone, another computer, or deployment,
+replace the `http://localhost:8080` prefix in the seed with the reachable backend
+origin before seeding. The images require the backend to be running and are not
+uploaded to Supabase Storage.
+
+The seed matches the public Supabase schema inspected on October 29, 2026:
+menus have no name column, restaurants use `opening_hour` and `closing_hour`,
+and `operator_profiles.user_id` references `users.id`. Olivia's operator profile
+links to demo user 8. No table creation or schema migration is performed by the seed.
+Maple & Main and Little Italy Pizza open at 09:00 and close at 22:00; Green Bowl
+Kitchen and Café Nord open at 09:00 and close at 17:00. These stored hours do not
+implement automatic opening/closing behavior.
+
+The reset list also includes `order_items` because its foreign key references
+orders, and `auth_sessions` to remove stale persisted demo sessions. Those two
+tables are cleared but not populated. The `health_check` table is preserved.
+The current schema snapshot is recorded in [docs/schema.txt](docs/schema.txt).
+This aligns the seed with the database, not every backend mapping: Supabase
+currently has `orders.created_at` and no `orders.date_ordered`, while this branch's
+order entity and dashboard queries use `date_ordered`. Its order-status constraint
+also does not currently include `refunded`. Those application/schema differences
+need separate reconciliation; this update does not alter Supabase.
 
 The demo seed retains open, paused, and closed restaurant scenarios, so its
 restaurant statuses and generated IDs can differ from the frontend mock state.
