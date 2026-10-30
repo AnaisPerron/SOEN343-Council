@@ -2,7 +2,6 @@ package com.council.tenderapp.menu;
 
 import java.math.BigDecimal;
 import java.sql.PreparedStatement;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -66,7 +65,7 @@ public class MenuService {
     private long insert(String sql, Object... values) {
         GeneratedKeyHolder keys = new GeneratedKeyHolder();
         jdbc.update(connection -> {
-            PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            PreparedStatement statement = connection.prepareStatement(sql, new String[] {"id"});
             for (int index = 0; index < values.length; index++) statement.setObject(index + 1, values[index]);
             return statement;
         }, keys);
