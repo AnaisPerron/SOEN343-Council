@@ -1,3 +1,4 @@
+import { homeRoute } from '@/lib/roleRoutes';
 import { useState } from 'react';
 import { Redirect, useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -39,7 +40,7 @@ function ProfileForm({ user }: { user: AuthUser }) {
 
   return <SafeAreaView style={styles.page}>
     <View style={styles.header}>
-      <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace(user.role === 'customer' ? '/customer/home/home' : '/account')} accessibilityRole="button"><Text style={styles.back}>‹ Back</Text></Pressable>
+      <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace(homeRoute(user.role))} accessibilityRole="button"><Text style={styles.back}>‹ Back</Text></Pressable>
       <AccountMenu />
     </View>
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">

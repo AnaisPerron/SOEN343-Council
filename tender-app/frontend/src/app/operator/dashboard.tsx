@@ -7,7 +7,8 @@ import { restaurantsMock } from '../../mocks/restaurants.mock';
 import RestaurantList from './components/resraurantList'; 
 import { ordersMock } from '../../mocks/orders.mock';
 import OrdersList from './components/ordersList';
-import { customersMock, couriersMock,usersMock } from '../../mocks/users.mock';
+import { customersMock, couriersMock } from '../../mocks/users.mock';
+import { getOperatorDisplayName, toOperatorUser } from './operatorLogic';
 import CustomerList from './components/customersList';
 import CourrierList from './components/courriersList';
 import OperatorProfile from './components/operatorProfile';
@@ -21,9 +22,8 @@ export default function OperatorHome() {
   const [activeFilter, setActiveFilter] = useState<FilterType>('restaurants');
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const { user, signOut } = useAuth();
-  const operatorId = user?.role === 'Operator' ? user.id : undefined;
-  const operator = usersMock.find((u) => u.role === 'operator' && u.id === operatorId);
-  const operatorName = operator?.name ?? 'Operator';
+  const operator = toOperatorUser(user);
+  const operatorName = getOperatorDisplayName(operator);
 
   return (
     <SafeAreaView style={styles.page} edges={['top']}>
@@ -42,7 +42,7 @@ export default function OperatorHome() {
             onPress={() => setShowProfileMenu(true)}
             activeOpacity={0.8}
           >
-            <Text style={styles.profileText}>{OperatorProfile?.name ?? 'Operator'}</Text>
+            <Text style={styles.profileText}>{operatorName}</Text>
             
           </TouchableOpacity>
         </View>

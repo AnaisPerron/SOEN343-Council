@@ -30,8 +30,8 @@ The frontend must not report them as successful or silently send an ignored fiel
 
 ## Operator endpoints to implement
 
-All `/api/operator/**` routes must require the existing bearer session with
-`ROLE_OPERATOR`. No caller-supplied role or customer ID can grant access.
+The security filter now requires the existing bearer session with
+`ROLE_OPERATOR` for all `/api/operator/**` routes. Endpoint implementations are still pending. No caller-supplied role or customer ID can grant access.
 Return 401 for missing/invalid/expired tokens, 403 for other account roles,
 400 for invalid inputs, 404 for missing targets, and 409 for state conflicts.
 Reuse the existing error response conventions (`message`, optional `fieldErrors`).
@@ -102,9 +102,11 @@ integrating this action so restaurant views do not retain stale queue entries.
 
 ## Remaining requirements and prerequisites
 
-- Login routing still sends non-customers to `/account`; operator routing and a
-  client guard must be added in the authorization step. Client guards supplement
-  backend role checks, not replace them.
+- Operator login and restored sessions now route to `/operator/dashboard`. The
+  operator layout waits for session restoration and redirects other roles or
+  signed-out users. Dashboard identity comes from the authenticated account.
+  Public registration rejects operator accounts; predefined accounts still log
+  in through the existing BCrypt/session flow. Dashboard lists remain mocked.
 - Restaurant preparation and delivery endpoints must remain unavailable to
   operators. Existing restaurant order routes require a matching staff account.
 - Courier reassignment needs an offline current courier, an eligible replacement,
@@ -124,7 +126,7 @@ integrating this action so restaurant views do not retain stale queue entries.
 
 1. Complete branch setup and dependency/test checks (done).
 2. Align existing profile/cancellation helper contracts and record missing APIs.
-3. Add operator backend authorization and login routing.
+3. Add operator backend authorization and login routing (done).
 4. Implement live dashboard reads and remove mock dependencies.
 5. Implement restaurant pause/reopen.
 6. Implement operator cancellation through shared order logic.

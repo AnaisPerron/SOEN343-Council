@@ -1,3 +1,4 @@
+import { homeRoute } from '@/lib/roleRoutes';
 import { Link, Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -38,7 +39,7 @@ function LoginForm({ role }: { role: Role }) {
     setLoading(true);
     try {
       await signIn({ role, email: email.trim(), password });
-      router.replace(role === 'customer' ? '/customer/home/home' : '/account');
+      router.replace(homeRoute(role));
     } catch (error) {
       setErrors({ form: error instanceof Error ? error.message : 'Something went wrong' });
       setLoading(false);
@@ -94,7 +95,7 @@ export default function LoginScreen() {
   const [role, setRole] = useState<Role>(() => selectedRole(params.role));
 
   if (!ready) return <SafeAreaView style={styles.safe}><ActivityIndicator color="#D42F50" /></SafeAreaView>;
-  if (user) return <Redirect href={user.role === 'customer' ? '/customer/home/home' : '/account'} />;
+  if (user) return <Redirect href={homeRoute(user.role)} />;
 
   return (
     <SafeAreaView style={styles.safe}>
