@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import com.council.tenderapp.ord.commands.OrderCommandInvoker;
+import com.council.tenderapp.ord.commands.OrderCommands;
 import com.council.tenderapp.ord.dto.request.RejectOrderRequest;
 import com.council.tenderapp.ord.dto.response.OrderResponse;
 import com.council.tenderapp.ord.observers.DashboardObserver;
@@ -23,10 +25,16 @@ import com.council.tenderapp.ord.services.OrderService;
 @PreAuthorize("hasRole('STAFF') and authentication.details.restaurantId == #restaurantId")
 public class RestaurantOrderController {
     private final OrderService orderService;
+    private final OrderCommandInvoker commandInvoker;
     private final DashboardObserver dashboardObserver;
 
-    public RestaurantOrderController(OrderService orderService, DashboardObserver dashboardObserver) {
+    public RestaurantOrderController(
+        OrderService orderService,
+        OrderCommandInvoker commandInvoker,
+        DashboardObserver dashboardObserver
+    ) {
         this.orderService = orderService;
+        this.commandInvoker = commandInvoker;
         this.dashboardObserver = dashboardObserver;
     }
 
@@ -58,7 +66,7 @@ public class RestaurantOrderController {
 
     @PostMapping("/{orderId}/accept")
     public OrderResponse acceptOrder(@PathVariable Long restaurantId, @PathVariable Long orderId) {
-        return orderService.acceptOrder(restaurantId, orderId);
+        return commandInvoker.execute(new OrderCommands.Accept(restaurantId, orderId));
     }
 
     @PostMapping("/{orderId}/reject")
@@ -67,36 +75,36 @@ public class RestaurantOrderController {
         @PathVariable Long orderId,
         @Valid @RequestBody RejectOrderRequest request
     ) {
-        return orderService.rejectOrder(restaurantId, orderId, request.reason());
+        return commandInvoker.execute(new OrderCommands.Reject(restaurantId, orderId, request.reason()));
     }
 
     @PostMapping("/{orderId}/cancel")
     public OrderResponse cancelOrder(@PathVariable Long restaurantId, @PathVariable Long orderId) {
-        return orderService.cancelOrder(restaurantId, orderId);
+        return commandInvoker.execute(new OrderCommands.Cancel(restaurantId, orderId));
     }
 
     @PostMapping("/{orderId}/prepare")
     public OrderResponse startPreparation(@PathVariable Long restaurantId, @PathVariable Long orderId) {
-        return orderService.startPreparation(restaurantId, orderId);
+        return commandInvoker.execute(new OrderCommands.StartPreparation(restaurantId, orderId));
     }
 
     @PostMapping("/{orderId}/ready")
     public OrderResponse markReady(@PathVariable Long restaurantId, @PathVariable Long orderId) {
-        return orderService.markReady(restaurantId, orderId);
+        return commandInvoker.execute(new OrderCommands.MarkReady(restaurantId, orderId));
     }
 
     @PostMapping("/{orderId}/picked-up")
     public OrderResponse markPickedUp(@PathVariable Long restaurantId, @PathVariable Long orderId) {
-        return orderService.markPickedUp(restaurantId, orderId);
+        return commandInvoker.execute(new OrderCommands.MarkPickedUp(restaurantId, orderId));
     }
 
     @PostMapping("/{orderId}/delivered")
     public OrderResponse markDelivered(@PathVariable Long restaurantId, @PathVariable Long orderId) {
-        return orderService.markDelivered(restaurantId, orderId);
+        return commandInvoker.execute(new OrderCommands.MarkDelivered(restaurantId, orderId));
     }
 
     @PostMapping("/{orderId}/refund")
     public OrderResponse refundOrder(@PathVariable Long restaurantId, @PathVariable Long orderId) {
-        return orderService.refundOrder(restaurantId, orderId);
+        return commandInvoker.execute(new OrderCommands.Refund(restaurantId, orderId));
     }
 }

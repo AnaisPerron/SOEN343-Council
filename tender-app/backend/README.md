@@ -58,6 +58,29 @@ subscribed web dashboards through
 dashboard refreshes its selected queue when it receives an event; manual
 refresh and the existing lifecycle actions remain available.
 
+### Design patterns in the restaurant order flow
+
+- **Command:** Each restaurant action is captured as an immutable request object
+  (`OrderCommands.Accept`, `Reject`, `Cancel`, `StartPreparation`, `MarkReady`,
+  `MarkPickedUp`, `MarkDelivered`, or `Refund`). `RestaurantOrderController`
+  submits these commands to `OrderCommandInvoker`, which dispatches them to the
+  existing `OrderService`. The service remains responsible for authorization
+  checks, transactions, persistence, and publishing status changes. Queue reads
+  remain ordinary queries; commands represent the requested state-changing
+  actions.
+- **State:** `Order` delegates status changes to `OrderStatus`, whose
+  state-specific `transitionTo` rules allow or reject each transition. Commands
+  call the same service operations as before, so this state machine continues to
+  govern every action.
+- **Observer:** After a status change commits, `OrderStatusPublisher` creates an
+  `OrderStatusEvent` and notifies each `OrderObserver`. `OrderRecord` logs the
+  event and `DashboardObserver` sends it to subscribed dashboards over SSE.
+
+The patterns have separate responsibilities: commands carry and dispatch
+requests, the state machine validates lifecycle transitions, and observers
+react to committed status changes. Existing routes, queue results, and order
+behavior remain unchanged.
+
 The current project has no authentication/authorization integration. The local
 restaurant profile is a demo context, not an authenticated account. Actions
 verify that the order belongs to the restaurant ID in the URL, but this is not
