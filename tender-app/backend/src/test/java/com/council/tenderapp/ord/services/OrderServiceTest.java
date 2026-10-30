@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -21,8 +22,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.council.tenderapp.ord.dtos.OrderItemRequestDto;
@@ -30,6 +33,7 @@ import com.council.tenderapp.ord.dtos.OrderResponseDto;
 import com.council.tenderapp.ord.dtos.OrderStatusResponseDto;
 import com.council.tenderapp.ord.dtos.PlaceOrderRequestDto;
 import com.council.tenderapp.ord.entities.MenuItem;
+import com.council.tenderapp.ord.entities.MenuItemOption;
 import com.council.tenderapp.ord.entities.Order;
 import com.council.tenderapp.ord.entities.OrderLine;
 import com.council.tenderapp.ord.entities.OrderStatus;
@@ -39,8 +43,10 @@ import com.council.tenderapp.ord.exceptions.MenuItemUnavailableException;
 import com.council.tenderapp.ord.exceptions.OrderAccessDeniedException;
 import com.council.tenderapp.ord.exceptions.OrderNotFoundException;
 import com.council.tenderapp.ord.exceptions.RestaurantClosedException;
+import com.council.tenderapp.ord.repositories.MenuItemOptionRepository;
 import com.council.tenderapp.ord.repositories.MenuItemRepository;
 import com.council.tenderapp.ord.repositories.OrderRepository;
+import com.council.tenderapp.reg.services.CustomerProfileService;
 import com.council.tenderapp.technicalservices.payment.PaymentDeclinedException;
 import com.council.tenderapp.technicalservices.payment.PaymentGateway;
 import com.council.tenderapp.technicalservices.payment.PaymentResult;
@@ -56,17 +62,27 @@ class OrderServiceTest {
     @Mock
     private MenuItemRepository menuItemRepository;
     @Mock
+    private MenuItemOptionRepository menuItemOptionRepository;
+    @Mock
     private OrderRepository orderRepository;
     @Mock
     private PaymentGateway paymentGateway;
     @Mock
     private PreparationQueueService preparationQueueService;
+    @Mock
+    private JdbcTemplate jdbc;
+    @Mock
+    private CustomerProfileService customerProfileService;
+
+    @Mock
+    private OrderStatusPublisher publisher;
 
     private CustomerOrderService service;
 
     @BeforeEach
     void setUp() {
-        service = new CustomerOrderService(browseService, menuItemRepository, orderRepository, paymentGateway, preparationQueueService);
+        service = new CustomerOrderService(browseService, menuItemRepository, menuItemOptionRepository, orderRepository, paymentGateway, preparationQueueService, jdbc, customerProfileService,
+                new OrderCancellationService(orderRepository, preparationQueueService, publisher));
     }
 
     private static MenuItem item(Long id, String name, String price, String status) {
@@ -107,6 +123,7 @@ class OrderServiceTest {
         assertThat(saved.getValue().getRestaurantId()).isEqualTo(RESTAURANT_ID);
         assertThat(saved.getValue().getTotalPrice()).isEqualByComparingTo("34.00");
         verify(preparationQueueService).enqueue(eq(saved.getValue()), any(Instant.class));
+        verify(customerProfileService).ensureExists(CUSTOMER_ID);
     }
 
     @Test
@@ -214,5 +231,40 @@ class OrderServiceTest {
         assertThat(order.getStatus()).isEqualTo(OrderStatus.valueOf(status.toUpperCase()));
         verify(orderRepository, never()).save(any());
         verifyNoInteractions(preparationQueueService);
+    }
+
+    @Test
+    void chargesSelectedOptionsAndRecordsThemPerLine() {
+        menu(item(1L, "Margherita Pizza", "14.00", "available"));
+        when(menuItemOptionRepository.findByMenuItemIdIn(List.of(1L))).thenReturn(List.of(
+                new MenuItemOption(7L, 1L, new BigDecimal("2.00"), "Extra cheese"),
+                new MenuItemOption(8L, 1L, new BigDecimal("1.50"), "Extra basil")));
+        when(paymentGateway.charge(CUSTOMER_ID, new BigDecimal("35.00"))).thenReturn(PaymentResult.approved("MOCK-1"));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        OrderResponseDto response = service.placeOrder(CUSTOMER_ID,
+                request(new OrderItemRequestDto(1L, 2, List.of(7L, 8L, 7L))));
+
+        assertThat(response.total()).isEqualByComparingTo("35.00");
+        assertThat(response.lines().get(0).unitPrice()).isEqualByComparingTo("17.50");
+        ArgumentCaptor<Order> saved = ArgumentCaptor.forClass(Order.class);
+        verify(orderRepository).save(saved.capture());
+        assertThat(saved.getValue().getOrderLines().get(0).getUnitPrice()).isEqualByComparingTo("14.00");
+        // Lines must be flushed so they have ids before their add-ons are inserted.
+        InOrder writes = inOrder(orderRepository, jdbc);
+        writes.verify(orderRepository).flush();
+        writes.verify(jdbc).update(any(String.class), any(), eq(1L), eq(7L), eq(new BigDecimal("2.00")));
+        verify(jdbc).update(any(String.class), any(), eq(1L), eq(8L), eq(new BigDecimal("1.50")));
+    }
+
+    @Test
+    void rejectsOptionThatBelongsToAnotherItem() {
+        menu(item(1L, "Margherita Pizza", "14.00", "available"), item(4L, "Sparkling Water", "3.00", "available"));
+        when(menuItemOptionRepository.findByMenuItemIdIn(List.of(4L))).thenReturn(List.of());
+
+        assertThatThrownBy(() -> service.placeOrder(CUSTOMER_ID,
+                request(new OrderItemRequestDto(4L, 1, List.of(7L)))))
+                .isInstanceOf(InvalidOrderException.class);
+        verifyNoInteractions(paymentGateway, orderRepository, jdbc);
     }
 }

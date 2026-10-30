@@ -2,11 +2,13 @@ package com.council.tenderapp.ord.services;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,16 +18,16 @@ import com.council.tenderapp.ord.dtos.OrderResponseDto;
 import com.council.tenderapp.ord.dtos.OrderStatusResponseDto;
 import com.council.tenderapp.ord.dtos.PlaceOrderRequestDto;
 import com.council.tenderapp.ord.entities.MenuItem;
+import com.council.tenderapp.ord.entities.MenuItemOption;
 import com.council.tenderapp.ord.entities.Order;
 import com.council.tenderapp.ord.entities.OrderLine;
 import com.council.tenderapp.ord.entities.OrderStatus;
 import com.council.tenderapp.ord.exceptions.InvalidOrderException;
-import com.council.tenderapp.ord.exceptions.InvalidOrderStateException;
 import com.council.tenderapp.ord.exceptions.MenuItemUnavailableException;
-import com.council.tenderapp.ord.exceptions.OrderAccessDeniedException;
-import com.council.tenderapp.ord.exceptions.OrderNotFoundException;
+import com.council.tenderapp.ord.repositories.MenuItemOptionRepository;
 import com.council.tenderapp.ord.repositories.MenuItemRepository;
 import com.council.tenderapp.ord.repositories.OrderRepository;
+import com.council.tenderapp.reg.services.CustomerProfileService;
 import com.council.tenderapp.technicalservices.payment.PaymentDeclinedException;
 import com.council.tenderapp.technicalservices.payment.PaymentGateway;
 import com.council.tenderapp.technicalservices.payment.PaymentResult;
@@ -34,18 +36,27 @@ import com.council.tenderapp.technicalservices.payment.PaymentResult;
 public class CustomerOrderService {
     private final BrowseService browseService;
     private final MenuItemRepository menuItemRepository;
+    private final MenuItemOptionRepository menuItemOptionRepository;
     private final OrderRepository orderRepository;
     private final PaymentGateway paymentGateway;
     private final PreparationQueueService preparationQueueService;
+    private final OrderCancellationService cancellations;
+    private final JdbcTemplate jdbc;
+    private final CustomerProfileService customerProfileService;
 
     public CustomerOrderService(BrowseService browseService, MenuItemRepository menuItemRepository,
-            OrderRepository orderRepository, PaymentGateway paymentGateway,
-            PreparationQueueService preparationQueueService) {
+            MenuItemOptionRepository menuItemOptionRepository, OrderRepository orderRepository,
+            PaymentGateway paymentGateway, PreparationQueueService preparationQueueService, JdbcTemplate jdbc,
+            CustomerProfileService customerProfileService, OrderCancellationService cancellations) {
         this.browseService = browseService;
         this.menuItemRepository = menuItemRepository;
+        this.menuItemOptionRepository = menuItemOptionRepository;
         this.orderRepository = orderRepository;
         this.paymentGateway = paymentGateway;
         this.preparationQueueService = preparationQueueService;
+        this.cancellations = cancellations;
+        this.jdbc = jdbc;
+        this.customerProfileService = customerProfileService;
     }
 
     @Transactional
@@ -66,14 +77,30 @@ public class CustomerOrderService {
             }
         }
 
+        Map<Long, MenuItemOption> options = menuItemOptionRepository
+                .findByMenuItemIdIn(request.items().stream().map(OrderItemRequestDto::menuItemId).distinct().toList())
+                .stream().collect(Collectors.toMap(MenuItemOption::getId, Function.identity()));
+        for (OrderItemRequestDto item : request.items()) {
+            for (Long optionId : item.selectedOptionIds()) {
+                MenuItemOption option = options.get(optionId);
+                if (option == null || !item.menuItemId().equals(option.getMenuItemId())) {
+                    throw new InvalidOrderException("Option " + optionId
+                            + " does not belong to menu item " + item.menuItemId());
+                }
+            }
+        }
+
         BigDecimal total = request.items().stream()
-                .map(item -> menu.get(item.menuItemId()).getPrice().multiply(BigDecimal.valueOf(item.quantity())))
+                .map(item -> paidUnitPrice(menu.get(item.menuItemId()), item, options)
+                        .multiply(BigDecimal.valueOf(item.quantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         PaymentResult payment = paymentGateway.charge(customerId, total);
         if (!payment.approved()) {
             throw new PaymentDeclinedException("Payment declined: " + payment.message());
         }
 
+        // orders.customer_id references customer_profiles; older accounts may lack that row.
+        customerProfileService.ensureExists(customerId);
         Instant placedAt = Instant.now();
         Order order = new Order(customerId, request.restaurantId(), OrderStatus.PLACED, total);
         for (OrderItemRequestDto item : request.items()) {
@@ -81,36 +108,41 @@ public class CustomerOrderService {
                     menu.get(item.menuItemId()).getPrice()));
         }
         order = orderRepository.save(order);
+        // Lines keep the base price; each add-on's cost is snapshotted in order_line_options.
+        // Written with JDBC because the table's composite keys have no JPA entity, so flush first:
+        // cascaded lines are otherwise only inserted at commit and would have no id yet.
+        orderRepository.flush();
+        List<OrderLine> savedLines = order.getOrderLines();
+        for (int i = 0; i < savedLines.size(); i++) {
+            OrderLine line = savedLines.get(i);
+            for (Long optionId : request.items().get(i).selectedOptionIds()) {
+                jdbc.update("INSERT INTO order_line_options (order_line_id, menu_item_id, menu_item_option_id, additional_cost) VALUES (?, ?, ?, ?)",
+                        line.getId(), line.getMenuItemId(), optionId, options.get(optionId).getAdditionalCost());
+            }
+        }
         preparationQueueService.enqueue(order, placedAt);
 
-        List<OrderLineDto> lineDtos = order.getOrderLines().stream()
-                .map(line -> new OrderLineDto(line.getMenuItemId(), line.getMenuItem().getName(),
-                        line.getQuantity(), line.getUnitPrice(),
-                        line.getUnitPrice().multiply(BigDecimal.valueOf(line.getQuantity()))))
-                .toList();
+        List<OrderLineDto> lineDtos = new ArrayList<>();
+        for (int i = 0; i < savedLines.size(); i++) {
+            OrderLine line = savedLines.get(i);
+            BigDecimal unitPrice = paidUnitPrice(line.getMenuItem(), request.items().get(i), options);
+            lineDtos.add(new OrderLineDto(line.getMenuItemId(), line.getMenuItem().getName(),
+                    line.getQuantity(), unitPrice, unitPrice.multiply(BigDecimal.valueOf(line.getQuantity()))));
+        }
         return new OrderResponseDto(order.getId(), order.getRestaurantId(),
                 order.getStatus().name().toLowerCase(), order.getTotalPrice(), placedAt,
                 payment.reference(), lineDtos);
     }
 
+    // What the customer pays per unit: the item's price plus its selected add-ons.
+    private static BigDecimal paidUnitPrice(MenuItem menuItem, OrderItemRequestDto item, Map<Long, MenuItemOption> options) {
+        return item.selectedOptionIds().stream()
+                .map(optionId -> options.get(optionId).getAdditionalCost())
+                .reduce(menuItem.getPrice(), BigDecimal::add);
+    }
+
     @Transactional
     public OrderStatusResponseDto cancelOrder(Long customerId, Long orderId) {
-        Order order = orderRepository.findWithLockById(orderId)
-                .orElseThrow(() -> new OrderNotFoundException("Order not found with id: " + orderId));
-        if (!customerId.equals(order.getCustomerId())) {
-            throw new OrderAccessDeniedException("Order " + orderId + " does not belong to this customer");
-        }
-        if (order.getStatus() != OrderStatus.PLACED) {
-            throw new InvalidOrderStateException("Order " + orderId
-                    + " cannot be cancelled because it is " + order.getStatus().name().toLowerCase());
-        }
-
-        String previousStatus = order.getStatus().name().toLowerCase();
-        Instant cancelledAt = Instant.now();
-        order.transitionTo(OrderStatus.CANCELLED);
-        orderRepository.save(order);
-        preparationQueueService.remove(order, previousStatus, cancelledAt);
-        return new OrderStatusResponseDto(order.getId(), previousStatus,
-                order.getStatus().name().toLowerCase(), cancelledAt);
+        return cancellations.cancelForCustomer(customerId, orderId);
     }
 }

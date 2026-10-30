@@ -65,7 +65,8 @@ public class BrowseService
             i.getPrice(), 
             i.getDescription(), 
             "available".equalsIgnoreCase(i.getStatus()), 
-            i.getPhotoUrl()
+            i.getPhotoUrl(),
+            i.getCategory()
         ))
         .toList();
 

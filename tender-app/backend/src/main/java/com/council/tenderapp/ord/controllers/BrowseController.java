@@ -8,11 +8,12 @@ import com.council.tenderapp.ord.services.BrowseService;
 
 import java.util.List;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
 @RestController 
-
+@PreAuthorize("hasRole('CUSTOMER')")
 public class BrowseController 
 {
     private final BrowseService browseService;
@@ -21,12 +22,12 @@ public class BrowseController
         this.browseService = browseService;
     }
 
-    @GetMapping("/api/restaurants")
+    @GetMapping("/api/restaurant/open")
     public List<RestaurantResponseDTO> getOpenRestaurants() {
         return browseService.getOpenRestaurants();
     }
 
-    @GetMapping("/api/restaurants/{restaurantId}/menu")
+    @GetMapping("/api/restaurant/{restaurantId}/menu")
     public MenuResponseDTO getRestaurantMenu(@PathVariable Long restaurantId) {
         browseService.checkRestaurantOpen(restaurantId);
         return browseService.getRestaurantMenu(restaurantId);

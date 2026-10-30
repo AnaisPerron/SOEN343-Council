@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
-import { login, logout, register, restoreSession, updateProfile } from '@/api/auth';
+import { deleteAccount, login, logout, register, restoreSession, updateProfile } from '@/api/auth';
 import { ApiError } from '@/api/client';
 import type { AuthSession, AuthUser, RegistrationInput, Role, SignInInput } from '@/types/auth';
 import { clearSessionToken, readSessionToken, saveSessionToken } from './sessionStorage';
@@ -16,10 +16,12 @@ export const ROLE_OPTIONS: { value: Role; label: string }[] = [
 
 type AuthContextValue = {
   user: AuthUser | null;
+  token: string | null;
   ready: boolean;
   signIn: (input: SignInInput) => Promise<void>;
   signUp: (input: RegistrationInput) => Promise<void>;
   signOut: () => void;
+  deleteAccount: () => Promise<void>;
   saveProfile: (name: string, phoneNumber: string, address?: string) => Promise<void>;
 };
 
@@ -53,6 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AuthContextValue>(
     () => ({
       user: session?.user ?? null,
+      token: session?.token ?? null,
       ready,
       signIn: async (input) => {
         const signedIn = await login(input);
@@ -62,6 +65,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setReady(true);
       },
       signUp: register,
+      deleteAccount: async () => {
+        if (!session) throw new Error('Please sign in again');
+        await deleteAccount(session.token);
+        generation.current += 1;
+        await clearSessionToken().catch(() => {});
+        setSession(null);
+        setReady(true);
+      },
       saveProfile: async (name, phoneNumber, address) => {
         if (!session) throw new Error('Please sign in again');
         const updated = await updateProfile(session.token, name, phoneNumber, address);

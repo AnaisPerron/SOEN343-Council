@@ -2,10 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { menuItemOptionsMock, menuItemsMock, menusMock } from '../../../mocks/menus.mock';
-import { menuItemPhotos } from '../../../mocks/restaurantDisplay.mock';
-import { restaurantsMock } from '../../../mocks/restaurants.mock';
 import { useCart } from '../../../context/CartContext';
+import { useCatalog, useRestaurantMenu } from '../../../context/CatalogContext';
 import { useItemCustomization } from '../../../context/ItemCustomizationContext';
 import { DetailBackButton, DetailPage } from '../components/DetailPage';
 import CartIconButton from '../components/CartIconButton';
@@ -13,7 +11,7 @@ import { getMenuItemOrderRestriction, getRestaurantOrderRestriction, ORDER_ERROR
 import { styles } from './item.styles';
 
 export default function MenuItemDetails() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, restaurantId } = useLocalSearchParams<{ id: string; restaurantId?: string }>();
   const router = useRouter();
   const { lines, addItem } = useCart();
   const { selections } = useItemCustomization();
@@ -29,11 +27,13 @@ export default function MenuItemDetails() {
   const addingRef = useRef(false);
   const [addedOpacity] = useState(() => new Animated.Value(0));
   const [addedOffset] = useState(() => new Animated.Value(12));
-  const item = menuItemsMock.find((entry) => entry.id === Number(id));
+  const { restaurants, findItem } = useCatalog();
+  // The route carries the restaurant so a refreshed or linked page can load the right menu.
+  const { menu, status: menuStatus } = useRestaurantMenu(restaurantId ? Number(restaurantId) : findItem(Number(id))?.restaurantId);
+  const item = menu?.items.find((entry) => entry.id === Number(id)) ?? findItem(Number(id));
   const selectedOptionIds = selections[item?.id ?? -1] ?? [];
-  const menu = menusMock.find((entry) => entry.id === item?.menu_id);
-  const restaurant = restaurantsMock.find((entry) => entry.id === menu?.restaurant_id);
-  const options = menuItemOptionsMock.filter((option) => option.menu_item_id === item?.id);
+  const restaurant = restaurants.find((entry) => entry.id === item?.restaurantId);
+  const options = (menu?.options ?? []).filter((option) => option.menu_item_id === item?.id);
   // The displayed total includes selected extras for every unit.
   const optionCost = options.reduce((total, option) => total + (selectedOptionIds.includes(option.id) ? option.additional_cost : 0), 0);
   const total = ((item?.price ?? 0) + optionCost) * quantity;
@@ -46,6 +46,10 @@ export default function MenuItemDetails() {
     addedOffset.stopAnimation();
   }, [addedOpacity, addedOffset]);
 
+  if ((!item || !restaurant) && menuStatus === 'loading') {
+    return <View style={styles.notFound}><Text style={styles.description}>Loading menu item...</Text></View>;
+  }
+
   if (!item || !restaurant) {
     return <View style={styles.notFound}>
       <Text style={styles.title}>Menu item not found</Text>
@@ -55,7 +59,7 @@ export default function MenuItemDetails() {
     </View>;
   }
 
-  const cover = item.photURL ? { uri: item.photURL } : menuItemPhotos[item.id];
+  const cover = item.photURL ? { uri: item.photURL } : undefined;
   const goBack = () => router.canGoBack()
     ? router.back()
     : router.replace({ pathname: '/customer/restaurant/[id]', params: { id: String(restaurant.id) } });
@@ -138,7 +142,7 @@ export default function MenuItemDetails() {
         {!item.available && <Text style={styles.unavailable}>Not available right now</Text>}
 
         <View style={styles.customizeSection}>
-          <TouchableOpacity style={styles.customizeButton} accessibilityRole="button" onPress={() => router.push({ pathname: '/customer/customize/[id]', params: { id: String(item.id) } })}>
+          <TouchableOpacity style={styles.customizeButton} accessibilityRole="button" onPress={() => router.push({ pathname: '/customer/customize/[id]', params: { id: String(item.id), restaurantId: String(restaurant.id) } })}>
             <Text style={styles.customizeText}>Customize This Item</Text>
             <Text style={styles.customizeArrow}>›</Text>
           </TouchableOpacity>

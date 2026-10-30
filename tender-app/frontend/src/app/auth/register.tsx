@@ -1,3 +1,4 @@
+import { homeRoute } from '@/lib/roleRoutes';
 import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -82,7 +83,7 @@ export default function RegisterScreen() {
     // Signing in switches the navigator to the home screen; the account already exists, so fall back to the sign in screen
     try {
       await signIn({ role, email: details.email, password });
-      router.replace(role === 'customer' ? '/customer/home/home' : '/account');
+      router.replace(homeRoute(role));
     } catch {
       router.replace({ pathname: '/auth/login', params: { role } });
     }

@@ -1,6 +1,7 @@
 package com.council.tenderapp.ord.entities;
 
 import jakarta.persistence.*;
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "restaurants")
@@ -25,6 +26,12 @@ public class Restaurant {
 
     @Column(length = 20)
     private String phone;
+
+    @Column(name = "delivery_fee", precision = 10, scale = 2)
+    private BigDecimal deliveryFee;
+
+    @Column(name = "cover_url", columnDefinition = "TEXT")
+    private String coverUrl;
 
     public Restaurant() {}
 

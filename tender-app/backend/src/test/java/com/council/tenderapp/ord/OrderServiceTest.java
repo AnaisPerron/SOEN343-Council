@@ -16,6 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.council.tenderapp.ord.dto.response.OrderResponse;
@@ -26,6 +27,9 @@ import com.council.tenderapp.ord.entities.OrderStatus;
 import com.council.tenderapp.ord.repositories.OrderRepository;
 import com.council.tenderapp.ord.services.OrderService;
 import com.council.tenderapp.ord.services.OrderStatusPublisher;
+import com.council.tenderapp.reg.entities.Profile;
+import com.council.tenderapp.reg.entities.Role;
+import com.council.tenderapp.reg.repositories.ProfileRepository;
 
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
@@ -35,6 +39,9 @@ class OrderServiceTest {
 
     @Mock
     private OrderStatusPublisher orderStatusPublisher;
+
+    @Mock
+    private ProfileRepository profileRepository;
 
     @InjectMocks
     private OrderService orderService;
@@ -60,6 +67,27 @@ class OrderServiceTest {
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getOrderLines()).hasSize(1);
         assertThat(result.get(0).getOrderLines().get(0).getQuantity()).isEqualTo(3);
+    }
+
+    @Test
+    void restaurantOrdersIncludeCustomerNameAndPhone() {
+        Long restaurantId = 42L;
+        Order placed = new Order(21L, restaurantId, OrderStatus.PLACED, new BigDecimal("17.00"));
+        placed.setId(5L);
+        Order guest = order(restaurantId, OrderStatus.PLACED, new Date(2000L));
+        guest.setId(6L);
+        Profile customer = new Profile(Role.CUSTOMER, "Alice Martin", "alice@demo.test", "hash", "514-555-0101");
+        ReflectionTestUtils.setField(customer, "id", 21L);
+        when(orderRepository.findByRestaurantIdOrderByDateOrderedAscIdAsc(restaurantId))
+            .thenReturn(List.of(placed, guest));
+        when(profileRepository.findAllById(List.of(21L))).thenReturn(List.of(customer));
+
+        List<OrderResponse> result = orderService.getAllOrders(restaurantId);
+
+        assertThat(result.get(0).getCustomerName()).isEqualTo("Alice Martin");
+        assertThat(result.get(0).getCustomerPhone()).isEqualTo("514-555-0101");
+        // Seeded orders without a customer have no name to show.
+        assertThat(result.get(1).getCustomerName()).isNull();
     }
 
     @Test
@@ -135,12 +163,15 @@ class OrderServiceTest {
     }
 
     @Test
-    void rejectsBlankReasonWithoutChangingOrSavingOrder() {
-        assertThatThrownBy(() -> orderService.rejectOrder(42L, 6L, "  "))
-            .isInstanceOf(ResponseStatusException.class)
-            .hasMessageContaining("A rejection reason is required");
-
-        verify(orderRepository, never()).save(any());
+    void acceptsRejectionWithoutAReason() {
+        // The frontend allows the restaurant to leave the reason empty.
+        Order placed = order(42L, OrderStatus.PLACED, new Date());
+        placed.setId(6L);
+        when(orderRepository.findByIdForUpdate(6L)).thenReturn(Optional.of(placed));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        OrderResponse rejected = orderService.rejectOrder(42L, 6L, "  ");
+        assertThat(rejected.getStatus()).isEqualTo(OrderStatus.REJECTED);
+        assertThat(rejected.getRejectionReason()).isNull();
     }
 
     @Test

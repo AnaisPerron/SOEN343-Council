@@ -1,11 +1,11 @@
-import type { CourierProfile, CustomerProfile, RestaurantStaff, User } from './types';
+import type { CourierProfile, CustomerProfile, RestaurantStaff, User } from '../types/users';
 
 export const usersMock: User[] = [
   { id: 1, role: 'customer', name: 'Alex Morgan', email: 'alex@example.test', password_hash: 'demo-only' },
   { id: 2, role: 'customer', name: 'Sam Chen', email: 'sam@example.test', password_hash: 'demo-only' },
   { id: 3, role: 'restaurant_staff', name: 'Jamie Roy', email: 'jamie@example.test', password_hash: 'demo-only' },
   { id: 4, role: 'courier', name: 'Taylor Singh', email: 'taylor@example.test', password_hash: 'demo-only' },
-  { id: 5, role: 'Operator', name: 'Morgan Lee', email: 'morgan@example.test', password_hash: 'demo-only' },
+  { id: 5, role: 'operator', name: 'Morgan Lee', email: 'morgan@example.test', password_hash: 'demo-only' },
   { id: 6, role: 'restaurant_staff', name: 'Chris Bouchard', email: 'chris@example.test', password_hash: 'demo-only' },
 ];
 
@@ -22,3 +22,7 @@ export const restaurantStaffMock: RestaurantStaff[] = [
   { user_id: 3, restaurant_id: 1 },
   { user_id: 6, restaurant_id: 2 },
 ];
+
+//filtering different user types
+export const customersMock = usersMock.filter((u) => u.role === 'customer');
+export const couriersMock = usersMock.filter((u) => u.role === 'courier');

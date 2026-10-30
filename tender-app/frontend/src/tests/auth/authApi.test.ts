@@ -133,6 +133,37 @@ describe('login api', () => {
     });
   });
 
+  it('maps a predefined operator login and restored session to the operator role', async () => {
+    mockFetch(200, {
+      token: 'operator-token', expiresAt: '2026-10-30T12:00:00Z',
+      id: 8, name: 'Olivia Operator', email: 'operator@demo.test',
+      phone: '+15145550108', role: 'OPERATOR',
+    });
+    const session = await login({ role: 'Operator', email: 'operator@demo.test', password: 'DemoPass123!' });
+    assert.equal(session.user.role, 'Operator');
+    assert.equal(session.user.name, 'Olivia Operator');
+    const restored = await restoreSession(session.token);
+    assert.equal(restored.user.role, 'Operator');
+    assert.equal(restored.token, session.token);
+  });
+
+  it('reports an unreachable backend for demo credentials', async () => {
+    const fetchMock = mock.method(globalThis, 'fetch', async () => { throw new TypeError('fetch failed'); });
+    for (const email of ['greenbowl@demo.test', 'littleitaly@demo.test']) {
+      await assert.rejects(login({ role: 'restaurant', email, password: 'DemoPass123!' }), /Cannot reach the server/);
+    }
+    assert.equal(fetchMock.mock.callCount(), 2);
+  });
+
+  it('does not accept demo credentials when the backend responds', async () => {
+    const fetchMock = mockFetch(401, { status: 401, message: 'Invalid email or password' });
+    await assert.rejects(
+      login({ role: 'restaurant', email: 'greenbowl@demo.test', password: 'DemoPass123!' }),
+      /Invalid email or password/,
+    );
+    assert.equal(fetchMock.mock.callCount(), 1);
+  });
+
   it('rejects an account of a different role and ends its session', async () => {
     const fetchMock = mockFetch(200, loginResponse);
     await assert.rejects(

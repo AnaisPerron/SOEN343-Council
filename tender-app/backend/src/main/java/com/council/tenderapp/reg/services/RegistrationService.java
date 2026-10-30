@@ -7,6 +7,7 @@ import org.springframework.core.NestedExceptionUtils;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.council.tenderapp.reg.dtos.RegisterRequest;
@@ -29,18 +30,23 @@ public class RegistrationService {
     private final PasswordEncoder passwordEncoder;
     private final RestaurantRepository restaurantRepository;
     private final RestaurantStaffRepository restaurantStaffRepository;
+    private final CustomerProfileService customerProfileService;
 
     public RegistrationService(ProfileRepository repository, PasswordEncoder passwordEncoder,
-            RestaurantRepository restaurantRepository, RestaurantStaffRepository restaurantStaffRepository) {
+            RestaurantRepository restaurantRepository, RestaurantStaffRepository restaurantStaffRepository,
+            CustomerProfileService customerProfileService) {
         this.repository = repository;
         this.passwordEncoder = passwordEncoder;
         this.restaurantRepository = restaurantRepository;
         this.restaurantStaffRepository = restaurantStaffRepository;
+        this.customerProfileService = customerProfileService;
     }
 
     @Transactional
     public RegisterResponse register(RegisterRequest request) {
-        
+        if (request.role() == Role.OPERATOR) {
+            throw new AccessDeniedException("Operator accounts must be predefined");
+        }
         String email = request.email().trim().toLowerCase(Locale.ROOT);
         if (repository.existsByEmailIgnoreCase(email)) {
             throw new DuplicateEmailException(email);
@@ -60,6 +66,9 @@ public class RegistrationService {
                         restaurantWithDetails(saved.getName(), request.phone(), request.address()));
                 restaurantStaffRepository.saveAndFlush(new RestaurantStaff(saved.getId(), restaurant.getId()));
                 return RegisterResponse.from(saved, restaurant);
+            }
+            if (saved.getRole() == Role.CUSTOMER) {
+                customerProfileService.ensureExists(saved.getId());
             }
             return RegisterResponse.from(saved);
         } catch (DataIntegrityViolationException ex) {

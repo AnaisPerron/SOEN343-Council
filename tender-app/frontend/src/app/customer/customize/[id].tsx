@@ -2,21 +2,27 @@ import { useState } from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { menuItemOptionsMock, menuItemsMock } from '../../../mocks/menus.mock';
+import { useCatalog, useRestaurantMenu } from '../../../context/CatalogContext';
 import { useItemCustomization } from '../../../context/ItemCustomizationContext';
 import { styles } from './customize.styles';
 
 export default function CustomizeItem() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, restaurantId } = useLocalSearchParams<{ id: string; restaurantId?: string }>();
   const router = useRouter();
   const { selections, saveSelection } = useItemCustomization();
-  const item = menuItemsMock.find((entry) => entry.id === Number(id));
+  const { findItem } = useCatalog();
+  const { menu, status: menuStatus } = useRestaurantMenu(restaurantId ? Number(restaurantId) : findItem(Number(id))?.restaurantId);
+  const item = menu?.items.find((entry) => entry.id === Number(id)) ?? findItem(Number(id));
   const [draftOptionIds, setDraftOptionIds] = useState<number[]>(() => selections[Number(id)] ?? []);
-  const options = menuItemOptionsMock.filter((option) => option.menu_item_id === item?.id);
+  const options = (menu?.options ?? []).filter((option) => option.menu_item_id === item?.id);
   const extraCost = options.reduce((sum, option) => sum + (draftOptionIds.includes(option.id) ? option.additional_cost : 0), 0);
   const goBack = () => router.canGoBack()
     ? router.back()
-    : router.replace({ pathname: '/customer/menu-item/[id]', params: { id: String(id) } });
+    : router.replace({ pathname: '/customer/menu-item/[id]', params: { id: String(id), ...(restaurantId ? { restaurantId } : {}) } });
+
+  if (!item && menuStatus === 'loading') {
+    return <SafeAreaView style={styles.page}><View style={styles.notFound}><Text style={styles.intro}>Loading item...</Text></View></SafeAreaView>;
+  }
 
   if (!item) {
     return <SafeAreaView style={styles.page}>

@@ -35,7 +35,6 @@ public class SecurityConfig
     private final SessionService sessionService;
 
     public SecurityConfig(SessionService sessionService) {
-        System.out.println("++++++ security config read!!");
         this.sessionService = sessionService;
     }
 
@@ -71,6 +70,7 @@ public class SecurityConfig
             .requestMatchers(HttpMethod.GET, "/menu-items-imgs/*.jpg").permitAll()
             .requestMatchers(HttpMethod.GET, "/health").permitAll()
             .requestMatchers("/api/auth/**", "/error").permitAll()
+            .requestMatchers("/api/operator/**").hasRole("OPERATOR")
             .anyRequest().authenticated()
         )
         //forces 401 if authentication is invalid

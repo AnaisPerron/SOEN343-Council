@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -23,12 +24,15 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.council.tenderapp.config.SecurityConfig;
+import com.council.tenderapp.ord.dtos.CustomerOrderDto;
+import com.council.tenderapp.ord.dtos.CustomerOrderLineDto;
 import com.council.tenderapp.ord.dtos.OrderResponseDto;
 import com.council.tenderapp.ord.dtos.OrderStatusResponseDto;
 import com.council.tenderapp.ord.dtos.PlaceOrderRequestDto;
 import com.council.tenderapp.ord.exceptions.InvalidOrderStateException;
 import com.council.tenderapp.ord.exceptions.OrderAccessDeniedException;
 import com.council.tenderapp.ord.exceptions.OrderNotFoundException;
+import com.council.tenderapp.ord.services.CustomerOrderHistoryService;
 import com.council.tenderapp.ord.services.CustomerOrderService;
 import com.council.tenderapp.reg.entities.Role;
 import com.council.tenderapp.reg.services.SessionService;
@@ -53,8 +57,24 @@ class OrderControllerTest {
     @MockitoBean
     private CustomerOrderService orderService;
 
+    @MockitoBean
+    private CustomerOrderHistoryService historyService;
+
     private String bearer(Role role) {
         return "Bearer " + sessionService.create(7L, role).token();
+    }
+
+    @Test
+    void historyUsesAuthenticatedCustomerAndRejectsOtherRoles() throws Exception {
+        when(historyService.getOrders(7L)).thenReturn(List.of());
+        mockMvc.perform(get(PLACE_ORDER).header(HttpHeaders.AUTHORIZATION, bearer(Role.CUSTOMER)))
+            .andExpect(status().isOk()).andExpect(jsonPath("$").isArray());
+        verify(historyService).getOrders(7L);
+        for (Role role : List.of(Role.COURIER, Role.STAFF, Role.OPERATOR)) {
+            mockMvc.perform(get(PLACE_ORDER).header(HttpHeaders.AUTHORIZATION, bearer(role)))
+                .andExpect(status().isForbidden());
+        }
+        mockMvc.perform(get(PLACE_ORDER)).andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -70,6 +90,20 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.total").value(28.00));
         verify(orderService).placeOrder(eq(7L), any(PlaceOrderRequestDto.class));
     }
+
+    @Test
+    void customerCanListOwnOrders() throws Exception {
+        when(historyService.getOrders(7L)).thenReturn(List.of(new CustomerOrderDto(42L, 1L, "Metro Pizza", "accepted",
+                new BigDecimal("19.00"), Instant.now(), null,
+                List.of(new CustomerOrderLineDto("Pepperoni Pizza", 1, new BigDecimal("19.00"), List.of("Extra cheese"))))));
+
+        mockMvc.perform(get(PLACE_ORDER).header(HttpHeaders.AUTHORIZATION, bearer(Role.CUSTOMER)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].orderId").value(42))
+                .andExpect(jsonPath("$[0].restaurantName").value("Metro Pizza"))
+                .andExpect(jsonPath("$[0].lines[0].options[0]").value("Extra cheese"));
+    }
+
 
     @Test
     void nonCustomerRolesAreForbidden() throws Exception {
