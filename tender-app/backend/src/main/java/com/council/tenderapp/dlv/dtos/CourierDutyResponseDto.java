@@ -6,14 +6,16 @@ public record CourierDutyResponseDto(
     Long courierId,
     String status,
     Double latitude,
-    Double longitude
+    Double longitude,
+    AssignedOrderDto assignedOrder
 ) {
-    public CourierDutyResponseDto(CourierProfile courier) {
+    public CourierDutyResponseDto(CourierProfile courier, AssignedOrderDto assignedOrder) {
         this(
             courier.getUserId(),
             courier.getStatus().name().toLowerCase(),
             courier.getLatitude(),
-            courier.getLongitude()
+            courier.getLongitude(),
+            assignedOrder
         );
     }
 }
