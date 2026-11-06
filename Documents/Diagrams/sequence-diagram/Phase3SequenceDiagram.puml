@@ -1,0 +1,101 @@
+@startuml
+title Phase III - From "ready" to Order Summary (continues Phase II sequence diagram)
+
+actor ":Customer" as Customer
+participant ":System" as System
+actor ":Restaurant" as Restaurant
+participant ":DLV" as DLV
+actor ":Courier" as Courier
+participant ":PRC" as PRC
+participant ":Billing System" as Billing
+participant ":Ledger" as Ledger
+
+== UC-ORD-04: Update Order Status (Ready) ==
+Restaurant -> System: submitNextStateCommand(orderId, targetState: "ready")
+activate System
+System -> System: updateStatusToReady(orderId)
+System --> Restaurant: logUpdatedOrderStateInConsole(orderId)
+System ->> Customer: notifyOrderReady(orderId)
+
+== UC-DLV-01: Dispatch Order (R-DLV-02) ==
+System -> DLV: requestDispatch(orderId)
+activate DLV
+DLV -> DLV: findIdleOnDutyCouriers()
+
+alt at least one idle on-duty courier
+    DLV -> DLV: selectNearestCourier(restaurantLocation) [R-DLV-02: straight-line, tie -> lowest courierId]
+    DLV ->> Courier: offerOrder(orderId)
+    DLV --> System: offerSent(orderId, courierId)
+    deactivate DLV
+    deactivate System
+
+else no idle courier (R-DLV-04)
+    DLV -> DLV: enqueue(orderId)
+    DLV --> System: orderQueued(orderId)
+    deactivate DLV
+    System -> System: logToConsole("No courier available, order queued")
+    deactivate System
+    ... a courier becomes idle (goes on duty or finishes a delivery) ...
+    Courier -> DLV: goOnDuty()
+    activate DLV
+    DLV -> DLV: setCourierState(courierId, "idle")
+    DLV -> DLV: dequeueAndRetry(orderId) [R-DLV-04]
+    DLV -> DLV: selectNearestCourier(restaurantLocation) [R-DLV-02: straight-line, tie -> lowest courierId]
+    DLV ->> Courier: offerOrder(orderId)
+    deactivate DLV
+end
+
+== UC-DLV-02: Accept Offer ==
+Courier -> DLV: acceptOffer(orderId)
+activate DLV
+DLV -> DLV: setCourierState(courierId, "assigned") [R-DLV-03: one order per courier]
+DLV -> System: assignCourier(orderId, courierId)
+activate System
+System ->> Customer: notifyCourierAssigned(orderId)
+System --> DLV: assignmentRecorded()
+deactivate System
+DLV --> Courier: confirmAssignment(orderId)
+deactivate DLV
+
+== UC-DLV-03: Confirm Pickup (ready -> picked_up) ==
+Courier -> System: confirmPickup(orderId)
+activate System
+System -> System: verifyCourierAndTransitionToPickedUp(orderId)
+System -> DLV: setCourierState(courierId, "carrying") [R-DLV-03: no going offline]
+activate DLV
+DLV --> System: stateUpdated()
+deactivate DLV
+System --> Courier: pickupConfirmed(orderId)
+System ->> Customer: updateTrackingView(status: "picked_up")
+deactivate System
+
+== UC-DLV-04: Confirm Delivery (picked_up -> delivered) ==
+Courier -> System: confirmDelivery(orderId)
+activate System
+System -> System: verifyCourierAndTransitionToDelivered(orderId)
+System -> DLV: setCourierState(courierId, "idle")
+activate DLV
+DLV -> DLV: retryDispatchQueue() [R-DLV-04]
+DLV --> System: stateUpdated()
+deactivate DLV
+
+== UC-PRC-01: Compute Charge & Record in Ledger (R-PRC-01..03) ==
+System -> PRC: computeCharge(orderId)
+activate PRC
+PRC -> PRC: loadPricingConfig()
+PRC -> PRC: computeFare(orderLines, deliveryFee, serviceFee, smallOrderSurcharge) [R-PRC-01]
+PRC -> Billing: captureCharge(orderId, total)
+activate Billing
+Billing --> PRC: chargeCaptured()
+deactivate Billing
+PRC -> Ledger: recordEntry(orderId, finalState: "delivered", timestamps, total)
+activate Ledger
+Ledger --> PRC: entryRecorded()
+deactivate Ledger
+PRC -> PRC: createOrderSummary(orderId)
+PRC --> System: orderSummary
+deactivate PRC
+System --> Courier: deliveryConfirmed(orderId)
+System ->> Customer: sendOrderSummary(orderSummary)
+deactivate System
+@enduml
