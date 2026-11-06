@@ -13,7 +13,9 @@ import org.springframework.transaction.annotation.Transactional;
 import com.council.tenderapp.reg.dtos.RegisterRequest;
 import com.council.tenderapp.reg.dtos.RegisterResponse;
 import com.council.tenderapp.reg.exceptions.DuplicateEmailException;
+import com.council.tenderapp.reg.entities.CourierProfile;
 import com.council.tenderapp.reg.entities.Profile;
+import com.council.tenderapp.reg.repositories.CourierProfileRepository;
 import com.council.tenderapp.reg.repositories.ProfileRepository;
 import com.council.tenderapp.ord.entities.Restaurant;
 import com.council.tenderapp.ord.entities.RestaurantStaff;
@@ -31,15 +33,17 @@ public class RegistrationService {
     private final RestaurantRepository restaurantRepository;
     private final RestaurantStaffRepository restaurantStaffRepository;
     private final CustomerProfileService customerProfileService;
+    private final CourierProfileRepository courierProfileRepository;
 
     public RegistrationService(ProfileRepository repository, PasswordEncoder passwordEncoder,
             RestaurantRepository restaurantRepository, RestaurantStaffRepository restaurantStaffRepository,
-            CustomerProfileService customerProfileService) {
+            CustomerProfileService customerProfileService, CourierProfileRepository courierProfileRepository) {
         this.repository = repository;
         this.passwordEncoder = passwordEncoder;
         this.restaurantRepository = restaurantRepository;
         this.restaurantStaffRepository = restaurantStaffRepository;
         this.customerProfileService = customerProfileService;
+        this.courierProfileRepository = courierProfileRepository;
     }
 
     @Transactional
@@ -69,6 +73,9 @@ public class RegistrationService {
             }
             if (saved.getRole() == Role.CUSTOMER) {
                 customerProfileService.ensureExists(saved.getId());
+            }
+            if (saved.getRole() == Role.COURIER) {
+                courierProfileRepository.saveAndFlush(new CourierProfile(saved.getId()));
             }
             return RegisterResponse.from(saved);
         } catch (DataIntegrityViolationException ex) {
