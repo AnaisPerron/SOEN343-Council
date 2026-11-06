@@ -1,0 +1,110 @@
+package com.council.tenderapp.dlv;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.HttpHeaders;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.council.tenderapp.ord.entities.Order;
+import com.council.tenderapp.ord.entities.OrderStatus;
+import com.council.tenderapp.ord.entities.Restaurant;
+import com.council.tenderapp.ord.repositories.OrderRepository;
+import com.council.tenderapp.ord.repositories.RestaurantRepository;
+import com.council.tenderapp.reg.dtos.LoginRequest;
+import com.council.tenderapp.reg.dtos.RegisterRequest;
+import com.council.tenderapp.reg.entities.CourierProfile;
+import com.council.tenderapp.reg.entities.CourierStatus;
+import com.council.tenderapp.reg.entities.Role;
+import com.council.tenderapp.reg.repositories.CourierProfileRepository;
+import com.council.tenderapp.reg.services.LoginService;
+import com.council.tenderapp.reg.services.RegistrationService;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@Transactional
+class CourierDutyControllerTest {
+    @Autowired private MockMvc mockMvc;
+    @Autowired private RegistrationService registrationService;
+    @Autowired private LoginService loginService;
+    @Autowired private CourierProfileRepository couriers;
+    @Autowired private RestaurantRepository restaurants;
+    @Autowired private OrderRepository orders;
+
+    private record Account(Long id, String token) {}
+
+    private Account register(String email, Role role) {
+        Long id = registrationService.register(new RegisterRequest("Duty Tester", email, "secret123", "514-555-0170", role)).id();
+        return new Account(id, loginService.login(new LoginRequest(email, "secret123")).token());
+    }
+
+    private CourierStatus statusOf(Account courier) {
+        return couriers.findById(courier.id()).orElseThrow().getStatus();
+    }
+
+    private void setStatus(Account courier, CourierStatus status) {
+        CourierProfile profile = couriers.findById(courier.id()).orElseThrow();
+        profile.setStatus(status);
+        couriers.saveAndFlush(profile);
+    }
+
+    @Test
+    void courierGoesOnDutyThenOffDuty() throws Exception {
+        Account courier = register("duty-on-off@example.com", Role.COURIER);
+
+        mockMvc.perform(post("/api/courier/duty/on").header(HttpHeaders.AUTHORIZATION, "Bearer " + courier.token()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.courierId").value(courier.id()))
+                .andExpect(jsonPath("$.status").value("idle"));
+        assertThat(statusOf(courier)).isEqualTo(CourierStatus.IDLE);
+
+        mockMvc.perform(post("/api/courier/duty/off").header(HttpHeaders.AUTHORIZATION, "Bearer " + courier.token()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("offline"));
+        assertThat(statusOf(courier)).isEqualTo(CourierStatus.OFFLINE);
+    }
+
+    @Test
+    void goingOffDutyMidDeliveryIsRefused() throws Exception {
+        Account courier = register("duty-busy@example.com", Role.COURIER);
+
+        for (CourierStatus busy : new CourierStatus[] {CourierStatus.ASSIGNED, CourierStatus.CARRYING}) {
+            setStatus(courier, busy);
+            mockMvc.perform(post("/api/courier/duty/off").header(HttpHeaders.AUTHORIZATION, "Bearer " + courier.token()))
+                    .andExpect(status().isConflict());
+            assertThat(statusOf(courier)).isEqualTo(busy);
+        }
+    }
+
+    @Test
+    void onlyLoggedInCouriersCanChangeDutyStatus() throws Exception {
+        Account staff = register("duty-staff@example.com", Role.STAFF);
+
+        mockMvc.perform(post("/api/courier/duty/on")).andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/courier/duty/on").header(HttpHeaders.AUTHORIZATION, "Bearer " + staff.token()))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/courier/duty/off").header(HttpHeaders.AUTHORIZATION, "Bearer " + staff.token()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void goingOnDutyPicksUpAnOrderWaitingInTheDispatchQueue() throws Exception {
+        Account courier = register("duty-dispatch@example.com", Role.COURIER);
+        Restaurant restaurant = restaurants.saveAndFlush(new Restaurant("Queue Cafe", "open", 45.50, -73.57));
+        Order waiting = orders.saveAndFlush(new Order(restaurant.getId(), new java.util.Date(), OrderStatus.READY));
+
+        mockMvc.perform(post("/api/courier/duty/on").header(HttpHeaders.AUTHORIZATION, "Bearer " + courier.token()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("assigned"));
+
+        assertThat(orders.findById(waiting.getId()).orElseThrow().getCourierId()).isEqualTo(courier.id());
+        assertThat(statusOf(courier)).isEqualTo(CourierStatus.ASSIGNED);
+    }
+}
