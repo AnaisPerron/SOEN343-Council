@@ -10,7 +10,7 @@ describe('account destinations', () => {
   it('keeps customer and other account destinations', () => {
     assert.equal(homeRoute('customer'), '/customer/home/home');
     assert.equal(homeRoute('restaurant'), '/restaurant');
-    assert.equal(homeRoute('courier'), '/account');
+    assert.equal(homeRoute('courier'), '/courier');
   });
 
   it('routes signed out users to login', () => {
