@@ -8,21 +8,29 @@ import org.junit.jupiter.api.Test;
 class CourierStatusTest {
 
     @Test
-    void goingOnDutyMovesOfflineToIdle() {
+    void offlineCourierCanGoOnDuty() {
         assertThat(CourierStatus.OFFLINE.goOnDuty()).isEqualTo(CourierStatus.IDLE);
-        assertThat(CourierStatus.IDLE.goOnDuty()).isEqualTo(CourierStatus.IDLE);
     }
 
     @Test
-    void goingOffDutyMovesIdleToOffline() {
+    void idleCourierCanGoOffDuty() {
         assertThat(CourierStatus.IDLE.goOffDuty()).isEqualTo(CourierStatus.OFFLINE);
-        assertThat(CourierStatus.OFFLINE.goOffDuty()).isEqualTo(CourierStatus.OFFLINE);
     }
 
     @Test
-    void cannotGoOffDutyMidDelivery() {
-        assertThatThrownBy(CourierStatus.ASSIGNED::goOffDuty).isInstanceOf(IllegalStateException.class);
+    void carryingCourierCannotGoOffDuty() {
         assertThatThrownBy(CourierStatus.CARRYING::goOffDuty).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void assignedCourierCannotGoOffDuty() {
+        assertThatThrownBy(CourierStatus.ASSIGNED::goOffDuty).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void repeatingTheCurrentDutyStatusChangesNothing() {
+        assertThat(CourierStatus.IDLE.goOnDuty()).isEqualTo(CourierStatus.IDLE);
+        assertThat(CourierStatus.OFFLINE.goOffDuty()).isEqualTo(CourierStatus.OFFLINE);
     }
 
     @Test
