@@ -1,7 +1,6 @@
 package com.council.tenderapp.reg.exceptions;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -22,6 +21,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.council.tenderapp.ord.exceptions.InvalidOrderException;
+import com.council.tenderapp.dlv.exceptions.InvalidCourierStateException;
 import com.council.tenderapp.ord.exceptions.InvalidOrderStateException;
 import com.council.tenderapp.ord.exceptions.MenuItemUnavailableException;
 import com.council.tenderapp.ord.exceptions.OrderAccessDeniedException;
@@ -167,6 +167,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidOrderStateException.class)
     public ResponseEntity<ErrorResponse> handleInvalidOrderState(InvalidOrderStateException ex) {
         log.warn("Invalid order state: {}", ex.getMessage());
+        return build(HttpStatus.CONFLICT, ex.getMessage(), Map.of());
+    }
+
+    @ExceptionHandler(InvalidCourierStateException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidCourierState(InvalidCourierStateException ex) {
+        log.warn("Invalid courier state: {}", ex.getMessage());
         return build(HttpStatus.CONFLICT, ex.getMessage(), Map.of());
     }
 
