@@ -46,6 +46,22 @@ describe('registration api', () => {
     assert.equal(request.address, '123 Main St, Montreal, Canada');
   });
 
+  it('registers a courier with their name and no address', () => {
+    assert.deepEqual(toRegisterRequest({
+      role: 'courier',
+      name: 'Nora',
+      email: 'nora@example.com',
+      password: 'courier-pass',
+      phoneNumber: '5145550107',
+    }), {
+      name: 'Nora',
+      email: 'nora@example.com',
+      password: 'courier-pass',
+      phone: '5145550107',
+      role: 'COURIER',
+    });
+  });
+
   it('posts registration to the backend', async () => {
     const fetchMock = mockFetch(201, { id: 1, name: 'Alex', email: 'alex@example.com', phone: '5145550123', role: 'CUSTOMER' });
     await register(customer);
