@@ -34,6 +34,18 @@ class CourierStatusTest {
     }
 
     @Test
+    void finishingADeliveryReturnsTheCourierToIdle() {
+        assertThat(CourierStatus.ASSIGNED.finishDelivery()).isEqualTo(CourierStatus.IDLE);
+        assertThat(CourierStatus.CARRYING.finishDelivery()).isEqualTo(CourierStatus.IDLE);
+    }
+
+    @Test
+    void cannotFinishADeliveryWithoutOne() {
+        assertThatThrownBy(CourierStatus.IDLE::finishDelivery).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(CourierStatus.OFFLINE::finishDelivery).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
     void goingOnDutyDoesNotResetAnActiveDelivery() {
         assertThatThrownBy(CourierStatus.ASSIGNED::goOnDuty).isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(CourierStatus.CARRYING::goOnDuty).isInstanceOf(IllegalStateException.class);
