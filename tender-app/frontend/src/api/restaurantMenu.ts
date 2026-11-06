@@ -37,3 +37,7 @@ export const updateMenuItem = async (token: string, id: number, item: MenuItem) 
 
 export const toggleMenuItemAvailability = async (token: string, id: number) =>
   fromDto(await requestJson<MenuItemDto>('PATCH', `${BASE}/${id}/availability`, undefined, token));
+
+/** Uploads a picked image (data URI) and returns the backend path to store as the item's photoUrl. */
+export const uploadMenuPhoto = async (token: string, dataUri: string) =>
+  (await requestJson<{ url: string }>('POST', `${BASE}/photos`, { dataUri }, token)).url;
