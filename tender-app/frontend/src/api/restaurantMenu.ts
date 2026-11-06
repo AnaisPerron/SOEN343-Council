@@ -1,24 +1,39 @@
-import { API_URL, ApiError } from './client.ts';
+import { requestJson } from './client.ts';
 
-export type MenuOption = { id: number | null; name: string; additionalCost: number };
-export type MenuItem = { id: number | null; name: string; description: string; category: string; price: number; status: 'available' | 'sold_out'; photoUrl: string | null; options: MenuOption[] };
-export type RestaurantMenu = { restaurantId: number; name: string; status: 'open' | 'paused' | 'closed'; address: string; deliveryFee: number; coverUrl: string | null; menuName: string; items: MenuItem[] };
+export type MenuItem = { id: number | null; name: string; description: string; category: string; price: number; available: boolean; photoUrl: string | null };
 
-async function request(method: 'GET' | 'PUT', token: string, body?: RestaurantMenu): Promise<RestaurantMenu> {
-  let response: Response;
-  try {
-    response = await fetch(`${API_URL}/api/restaurant/menu`, {
-      method,
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      ...(body ? { body: JSON.stringify(body) } : {}),
-    });
-  } catch {
-    throw new ApiError(0, `Cannot reach the server at ${API_URL}`);
-  }
-  const data = await response.json().catch(() => null);
-  if (!response.ok) throw new ApiError(response.status, data?.message ?? `Request failed (${response.status})`);
-  return data as RestaurantMenu;
-}
+/** Shape of the backend's MenuItemDto. */
+type MenuItemDto = { id: number; menu_id: number; name: string; price: number; description: string | null; available: boolean; photoUrl: string | null; category: string | null };
 
-export const loadRestaurantMenu = (token: string) => request('GET', token);
-export const saveRestaurantMenu = (token: string, menu: RestaurantMenu) => request('PUT', token, menu);
+const BASE = '/api/restaurant/menu-items';
+
+const fromDto = (dto: MenuItemDto): MenuItem => ({
+  id: dto.id,
+  name: dto.name,
+  description: dto.description ?? '',
+  category: dto.category ?? '',
+  price: Number(dto.price),
+  available: dto.available,
+  photoUrl: dto.photoUrl,
+});
+
+const toRequest = (item: MenuItem) => ({
+  name: item.name,
+  description: item.description,
+  price: item.price,
+  available: item.available,
+  category: item.category,
+  photoUrl: item.photoUrl,
+});
+
+export const listMenuItems = async (token: string) =>
+  (await requestJson<MenuItemDto[]>('GET', BASE, undefined, token)).map(fromDto);
+
+export const createMenuItem = async (token: string, item: MenuItem) =>
+  fromDto(await requestJson<MenuItemDto>('POST', BASE, toRequest(item), token));
+
+export const updateMenuItem = async (token: string, id: number, item: MenuItem) =>
+  fromDto(await requestJson<MenuItemDto>('PUT', `${BASE}/${id}`, toRequest(item), token));
+
+export const toggleMenuItemAvailability = async (token: string, id: number) =>
+  fromDto(await requestJson<MenuItemDto>('PATCH', `${BASE}/${id}/availability`, undefined, token));

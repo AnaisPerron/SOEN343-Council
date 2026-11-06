@@ -55,6 +55,8 @@ public class MerchantMenuService {
         menuItem.setDescription(request.description());
         menuItem.setPrice(request.price());
         menuItem.setStatus(request.available() ? "available" : "sold_out");
+        menuItem.setCategory(request.category());
+        menuItem.setPhotoUrl(request.photoUrl());
 
         MenuItem saved = menuItemRepository.save(menuItem);
         return new MenuItemDto(saved);
@@ -75,6 +77,8 @@ public class MerchantMenuService {
         menuItem.setDescription(request.description());
         menuItem.setPrice(request.price());
         menuItem.setStatus(request.available() ? "available" : "sold_out");
+        menuItem.setCategory(request.category());
+        menuItem.setPhotoUrl(request.photoUrl());
 
 
         MenuItem saved = menuItemRepository.save(menuItem);
