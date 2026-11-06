@@ -19,6 +19,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.council.tenderapp.ord.exceptions.InvalidOrderException;
 import com.council.tenderapp.dlv.exceptions.InvalidCourierStateException;
@@ -168,6 +169,16 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleInvalidOrderState(InvalidOrderStateException ex) {
         log.warn("Invalid order state: {}", ex.getMessage());
         return build(HttpStatus.CONFLICT, ex.getMessage(), Map.of());
+    }
+
+    // Without this, Spring drops the reason and the app only sees "Request failed (400)"
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ErrorResponse> handleResponseStatus(ResponseStatusException ex) {
+        HttpStatus status = HttpStatus.valueOf(ex.getStatusCode().value());
+        String message = ex.getReason() == null ? status.getReasonPhrase() : ex.getReason();
+        if (status.is5xxServerError()) log.error("Request failed: {}", message);
+        else log.warn("Request refused: {}", message);
+        return build(status, message, Map.of());
     }
 
     @ExceptionHandler(InvalidCourierStateException.class)
