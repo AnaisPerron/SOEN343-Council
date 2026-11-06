@@ -39,7 +39,7 @@ export interface OperatorAccount {
 }
 
 export type Account = CustomerProfile | RestaurantProfile | CourierProfile | OperatorAccount;
-export type RegistrationInput = Omit<CustomerProfile, 'id'> | Omit<RestaurantProfile, 'id'>;
+export type RegistrationInput = Omit<CustomerProfile, 'id'> | Omit<RestaurantProfile, 'id'> | Omit<CourierProfile, 'id'>;
 export type SignInInput = {
   role: Role;
   email: string;
