@@ -1,6 +1,7 @@
 package com.council.tenderapp.dlv;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -95,6 +96,16 @@ class CourierDutyControllerTest {
     }
 
     @Test
+    void showsCurrentStateWithNoOrderForANewCourier() throws Exception {
+        Account courier = register("duty-get@example.com", Role.COURIER);
+
+        mockMvc.perform(get("/api/courier/duty").header(HttpHeaders.AUTHORIZATION, "Bearer " + courier.token()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("offline"))
+                .andExpect(jsonPath("$.assignedOrder").doesNotExist());
+    }
+
+    @Test
     void goingOnDutyPicksUpAnOrderWaitingInTheDispatchQueue() throws Exception {
         Account courier = register("duty-dispatch@example.com", Role.COURIER);
         Restaurant restaurant = restaurants.saveAndFlush(new Restaurant("Queue Cafe", "open", 45.50, -73.57));
@@ -102,9 +113,17 @@ class CourierDutyControllerTest {
 
         mockMvc.perform(post("/api/courier/duty/on").header(HttpHeaders.AUTHORIZATION, "Bearer " + courier.token()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("assigned"));
+                .andExpect(jsonPath("$.status").value("assigned"))
+                .andExpect(jsonPath("$.assignedOrder.orderId").value(waiting.getId()));
 
         assertThat(orders.findById(waiting.getId()).orElseThrow().getCourierId()).isEqualTo(courier.id());
         assertThat(statusOf(courier)).isEqualTo(CourierStatus.ASSIGNED);
+
+        mockMvc.perform(get("/api/courier/duty").header(HttpHeaders.AUTHORIZATION, "Bearer " + courier.token()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("assigned"))
+                .andExpect(jsonPath("$.assignedOrder.orderId").value(waiting.getId()))
+                .andExpect(jsonPath("$.assignedOrder.status").value("ready"))
+                .andExpect(jsonPath("$.assignedOrder.restaurantName").value("Queue Cafe"));
     }
 }
