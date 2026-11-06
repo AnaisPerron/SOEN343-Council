@@ -3,9 +3,12 @@ package com.council.tenderapp.ord.services;
 import com.council.tenderapp.ord.dtos.MenuItemDto;
 import com.council.tenderapp.ord.dtos.MenuItemRequestDto;
 import com.council.tenderapp.ord.entities.MenuItem;
+import com.council.tenderapp.ord.entities.MenuPhoto;
 import com.council.tenderapp.ord.exceptions.UnauthorizedMenuAccessException;
 import com.council.tenderapp.ord.repositories.MenuItemRepository;
+import com.council.tenderapp.ord.repositories.MenuPhotoRepository;
 
+import java.util.Base64;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
@@ -16,10 +19,15 @@ import org.springframework.web.server.ResponseStatusException;
 @Service // 1. Crucial so Spring recognizes this service
 public class MerchantMenuService {
 
-    private final MenuItemRepository menuItemRepository;
+    private static final int MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+    private static final List<String> PHOTO_TYPES = List.of("image/jpeg", "image/png", "image/webp", "image/gif");
 
-    public MerchantMenuService(MenuItemRepository menuItemRepository) {
+    private final MenuItemRepository menuItemRepository;
+    private final MenuPhotoRepository menuPhotoRepository;
+
+    public MerchantMenuService(MenuItemRepository menuItemRepository, MenuPhotoRepository menuPhotoRepository) {
         this.menuItemRepository = menuItemRepository;
+        this.menuPhotoRepository = menuPhotoRepository;
     }
 
     @Transactional 
@@ -83,6 +91,36 @@ public class MerchantMenuService {
 
         MenuItem saved = menuItemRepository.save(menuItem);
         return new MenuItemDto(saved);
+    }
+
+    /** Stores a data URI (data:image/jpeg;base64,...) and returns the path to put in a menu item's photoUrl. */
+    @Transactional
+    public String uploadPhoto(Long restaurantId, String dataUri) {
+        int comma = dataUri.indexOf(',');
+        if (comma < 0 || !dataUri.startsWith("data:") || !dataUri.substring(0, comma).endsWith(";base64"))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Photo must be a base64 data URI");
+
+        String contentType = dataUri.substring("data:".length(), comma - ";base64".length());
+        if (!PHOTO_TYPES.contains(contentType))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Photo must be a JPEG, PNG, WebP or GIF image");
+
+        byte[] data;
+        try {
+            data = Base64.getDecoder().decode(dataUri.substring(comma + 1));
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Photo data is not valid base64");
+        }
+        if (data.length == 0 || data.length > MAX_PHOTO_BYTES)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Photo must be under 5 MB");
+
+        MenuPhoto saved = menuPhotoRepository.save(new MenuPhoto(restaurantId, contentType, data));
+        return "/menu-photos/" + saved.getId();
+    }
+
+    @Transactional(readOnly = true)
+    public MenuPhoto getPhoto(Long photoId) {
+        return menuPhotoRepository.findById(photoId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Photo not found with id: " + photoId));
     }
 
     /**@Transactional
