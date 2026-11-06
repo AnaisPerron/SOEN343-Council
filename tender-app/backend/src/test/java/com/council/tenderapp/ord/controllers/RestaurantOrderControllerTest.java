@@ -62,6 +62,18 @@ class RestaurantOrderControllerTest {
     }
 
     @Test
+    void invalidTransitionExplainsWhyItWasRefused() throws Exception {
+        when(commandInvoker.execute(any(OrderCommand.class))).thenThrow(new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.BAD_REQUEST, "Invalid order transition for action 'accept' from status ACCEPTED"));
+
+        mockMvc.perform(post("/api/restaurants/1/orders/42/accept")
+                .header(HttpHeaders.AUTHORIZATION, bearer(1L, Role.STAFF)))
+                .andExpect(status().isBadRequest())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.message")
+                        .value("Invalid order transition for action 'accept' from status ACCEPTED"));
+    }
+
+    @Test
     void otherRestaurantStaffAndCustomersCannotReadOrders() throws Exception {
         mockMvc.perform(get("/api/restaurants/1/orders/incoming")
                 .header(HttpHeaders.AUTHORIZATION, bearer(2L, Role.STAFF)))
