@@ -22,6 +22,14 @@ public enum CourierStatus {
         };
     }
 
+    /** assigned/carrying → idle once the courier's order is finished. */
+    public CourierStatus finishDelivery() {
+        return switch (this) {
+            case ASSIGNED, CARRYING -> IDLE;
+            default -> throw new IllegalStateException("No delivery to finish while " + label());
+        };
+    }
+
     private String label() {
         return name().toLowerCase();
     }

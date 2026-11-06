@@ -2,7 +2,10 @@ package com.council.tenderapp.dlv.services;
 
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.council.tenderapp.dlv.dtos.AssignedOrderDto;
@@ -11,11 +14,15 @@ import com.council.tenderapp.dlv.exceptions.InvalidCourierStateException;
 import com.council.tenderapp.ord.entities.OrderStatus;
 import com.council.tenderapp.ord.repositories.OrderRepository;
 import com.council.tenderapp.ord.repositories.RestaurantRepository;
+import com.council.tenderapp.ord.entities.Order;
 import com.council.tenderapp.reg.entities.CourierProfile;
+import com.council.tenderapp.reg.entities.CourierStatus;
 import com.council.tenderapp.reg.repositories.CourierProfileRepository;
 
 @Service
 public class CourierDutyService {
+
+    private static final Logger logger = LoggerFactory.getLogger(CourierDutyService.class);
 
     // A courier holds an order from assignment (ready) until it is delivered
     private static final List<OrderStatus> ACTIVE_DELIVERY = List.of(OrderStatus.READY, OrderStatus.PICKED_UP);
@@ -53,6 +60,25 @@ public class CourierDutyService {
         CourierProfile courier = findCourier(courierId);
         courier.setStatus(transition(() -> courier.getStatus().goOffDuty()));
         return toResponse(courierProfileRepository.saveAndFlush(courier));
+    }
+
+    /**
+     * Frees the courier who held a finished order so they can take the next one.
+     * Runs in its own transaction because order status changes are published after they commit.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void releaseCourier(Long orderId) {
+        Long courierId = orderRepository.findById(orderId).map(Order::getCourierId).orElse(null);
+        if (courierId == null) return;
+        CourierProfile courier = courierProfileRepository.findWithLockByUserId(courierId).orElse(null);
+        if (courier == null || (courier.getStatus() != CourierStatus.ASSIGNED && courier.getStatus() != CourierStatus.CARRYING)) return;
+        // Only free them once they hold no other active order
+        if (orderRepository.findFirstByCourierIdAndStatusInOrderByDateOrderedAscIdAsc(courierId, ACTIVE_DELIVERY).isPresent()) return;
+
+        courier.setStatus(courier.getStatus().finishDelivery());
+        courierProfileRepository.saveAndFlush(courier);
+        logger.info("Courier_{} finished order #{}: new status: idle", courierId, orderId);
+        dispatchService.retryQueue();
     }
 
     private CourierDutyResponseDto toResponse(CourierProfile courier) {
