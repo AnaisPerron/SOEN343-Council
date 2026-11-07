@@ -15,5 +15,9 @@ public record MenuItemRequestDto(
     @DecimalMin(value = "0.00", inclusive = true, message = "Price cannot be negative")
     BigDecimal price,
     
-    boolean available
+    boolean available,
+
+    String category,
+
+    String photoUrl
 ) {}

@@ -68,6 +68,7 @@ public class SecurityConfig
         .csrf(csrf -> csrf.disable())
         .authorizeHttpRequests(auth -> auth
             .requestMatchers(HttpMethod.GET, "/menu-items-imgs/*.jpg").permitAll()
+            .requestMatchers(HttpMethod.GET, "/menu-photos/*").permitAll()
             .requestMatchers(HttpMethod.GET, "/health").permitAll()
             .requestMatchers("/api/auth/**", "/error").permitAll()
             .requestMatchers("/api/operator/**").hasRole("OPERATOR")

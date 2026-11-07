@@ -35,7 +35,6 @@ import com.council.tenderapp.ord.dtos.PlaceOrderRequestDto;
 import com.council.tenderapp.ord.entities.MenuItem;
 import com.council.tenderapp.ord.entities.MenuItemOption;
 import com.council.tenderapp.ord.entities.Order;
-import com.council.tenderapp.ord.entities.OrderLine;
 import com.council.tenderapp.ord.entities.OrderStatus;
 import com.council.tenderapp.ord.exceptions.InvalidOrderException;
 import com.council.tenderapp.ord.exceptions.InvalidOrderStateException;
