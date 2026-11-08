@@ -75,6 +75,7 @@ public class Order {
 
     public Long getCustomerId() { return customerId; }
     public Long getCourierId() { return courierId; }
+    public void setCourierId(Long courierId) { this.courierId = courierId; }
 
     public Long getId() {
         return id;

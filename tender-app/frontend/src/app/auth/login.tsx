@@ -125,12 +125,12 @@ export default function LoginScreen() {
 
           {role === 'Operator' ? (
             <Text style={styles.notice}>Operator accounts are assigned. Registration is unavailable.</Text>
-          ) : role !== 'courier' ? (
+          ) : (
             <View style={styles.switchRow}>
               <Text style={styles.switchText}>Don&apos;t have an account?</Text>
               <Link href={{ pathname: '/auth/register', params: { role } }} style={styles.switchLink}>Register</Link>
             </View>
-          ) : null}
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

@@ -35,6 +35,7 @@ import com.council.tenderapp.ord.repositories.RestaurantStaffRepository;
 import com.council.tenderapp.reg.controllers.AuthController;
 import com.council.tenderapp.reg.entities.Profile;
 import com.council.tenderapp.reg.entities.Role;
+import com.council.tenderapp.reg.repositories.CourierProfileRepository;
 import com.council.tenderapp.reg.repositories.ProfileRepository;
 import com.council.tenderapp.reg.services.CustomerProfileService;
 import com.council.tenderapp.reg.services.LoginService;
@@ -64,6 +65,7 @@ class OperatorSecurityTest {
     @MockitoBean private CustomerProfileService customerProfiles;
     @MockitoBean private RestaurantRepository restaurants;
     @MockitoBean private RestaurantStaffRepository staff;
+    @MockitoBean private CourierProfileRepository couriers;
 
     private String bearer(Role role) {
         return "Bearer " + sessions.create(8L, role).token();

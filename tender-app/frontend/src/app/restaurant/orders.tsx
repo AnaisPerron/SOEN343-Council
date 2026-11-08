@@ -31,6 +31,8 @@ export default function RestaurantOrders() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [message, setMessage] = useState('');
   const [toast, setToast] = useState('');
+  const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const columns = width >= 1050 ? 2 : 1;
 
   useEffect(() => {
@@ -59,7 +61,7 @@ export default function RestaurantOrders() {
     void refresh();
     const timer = setInterval(refresh, 10000);
     return () => { active = false; clearInterval(timer); };
-  }, [restaurantId, token]);
+  }, [restaurantId, token, reloadKey]);
 
   const shown = useMemo(() => filterAndSortOrders(orders, filter), [orders, filter]);
   const detail = orders.find((order) => order.id === detailId) ?? null;
@@ -72,7 +74,9 @@ export default function RestaurantOrders() {
   });
 
   const changeStatus = async (nextStatus: RestaurantOrderStatus, reason?: string, target: RestaurantOrder | null = detail) => {
-    if (!target || !restaurantId || !token) return;
+    // Ignore repeat taps: a second request for the same change is an invalid transition once the first lands
+    if (!target || !restaurantId || !token || updatingId != null) return;
+    setUpdatingId(target.id);
     try {
       // Update the database first; never report a local-only status change as successful.
       const actions: Partial<Record<RestaurantOrderStatus, string>> = { accepted: 'accept', rejected: 'reject', preparing: 'prepare', ready: 'ready', picked_up: 'picked-up', delivered: 'delivered' };
@@ -87,6 +91,10 @@ export default function RestaurantOrders() {
     } catch (error) {
       console.error('Restaurant order status update failed', error);
       setMessage(error instanceof Error ? error.message : 'Could not update the order.');
+      // The order may have changed elsewhere since the last refresh; show its real status
+      setReloadKey((key) => key + 1);
+    } finally {
+      setUpdatingId(null);
     }
   };
 
@@ -153,11 +161,11 @@ export default function RestaurantOrders() {
             <View style={styles.rowEnd}><StatusBadge status={order.status} /><Text style={[styles.openHint, styles.cardMutedText]}>Tap for receipt details  ›</Text></View>
             </View>
           </Pressable>
-          {order.status === 'placed' && <View style={styles.inlineActions}><Pressable accessibilityRole="button" style={styles.acceptButton} onPress={() => changeStatus('accepted', undefined, order)}><Text style={styles.actionText}>Accept</Text></Pressable><Pressable accessibilityRole="button" style={styles.rejectButton} onPress={() => { setDetailId(order.id); setRejecting(true); }}><Text style={styles.rejectText}>Reject</Text></Pressable></View>}
-          {order.status === 'accepted' && <Pressable accessibilityRole="button" style={styles.acceptButton} onPress={() => changeStatus('preparing', undefined, order)}><Text style={styles.actionText}>Start preparing</Text></Pressable>}
-          {order.status === 'preparing' && <Pressable accessibilityRole="button" style={styles.acceptButton} onPress={() => changeStatus('ready', undefined, order)}><Text style={styles.actionText}>Mark ready</Text></Pressable>}
-          {order.status === 'ready' && <Pressable accessibilityRole="button" style={styles.acceptButton} onPress={() => changeStatus('picked_up', undefined, order)}><Text style={styles.actionText}>Mark picked up</Text></Pressable>}
-          {order.status === 'picked_up' && <Pressable accessibilityRole="button" style={styles.acceptButton} onPress={() => changeStatus('delivered', undefined, order)}><Text style={styles.actionText}>Mark delivered</Text></Pressable>}
+          {order.status === 'placed' && <View style={styles.inlineActions}><Pressable accessibilityRole="button" style={styles.acceptButton} disabled={updatingId != null} onPress={() => changeStatus('accepted', undefined, order)}><Text style={styles.actionText}>Accept</Text></Pressable><Pressable accessibilityRole="button" style={styles.rejectButton} onPress={() => { setDetailId(order.id); setRejecting(true); }}><Text style={styles.rejectText}>Reject</Text></Pressable></View>}
+          {order.status === 'accepted' && <Pressable accessibilityRole="button" style={styles.acceptButton} disabled={updatingId != null} onPress={() => changeStatus('preparing', undefined, order)}><Text style={styles.actionText}>Start preparing</Text></Pressable>}
+          {order.status === 'preparing' && <Pressable accessibilityRole="button" style={styles.acceptButton} disabled={updatingId != null} onPress={() => changeStatus('ready', undefined, order)}><Text style={styles.actionText}>Mark ready</Text></Pressable>}
+          {order.status === 'ready' && <Pressable accessibilityRole="button" style={styles.acceptButton} disabled={updatingId != null} onPress={() => changeStatus('picked_up', undefined, order)}><Text style={styles.actionText}>Mark picked up</Text></Pressable>}
+          {order.status === 'picked_up' && <Pressable accessibilityRole="button" style={styles.acceptButton} disabled={updatingId != null} onPress={() => changeStatus('delivered', undefined, order)}><Text style={styles.actionText}>Mark delivered</Text></Pressable>}
           </View>
         </View>)}</View>}
       </>}
@@ -183,11 +191,11 @@ export default function RestaurantOrders() {
           </View>)}
           <View style={styles.totalRow}><Text style={styles.totalLabel}>Order total</Text><Text style={styles.totalValue}>{money(orderTotal(detail))}</Text></View>
           {detail.status === 'placed' && <View style={styles.actions}>
-            <Pressable accessibilityRole="button" style={styles.primaryAction} onPress={() => changeStatus('accepted')}><Text style={styles.primaryActionText}>Accept order</Text></Pressable>
+            <Pressable accessibilityRole="button" style={styles.primaryAction} disabled={updatingId != null} onPress={() => changeStatus('accepted')}><Text style={styles.primaryActionText}>Accept order</Text></Pressable>
             <Pressable accessibilityRole="button" style={styles.secondaryAction} onPress={() => setRejecting(true)}><Text style={styles.secondaryActionText}>Reject order</Text></Pressable>
           </View>}
-          {detail.status === 'accepted' && <Pressable accessibilityRole="button" style={styles.primaryAction} onPress={() => changeStatus('preparing')}><Text style={styles.primaryActionText}>Start preparing</Text></Pressable>}
-          {detail.status === 'preparing' && <Pressable accessibilityRole="button" style={styles.primaryAction} onPress={() => changeStatus('ready')}><Text style={styles.primaryActionText}>Mark ready for pickup</Text></Pressable>}
+          {detail.status === 'accepted' && <Pressable accessibilityRole="button" style={styles.primaryAction} disabled={updatingId != null} onPress={() => changeStatus('preparing')}><Text style={styles.primaryActionText}>Start preparing</Text></Pressable>}
+          {detail.status === 'preparing' && <Pressable accessibilityRole="button" style={styles.primaryAction} disabled={updatingId != null} onPress={() => changeStatus('ready')}><Text style={styles.primaryActionText}>Mark ready for pickup</Text></Pressable>}
         </ScrollView>}
       </View></View>
     </Modal>
@@ -197,7 +205,7 @@ export default function RestaurantOrders() {
         <Text style={styles.modalEyebrow}>ORDER DECISION</Text><Text style={styles.modalTitle}>Reject order</Text>
         <Text style={styles.dialogText}>Give the customer a clear reason for the rejection.</Text>
         <TextInput accessibilityLabel="Rejection reason (optional)" multiline value={rejectionReason} onChangeText={setRejectionReason} placeholder="Add a note for the customer (optional)" style={styles.reasonInput} />
-        <View style={styles.dialogActions}><Pressable accessibilityRole="button" onPress={() => { setRejecting(false); setRejectionReason(''); }}><Text style={styles.toolbarLink}>Cancel</Text></Pressable><Pressable accessibilityRole="button" style={styles.dangerAction} onPress={() => changeStatus('rejected', rejectionReason)}><Text style={styles.primaryActionText}>Reject order</Text></Pressable></View>
+        <View style={styles.dialogActions}><Pressable accessibilityRole="button" onPress={() => { setRejecting(false); setRejectionReason(''); }}><Text style={styles.toolbarLink}>Cancel</Text></Pressable><Pressable accessibilityRole="button" style={styles.dangerAction} disabled={updatingId != null} onPress={() => changeStatus('rejected', rejectionReason)}><Text style={styles.primaryActionText}>Reject order</Text></Pressable></View>
       </View></View>
     </Modal>
 

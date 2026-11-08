@@ -15,6 +15,7 @@ function RootNavigator() {
       <Stack.Screen name="customer" />
       <Stack.Screen name="operator" />
       <Stack.Screen name="restaurant" />
+      <Stack.Screen name="courier" />
       <Stack.Screen name="auth/login" />
       <Stack.Screen name="auth/register" />
       <Stack.Screen name="profile" />

@@ -23,8 +23,11 @@ import org.springframework.test.util.ReflectionTestUtils;
 import com.council.tenderapp.reg.dtos.RegisterRequest;
 import com.council.tenderapp.reg.dtos.RegisterResponse;
 import com.council.tenderapp.reg.exceptions.DuplicateEmailException;
+import com.council.tenderapp.reg.entities.CourierProfile;
+import com.council.tenderapp.reg.entities.CourierStatus;
 import com.council.tenderapp.reg.entities.Profile;
 import com.council.tenderapp.reg.entities.Role;
+import com.council.tenderapp.reg.repositories.CourierProfileRepository;
 import com.council.tenderapp.reg.repositories.ProfileRepository;
 import com.council.tenderapp.ord.entities.Restaurant;
 import com.council.tenderapp.ord.entities.RestaurantStaff;
@@ -40,6 +43,7 @@ class RegistrationServiceTest {
     @Mock private RestaurantRepository restaurantRepository;
     @Mock private RestaurantStaffRepository restaurantStaffRepository;
     @Mock private CustomerProfileService customerProfileService;
+    @Mock private CourierProfileRepository courierProfileRepository;
 
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
@@ -47,7 +51,7 @@ class RegistrationServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new RegistrationService(repository, passwordEncoder, restaurantRepository, restaurantStaffRepository, customerProfileService);
+        service = new RegistrationService(repository, passwordEncoder, restaurantRepository, restaurantStaffRepository, customerProfileService, courierProfileRepository);
     }
 
     @Test
@@ -100,6 +104,28 @@ class RegistrationServiceTest {
         verify(restaurantStaffRepository).saveAndFlush(link.capture());
         assertThat(link.getValue().getUserId()).isEqualTo(7L);
         assertThat(link.getValue().getRestaurantId()).isEqualTo(42L);
+        verify(customerProfileService, never()).ensureExists(any());
+    }
+
+    @Test
+    void registersCourierAsOfflineWithNoLocation() {
+        when(repository.existsByEmailIgnoreCase("nora@example.com")).thenReturn(false);
+        when(repository.saveAndFlush(any(Profile.class))).thenAnswer(inv -> {
+            Profile profile = inv.getArgument(0);
+            ReflectionTestUtils.setField(profile, "id", 9L);
+            return profile;
+        });
+
+        RegisterResponse response = service.register(
+                new RegisterRequest("Nora", "nora@example.com", "secret123", "514-555-0107", Role.COURIER));
+
+        ArgumentCaptor<CourierProfile> courier = ArgumentCaptor.forClass(CourierProfile.class);
+        verify(courierProfileRepository).saveAndFlush(courier.capture());
+        assertThat(courier.getValue().getUserId()).isEqualTo(9L);
+        assertThat(courier.getValue().getStatus()).isEqualTo(CourierStatus.OFFLINE);
+        assertThat(courier.getValue().getLatitude()).isNull();
+        assertThat(courier.getValue().getLongitude()).isNull();
+        assertThat(response.role()).isEqualTo(Role.COURIER);
         verify(customerProfileService, never()).ensureExists(any());
     }
 
