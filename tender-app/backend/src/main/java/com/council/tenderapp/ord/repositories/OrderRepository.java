@@ -34,6 +34,12 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         Collection<OrderStatus> statuses
     );
 
+    Optional<Order> findFirstByCourierIdAndStatusInOrderByDateOrderedAscIdAsc(Long courierId, Collection<OrderStatus> statuses);
+
+    // Dispatch queue: ready orders still waiting for a courier, oldest first
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    List<Order> findByStatusAndCourierIdIsNullOrderByDateOrderedAscIdAsc(OrderStatus status);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT o FROM Order o WHERE o.id = :orderId")
     Optional<Order> findByIdForUpdate(@Param("orderId") Long orderId);

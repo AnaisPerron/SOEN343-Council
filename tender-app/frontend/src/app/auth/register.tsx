@@ -44,7 +44,9 @@ export default function RegisterScreen() {
   const [addressLine, setAddressLine] = useState('');
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
-  const canRegister = role === 'customer' || role === 'restaurant';
+  const canRegister = role !== 'Operator';
+  // Couriers have no address; their location comes from the courier profile
+  const needsAddress = role !== 'courier';
 
   const handleSubmit = async () => {
     if (loading || !canRegister) return;
@@ -54,9 +56,11 @@ export default function RegisterScreen() {
     const digits = phone.replace(/\D/g, '');
     if (digits.length < 10 || digits.length > 15) next.phone = 'Enter a valid phone number';
     if (password.length < 8) next.password = 'Password must be at least 8 characters';
-    if (!country.trim()) next.country = 'Country is required';
-    if (!city.trim()) next.city = 'City is required';
-    if (!addressLine.trim()) next.addressLine = 'Address line is required';
+    if (needsAddress) {
+      if (!country.trim()) next.country = 'Country is required';
+      if (!city.trim()) next.city = 'City is required';
+      if (!addressLine.trim()) next.addressLine = 'Address line is required';
+    }
     setErrors(next);
     if (Object.keys(next).length) return;
 
@@ -64,16 +68,17 @@ export default function RegisterScreen() {
       email: email.trim(),
       phoneNumber: phone.trim(),
       password,
-      address: {
-        country: country.trim(),
-        city: city.trim(),
-        addressLine: addressLine.trim(),
-      },
+    };
+    const address = {
+      country: country.trim(),
+      city: city.trim(),
+      addressLine: addressLine.trim(),
     };
     setLoading(true);
     try {
-      if (role === 'customer') await signUp({ ...details, role: 'customer', name: name.trim() });
-      else await signUp({ ...details, role: 'restaurant', restaurantName: name.trim() });
+      if (role === 'customer') await signUp({ ...details, address, role: 'customer', name: name.trim() });
+      else if (role === 'courier') await signUp({ ...details, role: 'courier', name: name.trim() });
+      else await signUp({ ...details, address, role: 'restaurant', restaurantName: name.trim() });
     } catch (error) {
       setErrors({ form: error instanceof Error ? error.message : 'Something went wrong' });
       setLoading(false);
@@ -124,8 +129,8 @@ export default function RegisterScreen() {
             })}
           </View>
 
-          {role === 'courier' ? (
-            <Text style={styles.notice}>Courier accounts are not supported yet. Registration is unavailable.</Text>
+          {!canRegister ? (
+            <Text style={styles.notice}>Operator accounts are assigned. Registration is unavailable.</Text>
           ) : (
             <>
               <Text style={styles.label}>{role === 'restaurant' ? 'Restaurant name' : 'Name'}</Text>
@@ -144,18 +149,20 @@ export default function RegisterScreen() {
               <TextInput style={[styles.input, errors.password && styles.inputError]} value={password} onChangeText={setPassword} placeholder="At least 8 characters" placeholderTextColor="#9ca3af" secureTextEntry autoCapitalize="none" textContentType="newPassword" />
               {errors.password && <Text style={styles.error}>{errors.password}</Text>}
 
-              <Text style={styles.addressHeading}>Address</Text>
-              <Text style={styles.label}>Country</Text>
-              <TextInput style={[styles.input, errors.country && styles.inputError]} value={country} onChangeText={setCountry} placeholder="Country" placeholderTextColor="#9ca3af" autoComplete="country" />
-              {errors.country && <Text style={styles.error}>{errors.country}</Text>}
+              {needsAddress && <>
+                <Text style={styles.addressHeading}>Address</Text>
+                <Text style={styles.label}>Country</Text>
+                <TextInput style={[styles.input, errors.country && styles.inputError]} value={country} onChangeText={setCountry} placeholder="Country" placeholderTextColor="#9ca3af" autoComplete="country" />
+                {errors.country && <Text style={styles.error}>{errors.country}</Text>}
 
-              <Text style={styles.label}>City</Text>
-              <TextInput style={[styles.input, errors.city && styles.inputError]} value={city} onChangeText={setCity} placeholder="City" placeholderTextColor="#9ca3af" />
-              {errors.city && <Text style={styles.error}>{errors.city}</Text>}
+                <Text style={styles.label}>City</Text>
+                <TextInput style={[styles.input, errors.city && styles.inputError]} value={city} onChangeText={setCity} placeholder="City" placeholderTextColor="#9ca3af" />
+                {errors.city && <Text style={styles.error}>{errors.city}</Text>}
 
-              <Text style={styles.label}>Address line</Text>
-              <TextInput style={[styles.input, errors.addressLine && styles.inputError]} value={addressLine} onChangeText={setAddressLine} placeholder="Street address" placeholderTextColor="#9ca3af" autoComplete="street-address" />
-              {errors.addressLine && <Text style={styles.error}>{errors.addressLine}</Text>}
+                <Text style={styles.label}>Address line</Text>
+                <TextInput style={[styles.input, errors.addressLine && styles.inputError]} value={addressLine} onChangeText={setAddressLine} placeholder="Street address" placeholderTextColor="#9ca3af" autoComplete="street-address" />
+                {errors.addressLine && <Text style={styles.error}>{errors.addressLine}</Text>}
+              </>}
 
               {errors.form && <Text style={[styles.error, styles.formError]}>{errors.form}</Text>}
               <Pressable style={[styles.submit, loading && styles.submitDisabled]} onPress={handleSubmit} disabled={loading}>
