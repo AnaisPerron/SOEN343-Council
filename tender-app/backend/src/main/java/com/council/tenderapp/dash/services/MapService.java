@@ -15,6 +15,9 @@ import com.council.tenderapp.dash.repositories.MapRepository;
 @Service
 public class MapService {
 
+    // Central Montreal, where the service runs; shown when nothing on the map has a location yet
+    public static final MapBoundsDto DEFAULT_BOUNDS = new MapBoundsDto(45.49, -73.62, 45.54, -73.55);
+
     private final MapRepository mapRepository;
 
     public MapService(MapRepository mapRepository) {
@@ -33,7 +36,7 @@ public class MapService {
                 restaurants.stream().map(r -> new double[] {r.latitude(), r.longitude()}),
                 couriers.stream().map(c -> new double[] {c.latitude(), c.longitude()}))
                 .toList();
-        if (points.isEmpty()) return null;
+        if (points.isEmpty()) return DEFAULT_BOUNDS;
 
         return new MapBoundsDto(
                 points.stream().mapToDouble(p -> p[0]).min().getAsDouble(),
