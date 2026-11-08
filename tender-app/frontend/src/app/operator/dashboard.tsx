@@ -11,6 +11,7 @@ import OrdersList from './components/ordersList';
 import CustomerList from './components/customersList';
 import CourrierList from './components/courriersList';
 import OperatorProfile from './components/operatorProfile';
+import CityMap from '@/components/dash/CityMap';
 import { getOperatorDisplayName, toOperatorUser } from './operatorLogic';
 import { changeRestaurantStatus } from './operatorApi';
 
@@ -31,6 +32,7 @@ export default function OperatorHome() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [changingId, setChangingId] = useState<number | null>(null);
+  const [mapRefreshKey, setMapRefreshKey] = useState(0);
   const requestId = useRef(0);
   const changing = useRef(false);
   const operator = toOperatorUser(user);
@@ -114,9 +116,10 @@ export default function OperatorHome() {
             </TouchableOpacity>
           ))}
         </View>
-        <TouchableOpacity onPress={() => void loadPage()} disabled={busy} accessibilityRole="button" style={styles.action}>
+        <TouchableOpacity onPress={() => { setMapRefreshKey((key) => key + 1); void loadPage(); }} disabled={busy} accessibilityRole="button" style={styles.action}>
           <Text style={styles.profileText}>Refresh</Text>
         </TouchableOpacity>
+        <CityMap refreshKey={mapRefreshKey} />
         {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
         {loading && <ActivityIndicator accessibilityLabel="Loading dashboard" color="#D42F50" />}
         {visible?.kind === 'restaurants' && <RestaurantList restaurants={visible.data.items} onStatusChange={updateStatus} changingId={changingId} disabled={busy} />}
