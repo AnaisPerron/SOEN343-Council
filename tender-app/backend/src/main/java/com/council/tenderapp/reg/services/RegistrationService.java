@@ -67,12 +67,15 @@ public class RegistrationService {
             Profile saved = repository.saveAndFlush(profile);
             if (saved.getRole() == Role.STAFF) {
                 Restaurant restaurant = restaurantRepository.saveAndFlush(
-                        restaurantWithDetails(saved.getName(), request.phone(), request.address()));
+                        restaurantWithDetails(saved.getName(), request));
                 restaurantStaffRepository.saveAndFlush(new RestaurantStaff(saved.getId(), restaurant.getId()));
                 return RegisterResponse.from(saved, restaurant);
             }
             if (saved.getRole() == Role.CUSTOMER) {
                 customerProfileService.ensureExists(saved.getId());
+                if (request.hasLocation()) {
+                    customerProfileService.setLocation(saved.getId(), request.latitude(), request.longitude());
+                }
             }
             if (saved.getRole() == Role.COURIER) {
                 courierProfileRepository.saveAndFlush(new CourierProfile(saved.getId()));
@@ -87,10 +90,12 @@ public class RegistrationService {
         }
     }
 
-    private static Restaurant restaurantWithDetails(String name, String phone, String address) {
-        Restaurant restaurant = new Restaurant(name, "closed", null, null);
-        restaurant.setPhone(phone.trim());
-        restaurant.setAddress(address == null ? null : address.trim());
+    private static Restaurant restaurantWithDetails(String name, RegisterRequest request) {
+        // Without a picked address the restaurant has no location and stays off the map until one is set
+        Restaurant restaurant = new Restaurant(name, "closed",
+                request.hasLocation() ? request.latitude() : null, request.hasLocation() ? request.longitude() : null);
+        restaurant.setPhone(request.phone().trim());
+        restaurant.setAddress(request.address() == null ? null : request.address().trim());
         return restaurant;
     }
 

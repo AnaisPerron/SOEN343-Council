@@ -3,6 +3,7 @@ package com.council.tenderapp.reg.services;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -66,6 +67,7 @@ class RegistrationServiceTest {
         RegisterResponse response = service.register(
                 new RegisterRequest("Jane", " Jane@Example.com ", "secret123", "514-555-0101", Role.CUSTOMER));
         verify(customerProfileService).ensureExists(5L);
+        verify(customerProfileService, never()).setLocation(any(), anyDouble(), anyDouble());
 
         ArgumentCaptor<Profile> saved = ArgumentCaptor.forClass(Profile.class);
         verify(repository).saveAndFlush(saved.capture());
@@ -105,6 +107,46 @@ class RegistrationServiceTest {
         assertThat(link.getValue().getUserId()).isEqualTo(7L);
         assertThat(link.getValue().getRestaurantId()).isEqualTo(42L);
         verify(customerProfileService, never()).ensureExists(any());
+    }
+
+    @Test
+    void savesTheCustomersPickedAddressLocation() {
+        when(repository.existsByEmailIgnoreCase("jane@example.com")).thenReturn(false);
+        when(repository.saveAndFlush(any(Profile.class))).thenAnswer(inv -> {
+            Profile profile = inv.getArgument(0);
+            ReflectionTestUtils.setField(profile, "id", 5L);
+            return profile;
+        });
+
+        service.register(new RegisterRequest("Jane", "jane@example.com", "secret123", "514-555-0101", Role.CUSTOMER,
+                "1455 De Maisonneuve Blvd W, Montreal, Canada", 45.4972, -73.5790));
+
+        verify(customerProfileService).ensureExists(5L);
+        verify(customerProfileService).setLocation(5L, 45.4972, -73.5790);
+    }
+
+    @Test
+    void placesARestaurantAtItsPickedAddress() {
+        when(repository.existsByEmailIgnoreCase("bistro@example.com")).thenReturn(false);
+        when(repository.saveAndFlush(any(Profile.class))).thenAnswer(inv -> {
+            Profile profile = inv.getArgument(0);
+            ReflectionTestUtils.setField(profile, "id", 7L);
+            return profile;
+        });
+        when(restaurantRepository.saveAndFlush(any(Restaurant.class))).thenAnswer(inv -> {
+            Restaurant restaurant = inv.getArgument(0);
+            restaurant.setId(42L);
+            return restaurant;
+        });
+        when(restaurantStaffRepository.saveAndFlush(any(RestaurantStaff.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        service.register(new RegisterRequest("Bistro", "bistro@example.com", "secret123", "514-555-0199", Role.STAFF,
+                "1 Place Ville Marie, Montreal, Canada", 45.5017, -73.5689));
+
+        ArgumentCaptor<Restaurant> restaurant = ArgumentCaptor.forClass(Restaurant.class);
+        verify(restaurantRepository).saveAndFlush(restaurant.capture());
+        assertThat(restaurant.getValue().getLatitude()).isEqualTo(45.5017);
+        assertThat(restaurant.getValue().getLongitude()).isEqualTo(-73.5689);
     }
 
     @Test

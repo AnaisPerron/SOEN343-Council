@@ -17,4 +17,9 @@ public class CustomerProfileService {
     public void ensureExists(Long userId) {
         jdbc.update("INSERT INTO customer_profiles (user_id) VALUES (?) ON CONFLICT (user_id) DO NOTHING", userId);
     }
+
+    /** Where the customer's orders are delivered; also places them on the city map. */
+    public void setLocation(Long userId, double latitude, double longitude) {
+        jdbc.update("UPDATE customer_profiles SET latitude = ?, longitude = ? WHERE user_id = ?", latitude, longitude, userId);
+    }
 }
