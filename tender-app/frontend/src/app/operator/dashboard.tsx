@@ -80,6 +80,7 @@ export default function OperatorHome() {
     setError(null);
     try {
       await changeRestaurantStatus(id, status, token);
+      setMapRefreshKey((key) => key + 1);
       if (version !== requestId.current) return;
       changing.current = false;
       setChangingId(null);
