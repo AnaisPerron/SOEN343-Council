@@ -1,5 +1,7 @@
 package com.council.tenderapp.reg.services;
 
+import java.util.Optional;
+
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -18,8 +20,18 @@ public class CustomerProfileService {
         jdbc.update("INSERT INTO customer_profiles (user_id) VALUES (?) ON CONFLICT (user_id) DO NOTHING", userId);
     }
 
-    /** Where the customer's orders are delivered; also places them on the city map. */
-    public void setLocation(Long userId, double latitude, double longitude) {
-        jdbc.update("UPDATE customer_profiles SET latitude = ?, longitude = ? WHERE user_id = ?", latitude, longitude, userId);
+    /** Where the customer's orders are delivered; the location (when known) also places them on the city map. */
+    public record DeliveryAddress(String address, Double latitude, Double longitude) {}
+
+    public void saveAddress(Long userId, String address, Double latitude, Double longitude) {
+        jdbc.update("UPDATE customer_profiles SET address = ?, latitude = ?, longitude = ? WHERE user_id = ?",
+                address, latitude, longitude, userId);
+    }
+
+    public Optional<DeliveryAddress> deliveryAddress(Long userId) {
+        return jdbc.query("SELECT address, latitude, longitude FROM customer_profiles WHERE user_id = ?",
+                (rs, row) -> new DeliveryAddress(rs.getString("address"),
+                        rs.getObject("latitude", Double.class), rs.getObject("longitude", Double.class)),
+                userId).stream().findFirst();
     }
 }

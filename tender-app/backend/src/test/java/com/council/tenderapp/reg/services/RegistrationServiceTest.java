@@ -3,7 +3,6 @@ package com.council.tenderapp.reg.services;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -67,7 +66,7 @@ class RegistrationServiceTest {
         RegisterResponse response = service.register(
                 new RegisterRequest("Jane", " Jane@Example.com ", "secret123", "514-555-0101", Role.CUSTOMER));
         verify(customerProfileService).ensureExists(5L);
-        verify(customerProfileService, never()).setLocation(any(), anyDouble(), anyDouble());
+        verify(customerProfileService, never()).saveAddress(any(), any(), any(), any());
 
         ArgumentCaptor<Profile> saved = ArgumentCaptor.forClass(Profile.class);
         verify(repository).saveAndFlush(saved.capture());
@@ -122,7 +121,7 @@ class RegistrationServiceTest {
                 "1455 De Maisonneuve Blvd W, Montreal, Canada", 45.4972, -73.5790));
 
         verify(customerProfileService).ensureExists(5L);
-        verify(customerProfileService).setLocation(5L, 45.4972, -73.5790);
+        verify(customerProfileService).saveAddress(5L, "1455 De Maisonneuve Blvd W, Montreal, Canada", 45.4972, -73.5790);
     }
 
     @Test

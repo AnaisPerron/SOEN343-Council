@@ -73,8 +73,10 @@ public class RegistrationService {
             }
             if (saved.getRole() == Role.CUSTOMER) {
                 customerProfileService.ensureExists(saved.getId());
-                if (request.hasLocation()) {
-                    customerProfileService.setLocation(saved.getId(), request.latitude(), request.longitude());
+                String address = request.address() == null || request.address().isBlank() ? null : request.address().trim();
+                if (address != null || request.hasLocation()) {
+                    customerProfileService.saveAddress(saved.getId(), address,
+                            request.hasLocation() ? request.latitude() : null, request.hasLocation() ? request.longitude() : null);
                 }
             }
             if (saved.getRole() == Role.COURIER) {
