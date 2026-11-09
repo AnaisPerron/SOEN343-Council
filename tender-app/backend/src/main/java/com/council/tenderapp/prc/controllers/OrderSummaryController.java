@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
 @RestController
-@RequestMapping("/api/order-summary")
+@RequestMapping("/api/order-summary/")
 public class OrderSummaryController 
 {
     private final SummaryService summaryService;
