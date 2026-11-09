@@ -209,6 +209,29 @@ describe('keeping the map in sync', () => {
   });
 });
 
+describe('a map that fills the screen', () => {
+  for (const aspect of [0.4, 1, 2.5]) {
+    it(`takes the screen's shape (${aspect}) and keeps every marker inside`, () => {
+      assert.equal(createProjection(data.bounds, aspect).aspect, aspect);
+      for (const marker of toMarkers(data, aspect)) {
+        assert.ok(inside(marker.x) && inside(marker.y), `${marker.name} is off the map`);
+      }
+    });
+  }
+
+  it('keeps distances true however wide the screen is', () => {
+    const [a, b] = data.restaurants;
+    const ratio = (aspect: number) => {
+      const { project } = createProjection(data.bounds, aspect);
+      const p = project(a.latitude, a.longitude);
+      const q = project(b.latitude, b.longitude);
+      // Screen pixels per degree must be the same across and down for a given map width of 1
+      return Math.abs(q.x - p.x) / (Math.abs(q.y - p.y) * aspect);
+    };
+    assert.ok(Math.abs(ratio(0.5) - ratio(2)) < 1e-9);
+  });
+});
+
 describe('customer locations', () => {
   const delivery: MapData = {
     ...data,

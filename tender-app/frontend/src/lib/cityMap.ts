@@ -33,8 +33,9 @@ export interface MapProjection {
 /**
  * Fits the dataset bounds into the map. A degree of longitude is shorter than a degree of latitude away
  * from the equator, so longitudes are scaled by cos(latitude) to keep distances true in both directions.
+ * Pass the map's own height/width when its shape is fixed (e.g. filling the screen) and the data is centred in it.
  */
-export function createProjection(bounds: MapBounds): MapProjection {
+export function createProjection(bounds: MapBounds, aspect?: number): MapProjection {
   const midLatitude = (bounds.minLatitude + bounds.maxLatitude) / 2;
   const midLongitude = (bounds.minLongitude + bounds.maxLongitude) / 2;
   const lonScale = Math.cos((midLatitude * Math.PI) / 180);
@@ -43,6 +44,11 @@ export function createProjection(bounds: MapBounds): MapProjection {
   let spanY = Math.max(bounds.maxLatitude - bounds.minLatitude, MIN_SPAN) * (1 + 2 * PADDING);
   spanY = Math.max(spanY, spanX * MIN_ASPECT);
   spanX = Math.max(spanX, spanY / MAX_ASPECT);
+  if (aspect) {
+    // Widen whichever span is short, so the data keeps its true proportions inside the given shape
+    spanY = Math.max(spanY, spanX * aspect);
+    spanX = Math.max(spanX, spanY / aspect);
+  }
 
   return {
     aspect: spanY / spanX,
@@ -61,6 +67,8 @@ export function fitMapSize(aspect: number, maxWidth: number, maxHeight: number) 
 
 export type MapMarker = {
   key: string;
+  /** The restaurant, courier or customer id, unique within its kind. */
+  id: number;
   kind: 'restaurant' | 'courier' | 'customer';
   name: string;
   state: string;
@@ -68,15 +76,17 @@ export type MapMarker = {
   longitude: number;
   x: number;
   y: number;
+  /** Overrides the state colour, for views whose legend uses one colour per kind. */
+  color?: string;
 };
 
 /** Every location as a positioned marker; couriers last so they draw on top of where they are going. */
-export function toMarkers(data: MapData): MapMarker[] {
-  const { project } = createProjection(data.bounds);
+export function toMarkers(data: MapData, aspect?: number): MapMarker[] {
+  const { project } = createProjection(data.bounds, aspect);
   return [
-    ...data.restaurants.map((r) => ({ key: `restaurant-${r.id}`, kind: 'restaurant' as const, name: r.name, state: r.status, latitude: r.latitude, longitude: r.longitude, ...project(r.latitude, r.longitude) })),
-    ...data.customers.map((c) => ({ key: `customer-${c.customerId}`, kind: 'customer' as const, name: c.name, state: 'customer', latitude: c.latitude, longitude: c.longitude, ...project(c.latitude, c.longitude) })),
-    ...data.couriers.map((c) => ({ key: `courier-${c.courierId}`, kind: 'courier' as const, name: c.name, state: c.status, latitude: c.latitude, longitude: c.longitude, ...project(c.latitude, c.longitude) })),
+    ...data.restaurants.map((r) => ({ key: `restaurant-${r.id}`, id: r.id, kind: 'restaurant' as const, name: r.name, state: r.status, latitude: r.latitude, longitude: r.longitude, ...project(r.latitude, r.longitude) })),
+    ...data.customers.map((c) => ({ key: `customer-${c.customerId}`, id: c.customerId, kind: 'customer' as const, name: c.name, state: 'customer', latitude: c.latitude, longitude: c.longitude, ...project(c.latitude, c.longitude) })),
+    ...data.couriers.map((c) => ({ key: `courier-${c.courierId}`, id: c.courierId, kind: 'courier' as const, name: c.name, state: c.status, latitude: c.latitude, longitude: c.longitude, ...project(c.latitude, c.longitude) })),
   ];
 }
 
@@ -110,9 +120,9 @@ const tileLongitude = (x: number, zoom: number) => (x / 2 ** zoom) * 360 - 180;
 const tileLatitude = (y: number, zoom: number) => (Math.atan(Math.sinh(Math.PI - (2 * Math.PI * y) / 2 ** zoom)) * 180) / Math.PI;
 
 /** The street tiles covering the whole map, at the zoom where each shows at about its natural size. */
-export function mapTiles(bounds: MapBounds, widthPx: number): MapTile[] {
+export function mapTiles(bounds: MapBounds, widthPx: number, aspect?: number): MapTile[] {
   if (widthPx <= 0) return [];
-  const { project } = createProjection(bounds);
+  const { project } = createProjection(bounds, aspect);
   // The projection is linear in each axis, so two probes give the latitude and longitude at the map's edges
   const lat0 = bounds.minLatitude;
   const lon0 = bounds.minLongitude;

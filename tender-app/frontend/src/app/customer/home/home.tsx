@@ -29,6 +29,8 @@ import {
   type RestaurantOrderRestriction,
 } from '../services/restaurantOrderRules';
 
+const SPLIT_MIN_WIDTH = 900;
+
 const tenderLogo = require('../../../../assets/tender-logo.png');
 {/*Placeholder for now. TODO: for later phases, must be linked to user profile, map, etc.. */}
 const sections = [
@@ -54,7 +56,13 @@ export default function CustomerHome() {
   const { restaurants, restaurantsStatus, restaurantsError, reloadRestaurants } = useCatalog();
   const cartCount = lines.reduce((count, line) => count + line.quantity, 0);
   const { width } = useWindowDimensions();
-  const compact = width < 600;
+  // Full screen shows the map with the restaurants in a side panel, like a maps app; too narrow for a panel, it's just the map
+  const [mapFullScreen, setMapFullScreen] = useState(false);
+  const toggleMapFullScreen = () => setMapFullScreen((current) => !current);
+  const split = mapFullScreen && width >= SPLIT_MIN_WIDTH;
+  const mapOnly = mapFullScreen && !split;
+  // The side panel is phone-width, so its contents use the compact layout
+  const compact = width < 600 || split;
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [orderError, setOrderError] = useState<RestaurantOrderRestriction | null>(null);
@@ -92,136 +100,154 @@ export default function CustomerHome() {
     }, ORDER_ERROR_FADE_DELAY_MS);
   };
 
+  // The map only shows open restaurants, but this keeps the same checks and messages as tapping a card
+  const openRestaurantFromMap = (restaurantId: number) => {
+    const restaurant = restaurants.find((r) => r.id === restaurantId);
+    if (restaurant) handleRestaurantPress(restaurant);
+    // Not loaded in the list yet: the restaurant page loads it and handles a closed restaurant itself
+    else router.push({ pathname: '/customer/restaurant/[id]', params: { id: String(restaurantId) } });
+  };
+
   return (
     <SafeAreaView style={styles.page} edges={['top']}>
-      <ScrollView
-        stickyHeaderIndices={[isMobileSearch ? 1 : 2]}
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={[
-          styles.content,
-          { paddingHorizontal: compact ? 20 : 48 },
-        ]}
-      >
-        <View style={[styles.topbar, compact && styles.mobileTopbar]}>
-          {/* TODO: Restore the delivery location control when location selection is implemented.
-          <TouchableOpacity
-            style={styles.locationPill}
-            accessibilityRole="button"
-            accessibilityLabel="Delivery location, Montreal"
-          >
-            <Text style={styles.pin}>⌖</Text>
-            <View>
-              <Text style={styles.locationCaption}>DELIVERING TO</Text>
-              <Text style={styles.location}>Montreal, QC <Text style={styles.chevron}>⌄</Text></Text>
-            </View>
-          </TouchableOpacity>
-          */}
-          <CartIconButton count={cartCount} onPress={() => router.push('/customer/cart/cart')} />
-          <AccountMenu />
-        </View>
-
-        {!isMobileSearch && (
-          <View style={styles.pointsPanel}>
-          <View style={styles.pointsTop}>
-            <View style={styles.pointsCopy}>
-              <Text style={styles.pointsEyebrow}>TENDER CASH</Text>
-              {/* Placeholder for now. TODO: Connect with actual Tender Cash */}
-              <Text style={styles.pointsValue}>0<Text style={styles.pointsUnit}> pts</Text></Text>
-              <Text style={styles.pointsTitle}>Your cheapest way to get lucky tonight.</Text>
-            </View>
-            {/* Disable the native fade while keeping tintColor consistent across phone and web. */}
-            <Image
-              source={tenderLogo}
-              style={styles.pointsLogo}
-              resizeMode="contain"
-              fadeDuration={0}
-              resizeMethod="resize"
-              accessibilityLabel="Tender logo"
-            />
-          </View>
-          <TouchableOpacity style={styles.pointsAction} accessibilityRole="button">
-            {/* Empty Route for now. TODO: should lead to the swiping tinder-like page */}
-            <Text style={styles.pointsActionText}>Find a yummy soulmate</Text>
-            <View style={styles.pointsActionIcon}>
-              <Text style={styles.pointsActionArrow}>›</Text>
-            </View>
-          </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Keep the search background opaque while rows scroll underneath it. */}
-        <View style={styles.stickySearch}>
-          <View style={styles.search}>
-            <Text style={styles.searchIcon}>{'\u2315'}</Text>
-            <TextInput
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder="Search restaurants by name"
-              placeholderTextColor="#A99498"
-              style={styles.searchInput}
-              accessibilityLabel="Search restaurants by name"
-              onFocus={() => setIsSearchFocused(true)}
-              onBlur={() => setIsSearchFocused(false)}
-              underlineColorAndroid="transparent"
-              selectionColor="#FF4458"
-              returnKeyType="search"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity
-                onPress={() => setSearchQuery('')}
-                accessibilityRole="button"
-                accessibilityLabel="Clear restaurant search"
-                style={styles.clearSearch}
-              >
-                <Text style={styles.clearSearchText}>x</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-
-
-        {restaurantsStatus === 'loading' ? (
-          <Text style={styles.catalogStatus}>Loading restaurants...</Text>
-        ) : restaurantsStatus === 'error' ? (
-          <View>
-            <Text style={styles.catalogStatus}>{restaurantsError}</Text>
-            <TouchableOpacity onPress={reloadRestaurants} accessibilityRole="button">
-              <Text style={styles.retryText}>Try again</Text>
+      <View style={split ? styles.splitRow : styles.single}>
+        {!mapOnly && <ScrollView
+          style={split && styles.sidePanel}
+          stickyHeaderIndices={[isMobileSearch ? 1 : 2]}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={[
+            styles.content,
+            { paddingHorizontal: compact ? 20 : 48 },
+          ]}
+        >
+          <View style={[styles.topbar, compact && styles.mobileTopbar]}>
+            {/* TODO: Restore the delivery location control when location selection is implemented.
+            <TouchableOpacity
+              style={styles.locationPill}
+              accessibilityRole="button"
+              accessibilityLabel="Delivery location, Montreal"
+            >
+              <Text style={styles.pin}>⌖</Text>
+              <View>
+                <Text style={styles.locationCaption}>DELIVERING TO</Text>
+                <Text style={styles.location}>Montreal, QC <Text style={styles.chevron}>⌄</Text></Text>
+              </View>
             </TouchableOpacity>
+            */}
+            <CartIconButton count={cartCount} onPress={() => router.push('/customer/cart/cart')} />
+            <AccountMenu />
           </View>
-        ) : restaurants.length === 0 ? (
-          <Text style={styles.catalogStatus}>No restaurants are open right now.</Text>
-        ) : normalizedQuery ? (
-          <RestaurantSection
-            title="Search results"
-            note={`${searchResults.length} ${searchResults.length === 1 ? 'restaurant' : 'restaurants'}`}
-            items={searchResults}
-            compact={compact}
-            index={0}
-            onRestaurantPress={handleRestaurantPress}
-          />
-        ) : sections.map((section, index) => {
-          const items: RestaurantCardData[] = rotate(restaurants, index).map(toCardData);
 
-          return (
+          {!isMobileSearch && (
+            <View style={styles.pointsPanel}>
+            <View style={styles.pointsTop}>
+              <View style={styles.pointsCopy}>
+                <Text style={styles.pointsEyebrow}>TENDER CASH</Text>
+                {/* Placeholder for now. TODO: Connect with actual Tender Cash */}
+                <Text style={styles.pointsValue}>0<Text style={styles.pointsUnit}> pts</Text></Text>
+                <Text style={styles.pointsTitle}>Your cheapest way to get lucky tonight.</Text>
+              </View>
+              {/* Disable the native fade while keeping tintColor consistent across phone and web. */}
+              <Image
+                source={tenderLogo}
+                style={styles.pointsLogo}
+                resizeMode="contain"
+                fadeDuration={0}
+                resizeMethod="resize"
+                accessibilityLabel="Tender logo"
+              />
+            </View>
+            <TouchableOpacity style={styles.pointsAction} accessibilityRole="button">
+              {/* Empty Route for now. TODO: should lead to the swiping tinder-like page */}
+              <Text style={styles.pointsActionText}>Find a yummy soulmate</Text>
+              <View style={styles.pointsActionIcon}>
+                <Text style={styles.pointsActionArrow}>›</Text>
+              </View>
+            </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Keep the search background opaque while rows scroll underneath it. */}
+          <View style={styles.stickySearch}>
+            <View style={styles.search}>
+              <Text style={styles.searchIcon}>{'\u2315'}</Text>
+              <TextInput
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder="Search restaurants by name"
+                placeholderTextColor="#A99498"
+                style={styles.searchInput}
+                accessibilityLabel="Search restaurants by name"
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setIsSearchFocused(false)}
+                underlineColorAndroid="transparent"
+                selectionColor="#FF4458"
+                returnKeyType="search"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => setSearchQuery('')}
+                  accessibilityRole="button"
+                  accessibilityLabel="Clear restaurant search"
+                  style={styles.clearSearch}
+                >
+                  <Text style={styles.clearSearchText}>x</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+
+          {restaurantsStatus === 'loading' ? (
+            <Text style={styles.catalogStatus}>Loading restaurants...</Text>
+          ) : restaurantsStatus === 'error' ? (
+            <View>
+              <Text style={styles.catalogStatus}>{restaurantsError}</Text>
+              <TouchableOpacity onPress={reloadRestaurants} accessibilityRole="button">
+                <Text style={styles.retryText}>Try again</Text>
+              </TouchableOpacity>
+            </View>
+          ) : restaurants.length === 0 ? (
+            <Text style={styles.catalogStatus}>No restaurants are open right now.</Text>
+          ) : normalizedQuery ? (
             <RestaurantSection
-              key={section.title}
-              title={section.title}
-              note={section.note}
-              items={items}
+              title="Search results"
+              note={`${searchResults.length} ${searchResults.length === 1 ? 'restaurant' : 'restaurants'}`}
+              items={searchResults}
               compact={compact}
-              index={index}
+              index={0}
               onRestaurantPress={handleRestaurantPress}
             />
-          );
-        })}
+          ) : sections.map((section, index) => {
+            const items: RestaurantCardData[] = rotate(restaurants, index).map(toCardData);
 
-        <View style={styles.cityMap}>
-          <CityMap />
-        </View>
-      </ScrollView>
+            return (
+              <RestaurantSection
+                key={section.title}
+                title={section.title}
+                note={section.note}
+                items={items}
+                compact={compact}
+                index={index}
+                onRestaurantPress={handleRestaurantPress}
+              />
+            );
+          })}
+
+          {!mapFullScreen && (
+            <View style={styles.cityMap}>
+              <CityMap onToggleFullScreen={toggleMapFullScreen} onRestaurantPress={openRestaurantFromMap} />
+            </View>
+          )}
+        </ScrollView>}
+        {mapFullScreen && (
+          <View style={styles.mapPane}>
+            <CityMap fill onToggleFullScreen={toggleMapFullScreen} onRestaurantPress={openRestaurantFromMap} />
+          </View>
+        )}
+      </View>
       {orderError && (
         <View style={styles.orderErrorOverlay} pointerEvents="none">
           <Animated.View

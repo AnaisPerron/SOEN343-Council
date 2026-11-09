@@ -91,7 +91,7 @@ function MarkerIcon({ marker, active }: { marker: MapMarker; active: boolean }) 
           borderRadius: marker.kind === 'courier' ? MARKER_SIZE / 2 : marker.kind === 'customer' ? 2 : 4,
           transform: marker.kind === 'customer' ? 'rotate(45deg)' : undefined,
           border: `2px solid ${active ? '#111827' : '#fff'}`,
-          backgroundColor: stateColors[marker.state] ?? '#6b7280',
+          backgroundColor: marker.color ?? stateColors[marker.state] ?? '#6b7280',
           boxShadow: '0 1px 2px rgba(0, 0, 0, 0.35)',
           cursor: 'pointer',
         }}
