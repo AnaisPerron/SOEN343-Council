@@ -7,7 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import AccountMenu from '@/components/AccountMenu';
 import { requestJson } from '@/api/client';
 import {
-  filterAndSortOrders, ORDER_STATUSES, orderTotal,
+  filterAndSortOrders, isWaitingForCourier, ORDER_STATUSES, orderTotal,
   type OrderFilter, type RestaurantOrder, type RestaurantOrderStatus,
 } from '@/services/restaurant/orderQueue';
 
@@ -51,10 +51,10 @@ export default function RestaurantOrders() {
     // Refresh from the server so incoming and terminal orders reflect database state.
     const refresh = async () => {
       try {
-        const data = await requestJson<{ id: number; status: string; dateOrdered: string; acceptedAt: string | null; rejectionReason: string | null; customerName: string | null; customerPhone: string | null; deliveryAddress: string | null; orderLines: { itemName: string; quantity: number; unitPrice: number }[] }[]>('GET', `/api/restaurants/${restaurantId}/orders`, undefined, token);
+        const data = await requestJson<{ id: number; courierId: number | null; status: string; dateOrdered: string; acceptedAt: string | null; rejectionReason: string | null; customerName: string | null; customerPhone: string | null; orderLines: { itemName: string; quantity: number; unitPrice: number }[] }[]>('GET', `/api/restaurants/${restaurantId}/orders`, undefined, token);
         if (!active) return;
         console.info('Restaurant orders loaded', { restaurantId, count: data.length });
-        setOrders(data.map((order) => ({ id: order.id, restaurantId, status: order.status.toLowerCase() as RestaurantOrderStatus, createdAt: order.dateOrdered, updatedAt: null, acceptedAt: order.acceptedAt, rejectionReason: order.rejectionReason, customer: { name: order.customerName ?? 'Unavailable', address: order.deliveryAddress ?? 'Unavailable', phone: order.customerPhone ?? 'Unavailable' }, lines: order.orderLines.map((line) => ({ name: line.itemName, quantity: line.quantity, unitPrice: line.unitPrice, toppings: [] })) })));
+        setOrders(data.map((order) => ({ id: order.id, restaurantId, courierId: order.courierId, status: order.status.toLowerCase() as RestaurantOrderStatus, createdAt: order.dateOrdered, updatedAt: null, acceptedAt: order.acceptedAt, rejectionReason: order.rejectionReason, customer: { name: order.customerName ?? 'Unavailable', address: 'Unavailable', phone: order.customerPhone ?? 'Unavailable' }, lines: order.orderLines.map((line) => ({ name: line.itemName, quantity: line.quantity, unitPrice: line.unitPrice, toppings: [] })) })));
         setMessage('');
       } catch (error) { if (active) { console.error('Unable to load restaurant orders', error); setMessage(error instanceof Error ? error.message : 'Unable to load orders'); } }
     };
@@ -85,6 +85,7 @@ export default function RestaurantOrders() {
       const updated = await requestJson<{ status: string; acceptedAt: string | null; rejectionReason: string | null }>('POST', `/api/restaurants/${restaurantId}/orders/${target.id}/${action}`, nextStatus === 'rejected' ? { reason: reason?.trim() || null } : undefined, token);
       console.info('Restaurant order status updated', { orderId: target.id, status: nextStatus });
       setOrders((current) => current.map((order) => order.id === target.id ? { ...order, status: updated.status.toLowerCase() as RestaurantOrderStatus, acceptedAt: updated.acceptedAt, rejectionReason: updated.rejectionReason } : order));
+      if (nextStatus === 'ready') setReloadKey((key) => key + 1);
       if (nextStatus === 'rejected') { setToast(`Order #${target.id} was rejected.`); setDetailId(null); }
       setRejecting(false);
       setRejectionReason('');
@@ -158,7 +159,7 @@ export default function RestaurantOrders() {
               <Text style={[styles.itemName, styles.cardItemText]}>{line.quantity} × {line.name}</Text>
               {line.toppings.length > 0 && <Text style={[styles.toppings, styles.cardMutedText]}>+ {line.toppings.map((topping) => topping.name).join(' · ')}</Text>}
             </View>)}</View>
-            <View style={styles.rowEnd}><StatusBadge status={order.status} /><Text style={[styles.openHint, styles.cardMutedText]}>Tap for receipt details  ›</Text></View>
+            <View style={styles.rowEnd}><StatusBadge status={order.status} waitingForCourier={isWaitingForCourier(order)} /><Text style={[styles.openHint, styles.cardMutedText]}>Tap for receipt details  ›</Text></View>
             </View>
           </Pressable>
           {order.status === 'placed' && <View style={styles.inlineActions}><Pressable accessibilityRole="button" style={styles.acceptButton} disabled={updatingId != null} onPress={() => changeStatus('accepted', undefined, order)}><Text style={styles.actionText}>Accept</Text></Pressable><Pressable accessibilityRole="button" style={styles.rejectButton} onPress={() => { setDetailId(order.id); setRejecting(true); }}><Text style={styles.rejectText}>Reject</Text></Pressable></View>}
@@ -175,7 +176,7 @@ export default function RestaurantOrders() {
       <View style={styles.modalBackdrop}><View style={styles.modalCard}>
         {detail && <ScrollView contentContainerStyle={styles.modalContent}>
           <View style={styles.modalHeading}><View><Text style={styles.modalEyebrow}>ORDER RECORD</Text><Text style={styles.modalTitle}>Order #{detail.id}</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Close order details" onPress={() => setDetailId(null)}><Text style={styles.close}>×</Text></Pressable></View>
-          <StatusBadge status={detail.status} />
+          <StatusBadge status={detail.status} waitingForCourier={isWaitingForCourier(detail)} />
           <View style={styles.divider} />
           <Info label="Placed" value={dateTime(detail.createdAt)} />
           {detail.acceptedAt && <Info label="Accepted" value={dateTime(detail.acceptedAt)} />}
@@ -219,8 +220,8 @@ export default function RestaurantOrders() {
   </SafeAreaView>;
 }
 
-function StatusBadge({ status }: { status: RestaurantOrderStatus }) {
-  return <View style={[styles.badge, status === 'placed' && styles.badgePlaced, status === 'ready' && styles.badgeReady]}><Text style={styles.badgeText}>{label(status)}</Text></View>;
+function StatusBadge({ status, waitingForCourier = false }: { status: RestaurantOrderStatus; waitingForCourier?: boolean }) {
+  return <View style={[styles.badge, status === 'placed' && styles.badgePlaced, status === 'ready' && styles.badgeReady]}><Text style={styles.badgeText}>{waitingForCourier ? 'Waiting for courier' : label(status)}</Text></View>;
 }
 
 function Info({ label: field, value }: { label: string; value: string }) {

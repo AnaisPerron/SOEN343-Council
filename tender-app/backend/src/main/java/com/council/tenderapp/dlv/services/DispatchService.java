@@ -15,6 +15,7 @@ import com.council.tenderapp.ord.repositories.RestaurantRepository;
 import com.council.tenderapp.reg.entities.CourierProfile;
 import com.council.tenderapp.reg.entities.CourierStatus;
 import com.council.tenderapp.reg.repositories.CourierProfileRepository;
+import com.council.tenderapp.technicalservices.logging.AppLogService;
 
 /**
  * The dispatch queue is every ready order that has no courier yet, oldest first.
@@ -26,24 +27,31 @@ public class DispatchService {
     private final OrderRepository orderRepository;
     private final RestaurantRepository restaurantRepository;
     private final CourierProfileRepository courierProfileRepository;
+    private final AppLogService logService;
 
     public DispatchService(OrderRepository orderRepository, RestaurantRepository restaurantRepository,
-            CourierProfileRepository courierProfileRepository) {
+            CourierProfileRepository courierProfileRepository, AppLogService logService) {
         this.orderRepository = orderRepository;
         this.restaurantRepository = restaurantRepository;
         this.courierProfileRepository = courierProfileRepository;
+        this.logService = logService;
     }
 
     @Transactional
     public void retryQueue() {
         List<CourierProfile> idle = new ArrayList<>(courierProfileRepository.findByStatusOrderByUserIdAsc(CourierStatus.IDLE));
-        for (Order order : orderRepository.findByStatusAndCourierIdIsNullOrderByDateOrderedAscIdAsc(OrderStatus.READY)) {
-            if (idle.isEmpty()) return;
+        for (Order order : orderRepository.findWaitingReadyOrdersForDispatch()) {
+            if (idle.isEmpty()) {
+                logService.info("Dispatch queue: order #" + order.getId() + " is waiting for a courier");
+                continue;
+            }
             Restaurant restaurant = restaurantRepository.findById(order.getRestaurantId()).orElse(null);
             CourierProfile courier = idle.stream().min(byDistanceTo(restaurant)).orElseThrow();
             idle.remove(courier);
             order.setCourierId(courier.getUserId());
             courier.setStatus(CourierStatus.ASSIGNED);
+            logService.info("Dispatch queue: order #" + order.getId() + " assigned to courier #" + courier.getUserId()
+                    + " and removed from the queue");
         }
     }
 

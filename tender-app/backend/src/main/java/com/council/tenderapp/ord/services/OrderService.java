@@ -239,6 +239,7 @@ public class OrderService {
         return new OrderResponse(
             order.getId(),
             order.getRestaurantId(),
+            order.getCourierId(),
             order.getStatus(),
             order.getDateOrdered(),
             order.getAcceptedAt(),
