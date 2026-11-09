@@ -81,6 +81,23 @@ requests, the state machine validates lifecycle transitions, and observers
 react to committed status changes. Existing routes, queue results, and order
 behavior remain unchanged.
 
+### Design decision: courier dispatch queue (R-DLV-04)
+
+The dispatch queue is derived from persisted orders in `READY` status with no
+`courier_id`; it is not an in-memory collection, so waiting orders survive page
+refreshes and are cleared when the underlying orders are reset. `status_changed_at`
+is not used for dispatch ordering. Instead, a persisted `order_ready` event in
+`order_events` records when an order became ready; waiting orders are dispatched
+in that event-time FIFO order, with order ID as a tie-breaker. Existing ready
+orders without a corresponding event use their creation time as a fallback.
+
+The Observer pattern connects committed order and courier state changes to
+dispatch: the order-status observer retries after an order becomes ready, and
+the courier duty service retries after a courier goes on duty or finishes a
+delivery. The dispatch service assigns each oldest waiting order to the nearest
+idle courier, removing it from the derived queue by setting `courier_id`.
+Waiting and assignment/removal events are logged to the application console.
+
 The current project has no authentication/authorization integration. The local
 restaurant profile is a demo context, not an authenticated account. Actions
 verify that the order belongs to the restaurant ID in the URL, but this is not
