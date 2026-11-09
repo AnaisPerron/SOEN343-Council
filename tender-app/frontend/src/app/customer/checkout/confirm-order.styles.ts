@@ -40,6 +40,8 @@ export const styles = StyleSheet.create({
   successNote: { fontFamily: font, color: '#477857', fontSize: 12, lineHeight: 18, marginTop: 10, textAlign: 'center' },
   successContent: { width: '100%', maxWidth: 760, alignSelf: 'center', flexGrow: 1, alignItems: 'center', justifyContent: 'flex-start', paddingHorizontal: 22, paddingTop: 24, paddingBottom: 36, gap: 22 },
   statusPanel: { width: '100%', maxWidth: 420, alignSelf: 'center', paddingHorizontal: 2, paddingVertical: 4 },
+  placedSummary: { width: '100%', borderWidth: 1, borderColor: '#E6E1E2', borderRadius: 14, padding: 16, gap: 11, marginBottom: 18 },
+  placedSummaryTitle: { fontFamily: font, color: ink, fontSize: 17, fontWeight: '900', marginBottom: 3 },
   statusRestaurant: { fontFamily: font, color: ink, fontSize: 17, fontWeight: '900' },
   statusSubtitle: { fontFamily: font, color: '#887B7E', fontSize: 12, marginTop: 4, marginBottom: 17 },
   statusStep: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 11 },

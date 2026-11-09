@@ -92,6 +92,7 @@ export default function CustomerHistory() {
                 {!!order.rejectionReason && <Text style={styles.muted}>Reason: {order.rejectionReason}</Text>}
               </View>}
             </Pressable>
+            {['delivered', 'rejected', 'cancelled'].includes(order.status) && <Pressable accessibilityRole="button" accessibilityLabel={`View summary for order ${order.id}`} onPress={() => router.push({ pathname: '/customer/order-summary/[id]', params: { id: order.id } })} style={styles.cancel}><Text style={styles.cancelText}>View summary</Text></Pressable>}
             {order.status === 'placed' && <Pressable onPress={() => cancel(order.id)} disabled={cancellingId !== null} accessibilityRole="button" style={styles.cancel}><Text style={styles.cancelText}>{cancellingId === order.id ? 'Cancelling…' : 'Cancel order'}</Text></Pressable>}
             {!!cancelErrors[order.id] && <Text style={styles.message} accessibilityRole="alert">{cancelErrors[order.id]}</Text>}
           </View>;

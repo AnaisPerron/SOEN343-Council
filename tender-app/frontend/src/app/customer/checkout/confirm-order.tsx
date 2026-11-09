@@ -104,9 +104,25 @@ export default function ConfirmOrderScreen() {
           {cancelError && <View style={styles.restrictionPanel} accessibilityRole="alert"><Text style={styles.restrictionText}>{cancelError}</Text></View>}
           {placedOrders.map((order) => {
             const restaurant = restaurants.find((entry) => entry.id === order.restaurantId);
+            const summaryItems = order.items?.map((item) => ({ key: `${item.name}-${item.unitPrice}`, name: item.name, quantity: item.quantity, unitPrice: item.unitPrice }))
+              ?? order.lines.map((line) => ({ key: line.key, name: findItem(line.itemId)?.name ?? 'Menu item', quantity: line.quantity, unitPrice: line.unitPrice }));
+            const itemsSubtotal = summaryItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+            const otherCharges = order.total - itemsSubtotal;
             return <View key={order.id} style={styles.statusPanel}>
               <Text style={styles.statusRestaurant}>{restaurant?.name ?? 'Restaurant'}</Text>
-              <Text style={styles.statusSubtitle}>Order #{order.id} · ${order.total.toFixed(2)}</Text>
+              <Text style={styles.statusSubtitle}>Order #{order.id}</Text>
+              <View style={styles.placedSummary}>
+                <Text style={styles.placedSummaryTitle}>Order summary</Text>
+                <View style={styles.itemRow}><Text style={styles.itemName}>Placed at</Text><Text style={styles.itemPrice}>{order.createdAt ? new Date(order.createdAt).toLocaleString() : 'Unavailable'}</Text></View>
+                {summaryItems.map((item, index) => <View key={`${item.key}-${index}`} style={styles.itemRow}>
+                  <Text style={styles.itemName}>{item.quantity} × {item.name}</Text>
+                  <Text style={styles.itemPrice}>${(item.quantity * item.unitPrice).toFixed(2)}</Text>
+                </View>)}
+                <View style={styles.itemRow}><Text style={styles.itemName}>Items subtotal</Text><Text style={styles.itemPrice}>${itemsSubtotal.toFixed(2)}</Text></View>
+                {/* It shows the “Additional charges” row only when the order total differs from the sum of its items.*/}
+                {Math.abs(otherCharges) > 0.005 && <View style={styles.itemRow}><Text style={styles.itemName}>Additional charges</Text><Text style={styles.itemPrice}>${otherCharges.toFixed(2)}</Text></View>}
+                <View style={styles.itemRow}><Text style={styles.totalLabel}>Total</Text><Text style={styles.totalValue}>${order.total.toFixed(2)}</Text></View>
+              </View>
               <View style={styles.statusStep}><View style={styles.statusDotGrey} /><Text style={styles.statusCurrent}>{order.status === 'cancelled' ? 'Placed' : 'Placed · awaiting restaurant'}</Text></View>
               {order.status === 'cancelled' ? (
                 <View style={styles.statusStep}><View style={styles.statusDotCancelled} /><Text style={styles.statusCancelled}>Cancelled by you</Text></View>
@@ -126,7 +142,7 @@ export default function ConfirmOrderScreen() {
         </View>
       ) : (
         <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-          <Text style={styles.sectionTitle}>Review your order</Text>
+          <Text style={styles.sectionTitle}>Order summary</Text>
           {groups.map((group) => {
             const restaurant = restaurants.find((entry) => entry.id === group.restaurantId);
             return <View key={group.restaurantId} style={styles.restaurantBlock}>
@@ -140,7 +156,7 @@ export default function ConfirmOrderScreen() {
               })}
             </View>;
           })}
-          <View style={styles.totalRow}><Text style={styles.totalLabel}>Estimated total</Text><Text style={styles.totalValue}>${total.toFixed(2)}</Text></View>
+          <View style={styles.totalRow}><Text style={styles.totalLabel}>Total</Text><Text style={styles.totalValue}>${total.toFixed(2)}</Text></View>
 
           <View style={styles.paymentPanel}>
             <Text style={styles.paymentLabel}>PAYMENT</Text>
