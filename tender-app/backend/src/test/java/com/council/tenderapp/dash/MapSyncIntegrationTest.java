@@ -77,9 +77,9 @@ class MapSyncIntegrationTest {
             courierDutyService.goOnDuty(courierId);
             assertThat(mapStatusOf(courierId, token)).isEqualTo("assigned");
 
-            // Pickup leaves the courier assigned for now; the map shows whatever the courier's state is
+            // Pickup puts the order in the courier's hands
             orderService.markPickedUp(restaurantId, orderId);
-            assertThat(mapStatusOf(courierId, token)).isEqualTo(statusOf(courierId));
+            assertThat(mapStatusOf(courierId, token)).isEqualTo("carrying");
 
             // Delivering frees the courier
             orderService.markDelivered(restaurantId, orderId);

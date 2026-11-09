@@ -63,6 +63,22 @@ public class CourierDutyService {
     }
 
     /**
+     * Marks the courier who holds a picked-up order as carrying it.
+     * Runs in its own transaction because order status changes are published after they commit.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void startCarrying(Long orderId) {
+        Long courierId = orderRepository.findById(orderId).map(Order::getCourierId).orElse(null);
+        if (courierId == null) return;
+        CourierProfile courier = courierProfileRepository.findWithLockByUserId(courierId).orElse(null);
+        if (courier == null || courier.getStatus() != CourierStatus.ASSIGNED) return;
+
+        courier.setStatus(courier.getStatus().pickUp());
+        courierProfileRepository.saveAndFlush(courier);
+        logger.info("Courier_{} picked up order #{}: new status: carrying", courierId, orderId);
+    }
+
+    /**
      * Frees the courier who held a finished order so they can take the next one.
      * Runs in its own transaction because order status changes are published after they commit.
      */

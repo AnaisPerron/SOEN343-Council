@@ -22,6 +22,14 @@ public enum CourierStatus {
         };
     }
 
+    /** assigned → carrying once the courier has the order; already carrying stays carrying. */
+    public CourierStatus pickUp() {
+        return switch (this) {
+            case ASSIGNED, CARRYING -> CARRYING;
+            default -> throw new IllegalStateException("No order to pick up while " + label());
+        };
+    }
+
     /** assigned/carrying → idle once the courier's order is finished. */
     public CourierStatus finishDelivery() {
         return switch (this) {
