@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Redirect } from 'expo-router';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AccountMenu from '@/components/AccountMenu';
+import CityMap from '@/components/dash/CityMap';
 import { useAuth } from '@/context/AuthContext';
 import { fetchCourierDuty, goOffDuty, goOnDuty, type CourierDuty } from '@/api/courierDuty';
 import { canGoOffDuty, canGoOnDuty, isOnDuty, stateLabel } from '@/lib/courierDuty';
@@ -17,6 +18,8 @@ export default function CourierDashboard() {
   const [loading, setLoading] = useState(true);
   const [switching, setSwitching] = useState(false);
   const [message, setMessage] = useState('');
+  // Going on or off duty puts the courier on or takes them off the map, so it reloads at once
+  const [mapRefreshKey, setMapRefreshKey] = useState(0);
 
   useEffect(() => {
     if (!token || user?.role !== 'courier') return;
@@ -36,7 +39,7 @@ export default function CourierDashboard() {
   const toggle = async () => {
     if (!token || !duty || switching) return;
     setSwitching(true); setMessage('');
-    try { setDuty(await (isOnDuty(duty.status) ? goOffDuty(token) : goOnDuty(token))); }
+    try { setDuty(await (isOnDuty(duty.status) ? goOffDuty(token) : goOnDuty(token))); setMapRefreshKey((key) => key + 1); }
     catch (error) { setMessage(error instanceof Error ? error.message : 'Could not change your duty status.'); }
     finally { setSwitching(false); }
   };
@@ -51,7 +54,7 @@ export default function CourierDashboard() {
 
   return <SafeAreaView style={styles.page}>
     <View style={styles.header}><Text style={styles.brand}>Tender</Text><AccountMenu /></View>
-    <View style={styles.content}>
+    <ScrollView contentContainerStyle={styles.content}>
       <Text style={styles.title}>{user.name}</Text>
       <Text style={styles.subtitle}>Courier dashboard</Text>
 
@@ -76,7 +79,8 @@ export default function CourierDashboard() {
         </View> : <Text style={styles.empty}>{onDuty ? 'No order yet. You will be assigned the next ready order nearby.' : 'Go on duty to start receiving orders.'}</Text>}
       </>}
       {!!message && <Text style={styles.message}>{message}</Text>}
-    </View>
+      <View style={styles.map}><CityMap refreshKey={mapRefreshKey} /></View>
+    </ScrollView>
   </SafeAreaView>;
 }
 
@@ -108,4 +112,5 @@ const styles = StyleSheet.create({
   orderMuted: { color: '#887B7E', marginTop: 4 },
   empty: { color: '#887B7E' },
   message: { color: '#302629', marginTop: 16 },
+  map: { marginTop: 32 },
 });

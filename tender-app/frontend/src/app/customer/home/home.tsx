@@ -20,6 +20,7 @@ import { searchRestaurants } from '../services/restaurantSearch';
 import RestaurantSection from '../components/RestaurantSection';
 import CartIconButton from '../components/CartIconButton';
 import AccountMenu from '@/components/AccountMenu';
+import CityMap from '@/components/dash/CityMap';
 import type { RestaurantCardData } from '../components/RestaurantCard';
 import {
   getRestaurantOrderRestriction,
@@ -216,6 +217,10 @@ export default function CustomerHome() {
             />
           );
         })}
+
+        <View style={styles.cityMap}>
+          <CityMap />
+        </View>
       </ScrollView>
       {orderError && (
         <View style={styles.orderErrorOverlay} pointerEvents="none">

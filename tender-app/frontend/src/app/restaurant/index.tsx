@@ -1,7 +1,8 @@
 import { Redirect, useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AccountMenu from '@/components/AccountMenu';
+import CityMap from '@/components/dash/CityMap';
 import { useAuth } from '@/context/AuthContext';
 
 export default function RestaurantDashboard() {
@@ -11,7 +12,7 @@ export default function RestaurantDashboard() {
   if (!user) return <Redirect href="/auth/login" />;
   if (user.role !== 'restaurant') return <Redirect href="/account" />;
 
-  return <SafeAreaView style={styles.page}>
+  return <SafeAreaView style={styles.page}><ScrollView contentContainerStyle={styles.content}>
     <View style={styles.header}><Text style={styles.eyebrow}></Text><AccountMenu /></View>
     <Text style={styles.title}>{user.name}</Text>
     <Text style={styles.subtitle}>Manage your restaurant</Text>
@@ -21,11 +22,13 @@ export default function RestaurantDashboard() {
     <Pressable accessibilityRole="button" style={styles.ordersButton} onPress={() => router.push('/restaurant/orders')}>
       <Text style={styles.ordersTitle}>Orders</Text><Text style={styles.ordersDescription}>Open the order queue →</Text>
     </Pressable>
-  </SafeAreaView>;
+    <CityMap />
+  </ScrollView></SafeAreaView>;
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: '#FFF', paddingHorizontal: 24, paddingTop: 52 },
+  page: { flex: 1, backgroundColor: '#FFF' },
+  content: { paddingHorizontal: 24, paddingTop: 52 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', zIndex: 10 },
   eyebrow: { color: '#D42F50', fontSize: 11, fontWeight: '800', letterSpacing: 2 },
   title: { color: '#302629', fontFamily: 'LoveLight', fontSize: 42, fontWeight: '400', marginTop: 16 },
