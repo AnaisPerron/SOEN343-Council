@@ -34,8 +34,8 @@ public class LedgerService
     private String getTransactionType(String orderStatus) 
     {
         return switch (orderStatus) {
-            case "DELIVERED" -> "Payment";
-            case "CANCELLED", "REJECTED", "REFUNDED" -> "Refund";
+            case "DELIVERED", "CANCELLED" -> "Payment";
+            case "REJECTED", "REFUNDED" -> "Refund";
             default -> throw new IllegalArgumentException("Invalid order status: " + orderStatus);
         };
     }

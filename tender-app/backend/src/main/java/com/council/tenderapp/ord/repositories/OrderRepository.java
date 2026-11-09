@@ -47,4 +47,12 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT o FROM Order o WHERE o.id = :orderId")
     Optional<Order> findWithLockById(@Param("orderId") Long orderId);
+
+    @Query (value = """
+        SELECT r.name
+        FROM orders o
+        JOIN restaurants r ON o.restaurant_id = r.id
+        WHERE o.id = :orderId
+    """, nativeQuery = true)
+    String findRestaurantNameByOrderId(Long orderId);
 }

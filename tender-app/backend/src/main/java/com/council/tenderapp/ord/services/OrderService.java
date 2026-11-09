@@ -16,8 +16,10 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.council.tenderapp.ord.dto.response.OrderLineResponse;
 import com.council.tenderapp.ord.dto.response.OrderResponse;
+import com.council.tenderapp.ord.dtos.OrderLineDto;
 import com.council.tenderapp.ord.entities.Order;
 import com.council.tenderapp.ord.entities.OrderStatus;
+import com.council.tenderapp.ord.repositories.OrderLineRepository;
 import com.council.tenderapp.ord.repositories.OrderRepository;
 import com.council.tenderapp.reg.entities.Profile;
 import com.council.tenderapp.reg.repositories.ProfileRepository;
@@ -32,15 +34,18 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final OrderStatusPublisher orderStatusPublisher;
     private final ProfileRepository profileRepository;
+    private final OrderLineRepository orderLineRepository;
 
     public OrderService(
         OrderRepository orderRepository,
         OrderStatusPublisher orderStatusPublisher,
-        ProfileRepository profileRepository
+        ProfileRepository profileRepository,
+        OrderLineRepository orderLineRepository
     ) {
         this.orderRepository = orderRepository;
         this.orderStatusPublisher = orderStatusPublisher;
         this.profileRepository = profileRepository;
+        this.orderLineRepository = orderLineRepository;
     }
 
     @Transactional(readOnly = true)
@@ -249,5 +254,17 @@ public class OrderService {
             order.getDeliveryAddress(),
             orderLines
         );
+    }
+
+    public List<OrderLineDto> getOrderLinesForOrder(Long orderId) {
+        return orderLineRepository.findByOrderId(orderId).stream()
+            .map(line -> new OrderLineDto(
+                line.getMenuItem().getId(),
+                line.getMenuItem().getName(),
+                line.getQuantity(),
+                line.getUnitPrice(),
+                line.getUnitPrice().multiply(java.math.BigDecimal.valueOf(line.getQuantity()))
+            ))
+            .toList();
     }
 }
