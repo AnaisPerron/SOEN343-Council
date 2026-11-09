@@ -19,6 +19,7 @@ import com.council.tenderapp.ord.entities.OrderStatus;
 import com.council.tenderapp.ord.entities.Restaurant;
 import com.council.tenderapp.ord.repositories.OrderRepository;
 import com.council.tenderapp.ord.repositories.RestaurantRepository;
+import com.council.tenderapp.dlv.services.DispatchService;
 import com.council.tenderapp.reg.dtos.LoginRequest;
 import com.council.tenderapp.reg.dtos.RegisterRequest;
 import com.council.tenderapp.reg.entities.CourierProfile;
@@ -38,6 +39,7 @@ class CourierDutyControllerTest {
     @Autowired private CourierProfileRepository couriers;
     @Autowired private RestaurantRepository restaurants;
     @Autowired private OrderRepository orders;
+    @Autowired private DispatchService dispatchService;
 
     private record Account(Long id, String token) {}
 
@@ -110,6 +112,12 @@ class CourierDutyControllerTest {
         Account courier = register("duty-dispatch@example.com", Role.COURIER);
         Restaurant restaurant = restaurants.saveAndFlush(new Restaurant("Queue Cafe", "open", 45.50, -73.57));
         Order waiting = orders.saveAndFlush(new Order(restaurant.getId(), new java.util.Date(), OrderStatus.READY));
+
+        dispatchService.retryQueue();
+        assertThat(orders.findById(waiting.getId()).orElseThrow().getCourierId()).isNull();
+        assertThat(orders.findWaitingReadyOrdersForDispatch())
+                .extracting(Order::getId)
+                .contains(waiting.getId());
 
         mockMvc.perform(post("/api/courier/duty/on").header(HttpHeaders.AUTHORIZATION, "Bearer " + courier.token()))
                 .andExpect(status().isOk())
