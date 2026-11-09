@@ -9,10 +9,11 @@ export function normalizeMapData(data: Partial<MapData> | null | undefined): Map
     bounds: data?.bounds ?? DEFAULT_MAP_BOUNDS,
     restaurants: data?.restaurants ?? [],
     couriers: data?.couriers ?? [],
+    customers: data?.customers ?? [],
   };
 }
 
-export const isMapEmpty = (data: MapData) => data.restaurants.length === 0 && data.couriers.length === 0;
+export const isMapEmpty = (data: MapData) => data.restaurants.length === 0 && data.couriers.length === 0 && data.customers.length === 0;
 
 // Keeps a lone marker (or markers on one street) from filling the whole map, about 500 m
 const MIN_SPAN = 0.005;
@@ -60,7 +61,7 @@ export function fitMapSize(aspect: number, maxWidth: number, maxHeight: number) 
 
 export type MapMarker = {
   key: string;
-  kind: 'restaurant' | 'courier';
+  kind: 'restaurant' | 'courier' | 'customer';
   name: string;
   state: string;
   latitude: number;
@@ -69,17 +70,19 @@ export type MapMarker = {
   y: number;
 };
 
-/** Every restaurant and courier as a positioned marker; restaurants first so couriers draw on top. */
+/** Every location as a positioned marker; couriers last so they draw on top of where they are going. */
 export function toMarkers(data: MapData): MapMarker[] {
   const { project } = createProjection(data.bounds);
   return [
     ...data.restaurants.map((r) => ({ key: `restaurant-${r.id}`, kind: 'restaurant' as const, name: r.name, state: r.status, latitude: r.latitude, longitude: r.longitude, ...project(r.latitude, r.longitude) })),
+    ...data.customers.map((c) => ({ key: `customer-${c.customerId}`, kind: 'customer' as const, name: c.name, state: 'customer', latitude: c.latitude, longitude: c.longitude, ...project(c.latitude, c.longitude) })),
     ...data.couriers.map((c) => ({ key: `courier-${c.courierId}`, kind: 'courier' as const, name: c.name, state: c.status, latitude: c.latitude, longitude: c.longitude, ...project(c.latitude, c.longitude) })),
   ];
 }
 
-/** e.g. "Restaurant · Open" or "Courier · Carrying". */
+/** e.g. "Restaurant · Open" or "Courier · Carrying"; customers have no state. */
 export function markerStateLabel(marker: Pick<MapMarker, 'kind' | 'state'>) {
+  if (marker.kind === 'customer') return 'Customer';
   const kind = marker.kind === 'restaurant' ? 'Restaurant' : 'Courier';
   return `${kind} · ${marker.state.charAt(0).toUpperCase()}${marker.state.slice(1)}`;
 }

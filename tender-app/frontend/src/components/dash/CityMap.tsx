@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth, type Role } from '@/context/AuthContext';
 import { ApiError } from '@/api/client';
 import { watchMapData } from '@/api/dashMap';
 import { createProjection, fitMapSize, isMapEmpty, mapTiles, markerStateLabel, toMarkers, type MapMarker } from '@/lib/cityMap';
@@ -10,6 +10,8 @@ import GoogleCityMap, { googleMapsAvailable } from './GoogleCityMap';
 
 const MAX_HEIGHT = 480;
 
+const markerShape = { restaurant: styles.restaurantMarker, courier: styles.courierMarker, customer: styles.customerMarker };
+
 const legend = [
   { label: 'Restaurant', style: [styles.legendSwatch, { backgroundColor: '#6b7280' }] },
   { label: 'Courier', style: [styles.legendSwatch, { borderRadius: 6, backgroundColor: '#6b7280' }] },
@@ -18,15 +20,26 @@ const legend = [
   { label: 'Closed', style: [styles.legendSwatch, { backgroundColor: stateColors.closed }] },
   { label: 'Carrying', style: [styles.legendSwatch, { backgroundColor: stateColors.carrying }] },
 ];
+const customerLegend = { label: 'Customer', style: [styles.legendSwatch, { borderRadius: 2, transform: [{ rotate: '45deg' }], backgroundColor: stateColors.customer }] };
+
+// The server only sends what the role may see (see MapService), so the empty message says what would appear
+const emptyHint: Record<Role, string> = {
+  Operator: 'Restaurants with a location and on-duty couriers appear here.',
+  customer: 'Restaurants and the courier bringing your order appear here.',
+  courier: 'Go on duty to appear here; your pickup and drop-off show once you have an order.',
+  restaurant: 'Your restaurant and the couriers handling its orders appear here.',
+};
 
 interface CityMapProps {
   /** Changing this reloads the map at once, e.g. after Refresh or a command run on the same page. */
   refreshKey?: number;
 }
 
-/** Shared city map (DASH): restaurants and on-duty couriers, scaled to the dataset bounds and kept up to date. */
+/** Shared city map (DASH): the locations the logged-in role may see, scaled to the dataset bounds and kept up to date. */
 export default function CityMap({ refreshKey = 0 }: CityMapProps) {
-  const { token, signOut } = useAuth();
+  const { user, token, signOut } = useAuth();
+  // Only customers and couriers are ever sent customer locations
+  const legendItems = user?.role === 'customer' || user?.role === 'courier' ? [...legend, customerLegend] : legend;
   const [data, setData] = useState<MapData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loadedKey, setLoadedKey] = useState<number | null>(null);
@@ -112,7 +125,7 @@ export default function CityMap({ refreshKey = 0 }: CityMapProps) {
                     hitSlop={6}
                     style={[
                       styles.marker,
-                      marker.kind === 'restaurant' ? styles.restaurantMarker : styles.courierMarker,
+                      markerShape[marker.kind],
                       { left: `${marker.x * 100}%`, top: `${marker.y * 100}%`, backgroundColor: stateColors[marker.state] ?? '#6b7280' },
                       active?.key === marker.key && styles.markerActive,
                     ]}
@@ -123,8 +136,8 @@ export default function CityMap({ refreshKey = 0 }: CityMapProps) {
             )}
             {data && isMapEmpty(data) && (
               <View pointerEvents="none" style={styles.emptyOverlay}>
-                <Text style={styles.emptyTitle}>No restaurants or couriers to show yet</Text>
-                <Text style={styles.emptyText}>Restaurants with a location and on-duty couriers appear here.</Text>
+                <Text style={styles.emptyTitle}>Nothing to show on the map yet</Text>
+                {user && <Text style={styles.emptyText}>{emptyHint[user.role]}</Text>}
               </View>
             )}
           </View>
@@ -132,7 +145,7 @@ export default function CityMap({ refreshKey = 0 }: CityMapProps) {
       </View>
       {size && (
         <View style={styles.legend}>
-          {legend.map((item) => (
+          {legendItems.map((item) => (
             <View key={item.label} style={styles.legendItem}>
               <View style={item.style} />
               <Text style={styles.legendText}>{item.label}</Text>

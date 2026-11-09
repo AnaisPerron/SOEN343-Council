@@ -25,9 +25,18 @@ export interface MapCourier {
   longitude: number;
 }
 
-/** When nothing on the map has a location, bounds is a default area and both lists are empty. */
+/** A customer's delivery location; only shown to that customer and to the courier bringing their order. */
+export interface MapCustomer {
+  customerId: number;
+  name: string;
+  latitude: number;
+  longitude: number;
+}
+
+/** What the logged-in role may see; when nothing has a location, bounds is a default area and every list is empty. */
 export interface MapData {
   bounds: MapBounds;
   restaurants: MapRestaurant[];
   couriers: MapCourier[];
+  customers: MapCustomer[];
 }

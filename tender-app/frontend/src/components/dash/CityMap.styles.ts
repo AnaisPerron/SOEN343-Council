@@ -2,7 +2,7 @@ import { StyleSheet } from 'react-native';
 
 export const MARKER_SIZE = 18;
 
-// Shape tells restaurants and couriers apart; colour shows their state
+// Shape tells restaurants, couriers and customers apart; colour shows their state
 export const stateColors: Record<string, string> = {
   open: '#16a34a',
   paused: '#f59e0b',
@@ -10,6 +10,7 @@ export const stateColors: Record<string, string> = {
   idle: '#16a34a',
   assigned: '#f59e0b',
   carrying: '#2563eb',
+  customer: '#9333ea',
 };
 
 export const styles = StyleSheet.create({
@@ -52,6 +53,7 @@ export const styles = StyleSheet.create({
   },
   restaurantMarker: { borderRadius: 4 },
   courierMarker: { borderRadius: MARKER_SIZE / 2 },
+  customerMarker: { borderRadius: 2, transform: [{ rotate: '45deg' }] },
   markerActive: { borderColor: '#111827', zIndex: 2 },
   emptyOverlay: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: 'rgba(255, 255, 255, 0.7)' },
   emptyTitle: { fontSize: 16, fontWeight: '700', color: '#374151', textAlign: 'center' },

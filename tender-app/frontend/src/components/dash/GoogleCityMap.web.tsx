@@ -1,10 +1,10 @@
 import { useEffect } from 'react';
 import { AdvancedMarker, APIProvider, Map, useMap } from '@vis.gl/react-google-maps';
 import { markerStateLabel, type MapMarker } from '@/lib/cityMap';
+import { googleMapsApiKey as apiKey } from '@/lib/googleMaps';
 import type { MapBounds } from '@/types/dash';
 import { MARKER_SIZE, stateColors } from './CityMap.styles';
 
-const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ?? '';
 // Advanced markers need a map id; Google's demo id works until the team sets its own
 const mapId = process.env.EXPO_PUBLIC_GOOGLE_MAPS_MAP_ID?.trim() || 'DEMO_MAP_ID';
 const PADDING = 40;
@@ -88,7 +88,8 @@ function MarkerIcon({ marker, active }: { marker: MapMarker; active: boolean }) 
           width: MARKER_SIZE,
           height: MARKER_SIZE,
           boxSizing: 'border-box',
-          borderRadius: marker.kind === 'restaurant' ? 4 : MARKER_SIZE / 2,
+          borderRadius: marker.kind === 'courier' ? MARKER_SIZE / 2 : marker.kind === 'customer' ? 2 : 4,
+          transform: marker.kind === 'customer' ? 'rotate(45deg)' : undefined,
           border: `2px solid ${active ? '#111827' : '#fff'}`,
           backgroundColor: stateColors[marker.state] ?? '#6b7280',
           boxShadow: '0 1px 2px rgba(0, 0, 0, 0.35)',

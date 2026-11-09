@@ -15,6 +15,7 @@ const data: MapData = {
     { id: 3, name: 'Cafe Nord', status: 'closed', latitude: 45.501, longitude: -73.584 },
   ],
   couriers: [{ courierId: 6, name: 'Sam Courier', status: 'idle', latitude: 45.509, longitude: -73.561 }],
+  customers: [],
 };
 
 const inside = (value: number) => value > 0 && value < 1;
@@ -78,7 +79,7 @@ describe('city map markers', () => {
   });
 
   it('shows nothing when no location is known', () => {
-    const empty = { bounds: DEFAULT_MAP_BOUNDS, restaurants: [], couriers: [] };
+    const empty = { bounds: DEFAULT_MAP_BOUNDS, restaurants: [], couriers: [], customers: [] };
     assert.deepEqual(toMarkers(empty), []);
     assert.equal(isMapEmpty(empty), true);
     assert.equal(isMapEmpty(data), false);
@@ -93,7 +94,7 @@ describe('city map markers', () => {
 describe('empty city map', () => {
   it('uses the default area when the response has no bounds or lists', () => {
     for (const response of [null, undefined, {}, { bounds: null as never, restaurants: [] }]) {
-      assert.deepEqual(normalizeMapData(response), { bounds: DEFAULT_MAP_BOUNDS, restaurants: [], couriers: [] });
+      assert.deepEqual(normalizeMapData(response), { bounds: DEFAULT_MAP_BOUNDS, restaurants: [], couriers: [], customers: [] });
     }
   });
 
@@ -122,7 +123,7 @@ describe('city map API', () => {
   it('turns an empty response into an empty map instead of an error', async () => {
     mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify({ restaurants: [], couriers: [] }), { status: 200 }));
 
-    assert.deepEqual(await fetchMapData('session-token'), { bounds: DEFAULT_MAP_BOUNDS, restaurants: [], couriers: [] });
+    assert.deepEqual(await fetchMapData('session-token'), { bounds: DEFAULT_MAP_BOUNDS, restaurants: [], couriers: [], customers: [] });
   });
 });
 
@@ -205,6 +206,31 @@ describe('keeping the map in sync', () => {
     stop();
 
     assert.deepEqual(events, ['error', 'data']);
+  });
+});
+
+describe('customer locations', () => {
+  const delivery: MapData = {
+    ...data,
+    restaurants: [data.restaurants[0]],
+    customers: [{ customerId: 2, name: 'Cara Customer', latitude: 45.52, longitude: -73.58 }],
+  };
+
+  it('places the customer between the restaurant and the courier so the courier draws on top', () => {
+    assert.deepEqual(toMarkers(delivery).map((m) => [m.kind, m.name]), [
+      ['restaurant', 'Maple & Main'],
+      ['customer', 'Cara Customer'],
+      ['courier', 'Sam Courier'],
+    ]);
+  });
+
+  it('labels a customer without a state', () => {
+    const customer = toMarkers(delivery).find((m) => m.kind === 'customer')!;
+    assert.equal(markerStateLabel(customer), 'Customer');
+  });
+
+  it('counts a lone customer as something to show', () => {
+    assert.equal(isMapEmpty({ ...delivery, restaurants: [], couriers: [] }), false);
   });
 });
 
