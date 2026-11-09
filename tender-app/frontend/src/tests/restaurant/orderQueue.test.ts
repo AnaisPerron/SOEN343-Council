@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import { restaurantOrdersMock } from '../../mocks/restaurantOrders.ts';
-import { deleteSelectedOrders, filterAndSortOrders, ORDER_STATUSES, orderTotal, transitionOrder } from '../../services/restaurant/orderQueue.ts';
+import { deleteSelectedOrders, filterAndSortOrders, isWaitingForCourier, ORDER_STATUSES, orderTotal, transitionOrder } from '../../services/restaurant/orderQueue.ts';
 
 describe('restaurant orders queue', () => {
   it('puts placed orders first, oldest first, and filters every status', () => {
@@ -42,5 +42,12 @@ describe('restaurant orders queue', () => {
     assert.equal(remaining.some((order) => order.id === 9301 || order.id === 9302), false);
     assert.equal(restaurantOrdersMock.length, 11, 'deletion must not mutate the source queue');
     assert.equal(orderTotal(placed), 26);
+  });
+
+  it('identifies ready orders that are still waiting for a courier', () => {
+    const ready = restaurantOrdersMock.find((order) => order.status === 'ready')!;
+    assert.equal(isWaitingForCourier({ ...ready, courierId: null }), true);
+    assert.equal(isWaitingForCourier({ ...ready, courierId: 8 }), false);
+    assert.equal(isWaitingForCourier({ ...ready, status: 'picked_up', courierId: null }), false);
   });
 });
