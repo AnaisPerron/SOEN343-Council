@@ -24,6 +24,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import com.council.tenderapp.reg.services.CustomerProfileService;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -47,6 +48,7 @@ import com.jayway.jsonpath.JsonPath;
 @WebMvcTest(controllers = {AuthController.class, SessionGateTest.ProtectedEndpoints.class})
 @Import({SecurityConfig.class, LoginService.class, SessionService.class, SessionGateTest.ProtectedEndpoints.class})
 class SessionGateTest {
+    @MockitoBean private CustomerProfileService customerProfiles;
 
     private static final String EMAIL = "jane@example.com";
     private static final String PASSWORD = "secret123";

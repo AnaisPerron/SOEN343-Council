@@ -32,4 +32,8 @@ public record LoginResponse(String token, Instant expiresAt, Long id, String nam
                 restaurant.getPhone() == null ? profile.getPhone() : restaurant.getPhone(), profile.getRole(),
                 restaurant.getId(), restaurant.getAddress());
     }
+
+    public LoginResponse withAddress(String customerAddress) {
+        return new LoginResponse(token, expiresAt, id, name, email, phone, role, restaurantId, customerAddress);
+    }
 }
