@@ -46,6 +46,27 @@ describe('registration api', () => {
     assert.equal(request.address, '123 Main St, Montreal, Canada');
   });
 
+  it('sends where a picked address is so the customer appears on the map', () => {
+    const request = toRegisterRequest({ ...customer, address: { ...address, latitude: 45.4972, longitude: -73.579 } });
+    assert.equal(request.latitude, 45.4972);
+    assert.equal(request.longitude, -73.579);
+    assert.equal('address' in request, false);
+  });
+
+  it('places a restaurant at its picked address', () => {
+    const request = toRegisterRequest({
+      role: 'restaurant',
+      restaurantName: 'Maple & Main',
+      email: 'hello@maple.example',
+      password: 'restaurant-pass',
+      phoneNumber: '5145550199',
+      address: { ...address, latitude: 45.5017, longitude: -73.5689 },
+    });
+    assert.equal(request.address, '123 Main St, Montreal, Canada');
+    assert.equal(request.latitude, 45.5017);
+    assert.equal(request.longitude, -73.5689);
+  });
+
   it('registers a courier with their name and no address', () => {
     assert.deepEqual(toRegisterRequest({
       role: 'courier',

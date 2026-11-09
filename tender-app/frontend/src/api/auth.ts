@@ -1,4 +1,4 @@
-import type { AuthSession, RegistrationInput, Role, SignInInput } from '../types/auth.ts';
+import type { Address, AuthSession, RegistrationInput, Role, SignInInput } from '../types/auth.ts';
 import { ApiError, postJson, requestJson } from './client.ts';
 
 type BackendRole = 'CUSTOMER' | 'COURIER' | 'STAFF' | 'OPERATOR';
@@ -42,7 +42,11 @@ const ROLE_LABELS: Record<Role, string> = {
   Operator: 'operator',
 };
 
-/** The backend does not store addresses yet, so the address is not sent. */
+// Only sent when the address was picked from the suggestions; a typed address has no known location
+const locationOf = (address: Address) =>
+  address.latitude == null || address.longitude == null ? {} : { latitude: address.latitude, longitude: address.longitude };
+
+/** Only restaurants store their address text; customers and restaurants both send the picked location for the map. */
 export function toRegisterRequest(input: RegistrationInput) {
   return {
     name: input.role === 'restaurant' ? input.restaurantName : input.name,
@@ -51,6 +55,7 @@ export function toRegisterRequest(input: RegistrationInput) {
     phone: input.phoneNumber,
     role: TO_BACKEND_ROLE[input.role],
     ...(input.role === 'restaurant' ? { address: [input.address.addressLine, input.address.city, input.address.country].join(', ') } : {}),
+    ...(input.role === 'courier' ? {} : locationOf(input.address)),
   };
 }
 
