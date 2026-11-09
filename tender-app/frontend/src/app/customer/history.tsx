@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AccountMenu from '@/components/AccountMenu';
 import { useAuth } from '@/context/AuthContext';
+import { fetchCustomerOrderSummary, type OrderSummary } from '@/api/orderSummary';
 import { useOrders } from '@/context/OrdersContext';
 import { useCatalog } from '@/context/CatalogContext';
 import { formatOrderStatus, type CustomerOrderStatus } from './services/orderLifecycle';
@@ -11,13 +12,16 @@ import { formatOrderStatus, type CustomerOrderStatus } from './services/orderLif
 const lifecycle: CustomerOrderStatus[] = ['placed', 'accepted', 'preparing', 'ready', 'picked_up', 'delivered'];
 
 export default function CustomerHistory() {
-  const { user, ready } = useAuth();
+  const { user, ready, token } = useAuth();
   const { orders, historyStatus, historyError, refreshOrders, cancelOrder } = useOrders();
   const { restaurants } = useCatalog();
   const router = useRouter();
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancelErrors, setCancelErrors] = useState<Record<string, string>>({});
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [summaries, setSummaries] = useState<Record<string, OrderSummary>>({});
+  const [summaryLoading, setSummaryLoading] = useState<string | null>(null);
+  const [summaryErrors, setSummaryErrors] = useState<Record<string, string>>({});
   // Reload whenever the page is shown, then poll so restaurant status changes appear while it stays open.
   useFocusEffect(refreshOrders);
   useEffect(() => {
@@ -35,6 +39,18 @@ export default function CustomerHistory() {
     cancelOrder(orderId)
       .catch((error) => setCancelErrors((current) => ({ ...current, [orderId]: error instanceof Error ? error.message : 'Could not cancel the order.' })))
       .finally(() => setCancellingId(null));
+  };
+
+  const toggleDetails = (orderId: string, status: string) => {
+    if (expanded === orderId) { setExpanded(null); return; }
+    setExpanded(orderId);
+    if (!token || !['delivered', 'rejected', 'cancelled'].includes(status) || summaries[orderId] || summaryLoading === orderId) return;
+    setSummaryLoading(orderId);
+    setSummaryErrors((current) => ({ ...current, [orderId]: '' }));
+    fetchCustomerOrderSummary(orderId, token)
+      .then((summary) => setSummaries((current) => ({ ...current, [orderId]: summary })))
+      .catch((error) => setSummaryErrors((current) => ({ ...current, [orderId]: error instanceof Error ? error.message : 'Could not load order summary.' })))
+      .finally(() => setSummaryLoading((current) => current === orderId ? null : current));
   };
 
   return <SafeAreaView style={styles.page}>
@@ -55,17 +71,24 @@ export default function CustomerHistory() {
           const restaurantName = order.restaurantName ?? restaurants.find((entry) => entry.id === order.restaurantId)?.name ?? 'Restaurant';
           const current = lifecycle.indexOf(order.status);
           return <View key={order.id} style={styles.card}>
-            <Pressable accessibilityRole="button" accessibilityLabel={`View order ${order.id} details`} onPress={() => setExpanded(expanded === order.id ? null : order.id)}>
+            <Pressable accessibilityRole="button" accessibilityLabel={`View order ${order.id} details`} onPress={() => toggleDetails(order.id, order.status)}>
               <View style={styles.top}><Text style={styles.orderTitle}>Order #{order.id}</Text>{!!order.createdAt && <Text style={styles.muted}>{new Date(order.createdAt).toLocaleDateString()}</Text>}</View>
               <Text style={styles.restaurant}>{restaurantName}</Text>
               {current >= 0 && <ScrollView horizontal showsHorizontalScrollIndicator={false}><View style={styles.rail}>{lifecycle.map((step, index) => <View key={step} style={styles.step}><View style={[styles.dot, current >= index && styles.dotComplete]} /><Text style={styles.stepLabel}>{formatOrderStatus(step)}</Text></View>)}</View></ScrollView>}
               {order.items?.map((item, index) => <Text key={index} style={styles.item}>
                 {item.quantity} × {item.name}{item.options.length > 0 ? ` (${item.options.join(', ')})` : ''}
               </Text>)}
-              <View style={styles.bottom}><Text style={styles.badge}>{formatOrderStatus(order.status)}</Text><Text style={styles.total}>${order.total.toFixed(2)}</Text></View>
+              <View style={styles.bottom}><Text style={styles.badge}>{formatOrderStatus(order.status)}</Text><Text style={styles.total}>${Number(summaries[order.id]?.totalCharge ?? order.total).toFixed(2)}</Text></View>
               {expanded === order.id && <View style={styles.details}>
                 {!!order.createdAt && <Text style={styles.muted}>Placed {new Date(order.createdAt).toLocaleString()}</Text>}
-                {order.items?.map((item, index) => <Text key={index} style={styles.muted}>{item.quantity} × {item.name} · ${(item.quantity * item.unitPrice).toFixed(2)}</Text>)}
+                {summaryLoading === order.id && <ActivityIndicator accessibilityLabel="Loading order summary" />}
+                {!!summaryErrors[order.id] && <Text style={styles.message} accessibilityRole="alert">{summaryErrors[order.id]}</Text>}
+                {summaries[order.id] ? <>
+                  {!!summaries[order.id].finishedAt && <Text style={styles.muted}>Finished {new Date(summaries[order.id].finishedAt ?? '').toLocaleString()}</Text>}
+                  {summaries[order.id].orderItems.map((item, index) => <Text key={index} style={styles.muted}>{item.quantity} × {item.name} · ${Number(item.lineTotal).toFixed(2)}</Text>)}
+                  {summaries[order.id].charges.map((charge, index) => <Text key={index} style={styles.muted}>{charge.chargeType}: ${Number(charge.amount).toFixed(2)}</Text>)}
+                  {summaries[order.id].totalCharge != null && <Text style={styles.total}>Total charged: ${Number(summaries[order.id].totalCharge).toFixed(2)}</Text>}
+                </> : order.items?.map((item, index) => <Text key={index} style={styles.muted}>{item.quantity} × {item.name} · ${(item.quantity * item.unitPrice).toFixed(2)}</Text>)}
                 {!!order.rejectionReason && <Text style={styles.muted}>Reason: {order.rejectionReason}</Text>}
               </View>}
             </Pressable>
