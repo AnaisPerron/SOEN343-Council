@@ -29,6 +29,7 @@ describe('registration api', () => {
       password: 'customer-pass',
       phone: '5145550123',
       role: 'CUSTOMER',
+      address: '123 Main St, Montreal, Canada',
     });
   });
 
@@ -50,7 +51,7 @@ describe('registration api', () => {
     const request = toRegisterRequest({ ...customer, address: { ...address, latitude: 45.4972, longitude: -73.579 } });
     assert.equal(request.latitude, 45.4972);
     assert.equal(request.longitude, -73.579);
-    assert.equal('address' in request, false);
+    assert.equal(request.address, '123 Main St, Montreal, Canada');
   });
 
   it('places a restaurant at its picked address', () => {

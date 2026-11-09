@@ -46,7 +46,9 @@ const ROLE_LABELS: Record<Role, string> = {
 const locationOf = (address: Address) =>
   address.latitude == null || address.longitude == null ? {} : { latitude: address.latitude, longitude: address.longitude };
 
-/** Only restaurants store their address text; customers and restaurants both send the picked location for the map. */
+const addressText = (address: Address) => [address.addressLine, address.city, address.country].join(', ');
+
+/** Customers and restaurants send their address (copied onto each order as the delivery address) and, when picked, its location for the map. */
 export function toRegisterRequest(input: RegistrationInput) {
   return {
     name: input.role === 'restaurant' ? input.restaurantName : input.name,
@@ -54,8 +56,7 @@ export function toRegisterRequest(input: RegistrationInput) {
     password: input.password,
     phone: input.phoneNumber,
     role: TO_BACKEND_ROLE[input.role],
-    ...(input.role === 'restaurant' ? { address: [input.address.addressLine, input.address.city, input.address.country].join(', ') } : {}),
-    ...(input.role === 'courier' ? {} : locationOf(input.address)),
+    ...(input.role === 'courier' ? {} : { address: addressText(input.address), ...locationOf(input.address) }),
   };
 }
 
