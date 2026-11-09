@@ -8,6 +8,7 @@
   "dependencies": {
     "@expo/metro-runtime": "~58.0.15",
     "@expo/ui": "~58.0.25",
+    "@vis.gl/react-google-maps": "^1.10.2",
     "expo": "^58.0.21",
     "expo-asset": "~58.0.19",
     "expo-constants": "~58.0.14",

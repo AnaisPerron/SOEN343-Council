@@ -57,6 +57,16 @@ Start the app (from the web):
 npx expo start --web
 ```
 
+## City map
+
+The operator dashboard's city map uses Google Maps in the web app when
+`EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` is set in `.env` (see `.env.example`). The key
+needs the Maps JavaScript API enabled in Google Cloud, and billing on the
+project. Restart Expo after changing `.env`. Without a key, on a phone, or if
+Google rejects the key, the map falls back to a built-in OpenStreetMap street
+map. Either way it is fitted to the dataset bounds and shows restaurant and
+on-duty courier markers.
+
 ## Restaurant demo accounts
 
 Choose **Restaurant** on the sign-in screen. Both accounts use password `DemoPass123!`. They work only when the app cannot reach the backend. When the backend responds, sign-in uses its result and these mock credentials are not accepted unless matching accounts exist there.
