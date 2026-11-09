@@ -86,7 +86,7 @@ class CourierDeliveryReleaseIntegrationTest {
             orderService.markPickedUp(restaurantId, first);
             assertThat(statusOf(courierId)).isEqualTo(CourierStatus.CARRYING);
 
-            orderService.markDelivered(restaurantId, first);
+            orderService.markDeliveredByCourier(courierId, first);
 
             // Freed by the delivery, then immediately handed the order that was waiting
             assertThat(orders.findById(second).orElseThrow().getCourierId()).isEqualTo(courierId);

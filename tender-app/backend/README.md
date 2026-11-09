@@ -98,6 +98,13 @@ delivery. The dispatch service assigns each oldest waiting order to the nearest
 idle courier, removing it from the derived queue by setting `courier_id`.
 Waiting and assignment/removal events are logged to the application console.
 
+After an assigned order has been marked `PICKED_UP`, its courier can complete
+the delivery with `POST /api/courier/duty/orders/{orderId}/delivered`. The
+backend verifies that the order belongs to the authenticated courier, marks it
+delivered, releases the courier to idle, and retries dispatch for the oldest
+waiting order. The response includes the courier's resulting duty status and
+any newly assigned order.
+
 The current project has no authentication/authorization integration. The local
 restaurant profile is a demo context, not an authenticated account. Actions
 verify that the order belongs to the restaurant ID in the URL, but this is not

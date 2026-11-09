@@ -12,6 +12,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.council.tenderapp.ord.entities.Order;
@@ -133,5 +134,25 @@ class CourierDutyControllerTest {
                 .andExpect(jsonPath("$.assignedOrder.orderId").value(waiting.getId()))
                 .andExpect(jsonPath("$.assignedOrder.status").value("ready"))
                 .andExpect(jsonPath("$.assignedOrder.restaurantName").value("Queue Cafe"));
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void courierCanMarkTheirPickedUpOrderDeliveredAndReturnsToIdle() throws Exception {
+        Account courier = register("duty-delivered@example.com", Role.COURIER);
+        Restaurant restaurant = restaurants.saveAndFlush(new Restaurant("Delivery Cafe", "open", 45.50, -73.57));
+        Order pickedUp = new Order(restaurant.getId(), new java.util.Date(), OrderStatus.PICKED_UP);
+        pickedUp.setCourierId(courier.id());
+        pickedUp = orders.saveAndFlush(pickedUp);
+        setStatus(courier, CourierStatus.ASSIGNED);
+
+        mockMvc.perform(post("/api/courier/duty/orders/" + pickedUp.getId() + "/delivered")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + courier.token()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("idle"))
+                .andExpect(jsonPath("$.assignedOrder").doesNotExist());
+
+        assertThat(orders.findById(pickedUp.getId()).orElseThrow().getStatus()).isEqualTo(OrderStatus.DELIVERED);
+        assertThat(statusOf(courier)).isEqualTo(CourierStatus.IDLE);
     }
 }
