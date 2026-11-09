@@ -69,8 +69,15 @@ class CourierDeliveryReleaseIntegrationTest {
         Long courierId = registrationService.register(new RegisterRequest(
                 "Release Tester", "release-courier@example.com", "secret123", "514-555-0180", Role.COURIER)).id();
         Long restaurantId = restaurants.saveAndFlush(new Restaurant("Release Cafe", "open", 45.50, -73.57)).getId();
-        Long first = orders.saveAndFlush(new Order(restaurantId, new Date(System.currentTimeMillis() - 60_000), OrderStatus.READY)).getId();
-        Long second = orders.saveAndFlush(new Order(restaurantId, new Date(), OrderStatus.READY)).getId();
+        long now = System.currentTimeMillis();
+        Order firstReady = new Order(restaurantId, new Date(now), OrderStatus.READY);
+        Long first = orders.saveAndFlush(firstReady).getId();
+        Order secondReady = new Order(restaurantId, new Date(now - 60_000), OrderStatus.READY);
+        Long second = orders.saveAndFlush(secondReady).getId();
+        Instant readyTime = Instant.now();
+        orderEvents.saveAndFlush(new OrderEvent(first, "preparing", "ready", "order_ready",
+                readyTime.minusSeconds(60)));
+        orderEvents.saveAndFlush(new OrderEvent(second, "preparing", "ready", "order_ready", readyTime));
         try {
             courierDutyService.goOnDuty(courierId);
             assertThat(orders.findById(first).orElseThrow().getCourierId()).isEqualTo(courierId);
