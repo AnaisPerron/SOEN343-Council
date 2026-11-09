@@ -63,6 +63,8 @@ export type MapMarker = {
   kind: 'restaurant' | 'courier';
   name: string;
   state: string;
+  latitude: number;
+  longitude: number;
   x: number;
   y: number;
 };
@@ -71,8 +73,8 @@ export type MapMarker = {
 export function toMarkers(data: MapData): MapMarker[] {
   const { project } = createProjection(data.bounds);
   return [
-    ...data.restaurants.map((r) => ({ key: `restaurant-${r.id}`, kind: 'restaurant' as const, name: r.name, state: r.status, ...project(r.latitude, r.longitude) })),
-    ...data.couriers.map((c) => ({ key: `courier-${c.courierId}`, kind: 'courier' as const, name: c.name, state: c.status, ...project(c.latitude, c.longitude) })),
+    ...data.restaurants.map((r) => ({ key: `restaurant-${r.id}`, kind: 'restaurant' as const, name: r.name, state: r.status, latitude: r.latitude, longitude: r.longitude, ...project(r.latitude, r.longitude) })),
+    ...data.couriers.map((c) => ({ key: `courier-${c.courierId}`, kind: 'courier' as const, name: c.name, state: c.status, latitude: c.latitude, longitude: c.longitude, ...project(c.latitude, c.longitude) })),
   ];
 }
 
@@ -80,4 +82,60 @@ export function toMarkers(data: MapData): MapMarker[] {
 export function markerStateLabel(marker: Pick<MapMarker, 'kind' | 'state'>) {
   const kind = marker.kind === 'restaurant' ? 'Restaurant' : 'Courier';
   return `${kind} · ${marker.state.charAt(0).toUpperCase()}${marker.state.slice(1)}`;
+}
+
+// OpenStreetMap raster tiles, drawn under the markers so the map shows real streets
+const TILE_SIZE = 256;
+const MAX_TILE_ZOOM = 19;
+
+export interface MapTile {
+  key: string;
+  url: string;
+  /** Same 0 to 1 shares of the map's width and height as the markers. */
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+const tileX = (longitude: number, zoom: number) => ((longitude + 180) / 360) * 2 ** zoom;
+const tileY = (latitude: number, zoom: number) => {
+  const rad = (latitude * Math.PI) / 180;
+  return ((1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2) * 2 ** zoom;
+};
+const tileLongitude = (x: number, zoom: number) => (x / 2 ** zoom) * 360 - 180;
+const tileLatitude = (y: number, zoom: number) => (Math.atan(Math.sinh(Math.PI - (2 * Math.PI * y) / 2 ** zoom)) * 180) / Math.PI;
+
+/** The street tiles covering the whole map, at the zoom where each shows at about its natural size. */
+export function mapTiles(bounds: MapBounds, widthPx: number): MapTile[] {
+  if (widthPx <= 0) return [];
+  const { project } = createProjection(bounds);
+  // The projection is linear in each axis, so two probes give the latitude and longitude at the map's edges
+  const lat0 = bounds.minLatitude;
+  const lon0 = bounds.minLongitude;
+  const origin = project(lat0, lon0);
+  const perLongitude = project(lat0, lon0 + 1).x - origin.x;
+  const perLatitude = project(lat0 + 1, lon0).y - origin.y;
+  const west = lon0 - origin.x / perLongitude;
+  const east = lon0 + (1 - origin.x) / perLongitude;
+  const north = lat0 - origin.y / perLatitude;
+  const south = lat0 + (1 - origin.y) / perLatitude;
+
+  const zoom = Math.min(MAX_TILE_ZOOM, Math.max(0, Math.round(Math.log2((360 * widthPx) / ((east - west) * TILE_SIZE)))));
+  const tiles: MapTile[] = [];
+  for (let tx = Math.floor(tileX(west, zoom)); tx <= Math.floor(tileX(east, zoom)); tx++) {
+    for (let ty = Math.floor(tileY(north, zoom)); ty <= Math.floor(tileY(south, zoom)); ty++) {
+      const topLeft = project(tileLatitude(ty, zoom), tileLongitude(tx, zoom));
+      const bottomRight = project(tileLatitude(ty + 1, zoom), tileLongitude(tx + 1, zoom));
+      tiles.push({
+        key: `${zoom}/${tx}/${ty}`,
+        url: `https://tile.openstreetmap.org/${zoom}/${tx}/${ty}.png`,
+        x: topLeft.x,
+        y: topLeft.y,
+        width: bottomRight.x - topLeft.x,
+        height: bottomRight.y - topLeft.y,
+      });
+    }
+  }
+  return tiles;
 }

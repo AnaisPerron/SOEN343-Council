@@ -26,7 +26,16 @@ export const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
     overflow: 'hidden',
   },
-  gridLine: { position: 'absolute', backgroundColor: '#e5e7eb' },
+  tile: { position: 'absolute' },
+  attribution: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 4,
+    fontSize: 10,
+    color: '#374151',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+  },
   marker: {
     position: 'absolute',
     width: MARKER_SIZE,
@@ -44,7 +53,7 @@ export const styles = StyleSheet.create({
   restaurantMarker: { borderRadius: 4 },
   courierMarker: { borderRadius: MARKER_SIZE / 2 },
   markerActive: { borderColor: '#111827', zIndex: 2 },
-  emptyOverlay: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  emptyOverlay: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: 'rgba(255, 255, 255, 0.7)' },
   emptyTitle: { fontSize: 16, fontWeight: '700', color: '#374151', textAlign: 'center' },
   emptyText: { marginTop: 4, color: '#6b7280', textAlign: 'center' },
   tooltip: {

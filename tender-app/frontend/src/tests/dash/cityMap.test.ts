@@ -2,9 +2,9 @@ import assert from 'node:assert/strict';
 import { afterEach, describe, it, mock } from 'node:test';
 
 import { API_URL } from '../../api/client.ts';
-import { fetchMapData } from '../../api/dashMap.ts';
-import { createProjection, DEFAULT_MAP_BOUNDS, fitMapSize, isMapEmpty, markerStateLabel, normalizeMapData, toMarkers } from '../../lib/cityMap.ts';
-import type { MapData } from '../../types/dash.ts';
+import { fetchMapData, watchMapData } from '../../api/dashMap.ts';
+import { createProjection, DEFAULT_MAP_BOUNDS, fitMapSize, isMapEmpty, mapTiles, markerStateLabel, normalizeMapData, toMarkers } from '../../lib/cityMap.ts';
+import type { MapCourier, MapData } from '../../types/dash.ts';
 
 // Seeded Montreal demo data
 const data: MapData = {
@@ -123,5 +123,109 @@ describe('city map API', () => {
     mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify({ restaurants: [], couriers: [] }), { status: 200 }));
 
     assert.deepEqual(await fetchMapData('session-token'), { bounds: DEFAULT_MAP_BOUNDS, restaurants: [], couriers: [] });
+  });
+});
+
+describe('keeping the map in sync', () => {
+  afterEach(() => {
+    mock.timers.reset();
+    mock.restoreAll();
+  });
+
+  // Lets the mocked fetch and the promise chain behind it settle
+  const settle = () => new Promise<void>((resolve) => setImmediate(resolve));
+  const withCourier = (status: MapCourier['status'] | null): MapData => ({
+    ...data,
+    couriers: status ? [{ courierId: 6, name: 'Sam Courier', status, latitude: 45.509, longitude: -73.561 }] : [],
+  });
+
+  it('reloads on every tick so duty, dispatch, pickup, delivery and reset changes appear', async () => {
+    mock.timers.enable({ apis: ['setInterval'] });
+    const states = [withCourier(null), withCourier('idle'), withCourier('assigned'), withCourier('carrying'), withCourier('idle'),
+      { bounds: DEFAULT_MAP_BOUNDS, restaurants: [], couriers: [] }];
+    let call = 0;
+    mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify(states[call++]), { status: 200 }));
+    const seen: (string | null)[] = [];
+
+    const stop = watchMapData('session-token', (next) => seen.push(next.couriers[0]?.status ?? null), assert.fail, 1000);
+    await settle();
+    for (let tick = 1; tick < states.length; tick++) {
+      mock.timers.tick(1000);
+      await settle();
+    }
+    stop();
+
+    assert.deepEqual(seen, [null, 'idle', 'assigned', 'carrying', 'idle', null]);
+  });
+
+  it('does not stack requests while one is still loading', async () => {
+    mock.timers.enable({ apis: ['setInterval'] });
+    let release: () => void = () => {};
+    const fetchMock = mock.method(globalThis, 'fetch', () => new Promise<Response>((resolve) => {
+      release = () => resolve(new Response(JSON.stringify(data), { status: 200 }));
+    }));
+
+    const stop = watchMapData('session-token', () => {}, assert.fail, 1000);
+    mock.timers.tick(1000);
+    mock.timers.tick(1000);
+    assert.equal(fetchMock.mock.callCount(), 1);
+
+    release();
+    await settle();
+    mock.timers.tick(1000);
+    assert.equal(fetchMock.mock.callCount(), 2);
+    stop();
+  });
+
+  it('stops reloading and ignores late answers once stopped', async () => {
+    mock.timers.enable({ apis: ['setInterval'] });
+    const fetchMock = mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify(data), { status: 200 }));
+    let updates = 0;
+
+    const stop = watchMapData('session-token', () => { updates += 1; }, assert.fail, 1000);
+    stop();
+    await settle();
+    mock.timers.tick(5000);
+    await settle();
+
+    assert.equal(fetchMock.mock.callCount(), 1);
+    assert.equal(updates, 0);
+  });
+
+  it('reports a failed reload so the map can show it, then recovers on the next tick', async () => {
+    mock.timers.enable({ apis: ['setInterval'] });
+    const responses = [new Response('{}', { status: 500 }), new Response(JSON.stringify(data), { status: 200 })];
+    mock.method(globalThis, 'fetch', async () => responses.shift()!);
+    const events: string[] = [];
+
+    const stop = watchMapData('session-token', () => events.push('data'), () => events.push('error'), 1000);
+    await settle();
+    mock.timers.tick(1000);
+    await settle();
+    stop();
+
+    assert.deepEqual(events, ['error', 'data']);
+  });
+});
+
+describe('mapTiles', () => {
+  it('covers the whole map with street tiles', () => {
+    const tiles = mapTiles(data.bounds, 520);
+    assert.ok(tiles.length > 0);
+    assert.ok(tiles.every((t) => t.url.startsWith('https://tile.openstreetmap.org/')));
+    assert.ok(Math.min(...tiles.map((t) => t.x)) <= 0);
+    assert.ok(Math.min(...tiles.map((t) => t.y)) <= 0);
+    assert.ok(Math.max(...tiles.map((t) => t.x + t.width)) >= 1);
+    assert.ok(Math.max(...tiles.map((t) => t.y + t.height)) >= 1);
+  });
+
+  it('shows each tile at about its natural size', () => {
+    const tiles = mapTiles(data.bounds, 520);
+    const px = tiles[0].width * 520;
+    assert.ok(px > 256 / Math.SQRT2 && px < 256 * Math.SQRT2, `tile is ${px}px wide`);
+  });
+
+  it('draws nothing before the map has a width', () => {
+    assert.deepEqual(mapTiles(data.bounds, 0), []);
   });
 });
