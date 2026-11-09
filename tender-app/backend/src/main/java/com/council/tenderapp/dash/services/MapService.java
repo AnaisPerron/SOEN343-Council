@@ -8,9 +8,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.council.tenderapp.dash.dtos.MapBoundsDto;
 import com.council.tenderapp.dash.dtos.MapCourierDto;
+import com.council.tenderapp.dash.dtos.MapCustomerDto;
 import com.council.tenderapp.dash.dtos.MapDataDto;
 import com.council.tenderapp.dash.dtos.MapRestaurantDto;
 import com.council.tenderapp.dash.repositories.MapRepository;
+import com.council.tenderapp.reg.security.Session;
 
 @Service
 public class MapService {
@@ -24,17 +26,35 @@ public class MapService {
         this.mapRepository = mapRepository;
     }
 
+    /**
+     * Each role sees only what it needs: the operator sees everything, a customer the restaurants and the
+     * couriers bringing their orders, a courier their own pickup and drop-off, and a restaurant the couriers
+     * handling its orders.
+     */
     @Transactional(readOnly = true)
-    public MapDataDto getMapData() {
-        List<MapRestaurantDto> restaurants = mapRepository.restaurants();
-        List<MapCourierDto> couriers = mapRepository.onDutyCouriers();
-        return new MapDataDto(boundsOf(restaurants, couriers), restaurants, couriers);
+    public MapDataDto getMapData(Session viewer) {
+        long id = viewer.accountId();
+        return switch (viewer.role()) {
+            case OPERATOR -> build(mapRepository.restaurants(), mapRepository.onDutyCouriers(), List.of());
+            case CUSTOMER -> build(mapRepository.restaurants(), mapRepository.couriersOfCustomerOrders(id), mapRepository.customer(id));
+            case COURIER -> build(mapRepository.restaurantsOfCourierOrders(id), mapRepository.onDutyCourier(id),
+                    mapRepository.customersOfCourierOrders(id));
+            case STAFF -> viewer.restaurantId() == null
+                    ? build(List.of(), List.of(), List.of())
+                    : build(mapRepository.restaurant(viewer.restaurantId()), mapRepository.couriersOfRestaurantOrders(viewer.restaurantId()), List.of());
+        };
     }
 
-    private static MapBoundsDto boundsOf(List<MapRestaurantDto> restaurants, List<MapCourierDto> couriers) {
-        List<double[]> points = Stream.concat(
+    private static MapDataDto build(List<MapRestaurantDto> restaurants, List<MapCourierDto> couriers, List<MapCustomerDto> customers) {
+        return new MapDataDto(boundsOf(restaurants, couriers, customers), restaurants, couriers, customers);
+    }
+
+    private static MapBoundsDto boundsOf(List<MapRestaurantDto> restaurants, List<MapCourierDto> couriers, List<MapCustomerDto> customers) {
+        List<double[]> points = Stream.of(
                 restaurants.stream().map(r -> new double[] {r.latitude(), r.longitude()}),
-                couriers.stream().map(c -> new double[] {c.latitude(), c.longitude()}))
+                couriers.stream().map(c -> new double[] {c.latitude(), c.longitude()}),
+                customers.stream().map(c -> new double[] {c.latitude(), c.longitude()}))
+                .flatMap(s -> s)
                 .toList();
         if (points.isEmpty()) return DEFAULT_BOUNDS;
 
