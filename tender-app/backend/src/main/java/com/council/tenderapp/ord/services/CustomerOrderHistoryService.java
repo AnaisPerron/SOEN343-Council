@@ -6,7 +6,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -84,14 +83,5 @@ public class CustomerOrderHistoryService {
                 },
                 lineIds.toArray());
         return byLine;
-    }
-
-    @Transactional(readOnly = true)
-    public boolean isCustomerOrder(Long orderId, Long customerId) {
-        Optional<Order> order = orderRepository.findById(orderId);
-        if (order.isEmpty() || !order.get().getCustomerId().equals(customerId)) {
-            return false;
-        }
-        return true;
     }
 }
