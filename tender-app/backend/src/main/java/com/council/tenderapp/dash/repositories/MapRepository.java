@@ -26,6 +26,11 @@ public class MapRepository {
         return restaurants("TRUE");
     }
 
+    /** The restaurants a customer can order from. */
+    public List<MapRestaurantDto> openRestaurants() {
+        return restaurants("LOWER(r.status) = 'open'");
+    }
+
     public List<MapRestaurantDto> restaurant(long restaurantId) {
         return restaurants("r.id = ?", restaurantId);
     }

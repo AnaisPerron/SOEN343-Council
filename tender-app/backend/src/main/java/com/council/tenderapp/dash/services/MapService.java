@@ -27,7 +27,7 @@ public class MapService {
     }
 
     /**
-     * Each role sees only what it needs: the operator sees everything, a customer the restaurants and the
+     * Each role sees only what it needs: the operator sees everything, a customer the open restaurants and the
      * couriers bringing their orders, a courier their own pickup and drop-off, and a restaurant the couriers
      * handling its orders.
      */
@@ -36,7 +36,7 @@ public class MapService {
         long id = viewer.accountId();
         return switch (viewer.role()) {
             case OPERATOR -> build(mapRepository.restaurants(), mapRepository.onDutyCouriers(), List.of());
-            case CUSTOMER -> build(mapRepository.restaurants(), mapRepository.couriersOfCustomerOrders(id), mapRepository.customer(id));
+            case CUSTOMER -> build(mapRepository.openRestaurants(), mapRepository.couriersOfCustomerOrders(id), mapRepository.customer(id));
             case COURIER -> build(mapRepository.restaurantsOfCourierOrders(id), mapRepository.onDutyCourier(id),
                     mapRepository.customersOfCourierOrders(id));
             case STAFF -> viewer.restaurantId() == null

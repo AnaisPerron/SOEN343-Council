@@ -120,14 +120,16 @@ class MapControllerTest {
         placeCourier(otherCourier, CourierStatus.IDLE, 45.50, -73.56);
         Restaurant pickup = restaurants.saveAndFlush(new Restaurant("Scope Cafe", "open", 45.51, -73.57));
         Restaurant elsewhere = restaurants.saveAndFlush(new Restaurant("Other Cafe", "open", 45.505, -73.565));
+        Restaurant closed = restaurants.saveAndFlush(new Restaurant("Closed Cafe", "closed", 45.506, -73.566));
         Order order = new Order(customer.id(), pickup.getId(), OrderStatus.PICKED_UP, new BigDecimal("20.00"));
         order.setCourierId(courier.id());
         orders.saveAndFlush(order);
 
-        // The customer sees every restaurant, the courier bringing their order and themselves, but no other courier
+        // The customer sees the open restaurants, the courier bringing their order and themselves, but no other courier
         mockMvc.perform(get("/api/map").header(HttpHeaders.AUTHORIZATION, "Bearer " + customer.token()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.restaurants[*].id").value(hasItem(elsewhere.getId().intValue())))
+                .andExpect(jsonPath("$.restaurants[*].id").value(not(hasItem(closed.getId().intValue()))))
                 .andExpect(jsonPath("$.couriers[*].courierId").value(contains(courier.id().intValue())))
                 .andExpect(jsonPath("$.customers[*].customerId").value(contains(customer.id().intValue())));
 

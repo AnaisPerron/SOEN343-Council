@@ -65,8 +65,8 @@ class MapServiceTest {
     }
 
     @Test
-    void aCustomerSeesTheRestaurantsTheirCouriersAndThemselves() {
-        when(mapRepository.restaurants()).thenReturn(List.of(new MapRestaurantDto(1L, "Maple & Main", "open", 45.51, -73.57)));
+    void aCustomerSeesTheOpenRestaurantsTheirCouriersAndThemselves() {
+        when(mapRepository.openRestaurants()).thenReturn(List.of(new MapRestaurantDto(1L, "Maple & Main", "open", 45.51, -73.57)));
         when(mapRepository.couriersOfCustomerOrders(3L)).thenReturn(List.of(new MapCourierDto(6L, "Leo", "carrying", 45.52, -73.58)));
         when(mapRepository.customer(3L)).thenReturn(List.of(new MapCustomerDto(3L, "Cara", 45.53, -73.59)));
 
@@ -76,6 +76,7 @@ class MapServiceTest {
         assertThat(data.couriers()).extracting(MapCourierDto::courierId).containsExactly(6L);
         assertThat(data.customers()).extracting(MapCustomerDto::customerId).containsExactly(3L);
         assertThat(data.bounds()).isEqualTo(new MapBoundsDto(45.51, -73.59, 45.53, -73.57));
+        verify(mapRepository, never()).restaurants();
         verify(mapRepository, never()).onDutyCouriers();
     }
 
