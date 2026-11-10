@@ -2,6 +2,8 @@ package com.council.tenderapp.dlv.services;
 
 import java.util.List;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -24,7 +26,10 @@ public class CourierDutyService {
 
     private static final Logger logger = LoggerFactory.getLogger(CourierDutyService.class);
 
-    // A courier holds an order from assignment (ready) until it is delivered
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    // An offer is READY and an accepted or carried delivery is PICKED_UP.
     private static final List<OrderStatus> ACTIVE_DELIVERY = List.of(OrderStatus.READY, OrderStatus.PICKED_UP);
 
     private final CourierProfileRepository courierProfileRepository;
@@ -42,7 +47,9 @@ public class CourierDutyService {
 
     @Transactional
     public CourierDutyResponseDto getDutyStatus(Long courierId) {
-        return toResponse(findCourier(courierId));
+        CourierProfile courier = findCourier(courierId);
+        entityManager.refresh(courier);
+        return toResponse(courier);
     }
 
     @Transactional
@@ -58,8 +65,36 @@ public class CourierDutyService {
     @Transactional
     public CourierDutyResponseDto goOffDuty(Long courierId) {
         CourierProfile courier = findCourier(courierId);
+        boolean withdrewOffer = courier.getStatus() == CourierStatus.IDLE && withdrawOffer(courierId, null);
         courier.setStatus(transition(() -> courier.getStatus().goOffDuty()));
-        return toResponse(courierProfileRepository.saveAndFlush(courier));
+        courierProfileRepository.saveAndFlush(courier);
+        if (withdrewOffer) dispatchService.retryQueue();
+        return toResponse(courier);
+    }
+
+    @Transactional
+    public CourierDutyResponseDto acceptOffer(Long courierId, Long orderId) {
+        CourierProfile courier = findCourier(courierId);
+        if (courier.getStatus() != CourierStatus.IDLE || !isOffer(courierId, orderId)) {
+            throw new InvalidCourierStateException("Order is not an available offer for this courier");
+        }
+        courier.setStatus(CourierStatus.ASSIGNED);
+        courierProfileRepository.saveAndFlush(courier);
+        logger.info("Courier_{} accepted order #{}: new status: assigned", courierId, orderId);
+        return toResponse(courier);
+    }
+
+    @Transactional
+    public CourierDutyResponseDto declineOffer(Long courierId, Long orderId) {
+        CourierProfile courier = findCourier(courierId);
+        if (courier.getStatus() != CourierStatus.IDLE || !withdrawOffer(courierId, orderId)) {
+            throw new InvalidCourierStateException("Order is not an available offer for this courier");
+        }
+        courier.setStatus(transition(() -> courier.getStatus().goOffDuty()));
+        courierProfileRepository.saveAndFlush(courier);
+        logger.info("Courier_{} declined order #{} and went off duty", courierId, orderId);
+        dispatchService.retryQueue();
+        return toResponse(courier);
     }
 
     /**
@@ -84,10 +119,20 @@ public class CourierDutyService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void releaseCourier(Long orderId) {
-        Long courierId = orderRepository.findById(orderId).map(Order::getCourierId).orElse(null);
+        Order order = orderRepository.findById(orderId).orElse(null);
+        Long courierId = order == null ? null : order.getCourierId();
         if (courierId == null) return;
         CourierProfile courier = courierProfileRepository.findWithLockByUserId(courierId).orElse(null);
-        if (courier == null || (courier.getStatus() != CourierStatus.ASSIGNED && courier.getStatus() != CourierStatus.CARRYING)) return;
+        if (courier == null) return;
+        if (courier.getStatus() == CourierStatus.IDLE && order.getStatus() != OrderStatus.READY
+                && order.getStatus() != OrderStatus.PICKED_UP) {
+            order.setCourierId(null);
+            orderRepository.saveAndFlush(order);
+            logger.info("Courier_{} offer for order #{} was withdrawn", courierId, orderId);
+            dispatchService.retryQueue();
+            return;
+        }
+        if (courier.getStatus() != CourierStatus.ASSIGNED && courier.getStatus() != CourierStatus.CARRYING) return;
         // Only free them once they hold no other active order
         if (orderRepository.findFirstByCourierIdAndStatusInOrderByDateOrderedAscIdAsc(courierId, ACTIVE_DELIVERY).isPresent()) return;
 
@@ -103,6 +148,24 @@ public class CourierDutyService {
                 .map(order -> new AssignedOrderDto(order, restaurantRepository.findById(order.getRestaurantId()).orElse(null)))
                 .orElse(null);
         return new CourierDutyResponseDto(courier, assignedOrder);
+    }
+
+    private boolean isOffer(Long courierId, Long orderId) {
+        return orderRepository.findByIdForUpdate(orderId)
+                .filter(order -> order.getStatus() == OrderStatus.READY && courierId.equals(order.getCourierId()))
+                .isPresent();
+    }
+
+    private boolean withdrawOffer(Long courierId, Long requestedOrderId) {
+        Order offer = orderRepository.findFirstByCourierIdAndStatusInOrderByDateOrderedAscIdAsc(
+                courierId, List.of(OrderStatus.READY)).orElse(null);
+        if (offer == null || (requestedOrderId != null && !requestedOrderId.equals(offer.getId()))) return false;
+        Order lockedOffer = orderRepository.findByIdForUpdate(offer.getId()).orElse(null);
+        if (lockedOffer == null || lockedOffer.getStatus() != OrderStatus.READY
+                || !courierId.equals(lockedOffer.getCourierId())) return false;
+        lockedOffer.setCourierId(null);
+        orderRepository.saveAndFlush(lockedOffer);
+        return true;
     }
 
     // Locked so a dispatch running at the same time can't assign this courier mid-change

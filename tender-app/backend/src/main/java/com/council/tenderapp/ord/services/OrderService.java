@@ -127,22 +127,17 @@ public class OrderService {
     }
 
     @Transactional
-    public OrderResponse markPickedUp(Long restaurantId, Long orderId) {
-        Order order = getOwnedOrderForUpdate(restaurantId, orderId);
+    public OrderResponse markPickedUpByCourier(Long courierId, Long orderId) {
+        Order order = orderRepository.findByIdForUpdate(orderId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+        if (!Objects.equals(order.getCourierId(), courierId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Order is not assigned to this courier");
+        }
+
         OrderStatus previousStatus = order.getStatus();
         transitionOrder(order, OrderStatus.PICKED_UP, "mark picked up");
         Order savedOrder = orderRepository.save(order);
-        publishStatusChange(savedOrder, previousStatus, "marked picked up", null);
-        return toResponse(savedOrder);
-    }
-
-    @Transactional
-    public OrderResponse markDelivered(Long restaurantId, Long orderId) {
-        Order order = getOwnedOrderForUpdate(restaurantId, orderId);
-        OrderStatus previousStatus = order.getStatus();
-        transitionOrder(order, OrderStatus.DELIVERED, "mark delivered");
-        Order savedOrder = orderRepository.save(order);
-        publishStatusChange(savedOrder, previousStatus, "marked delivered", null);
+        publishStatusChange(savedOrder, previousStatus, "marked picked up by courier", null);
         return toResponse(savedOrder);
     }
 

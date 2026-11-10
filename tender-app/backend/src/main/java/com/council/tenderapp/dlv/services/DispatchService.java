@@ -19,7 +19,7 @@ import com.council.tenderapp.technicalservices.logging.AppLogService;
 
 /**
  * The dispatch queue is every ready order that has no courier yet, oldest first.
- * Retrying it hands each waiting order to the nearest idle courier until couriers run out (R-DLV-04).
+ * Retrying it offers each waiting order to the nearest idle courier without an outstanding offer (R-DLV-04).
  */
 @Service
 public class DispatchService {
@@ -40,6 +40,9 @@ public class DispatchService {
     @Transactional
     public void retryQueue() {
         List<CourierProfile> idle = new ArrayList<>(courierProfileRepository.findByStatusOrderByUserIdAsc(CourierStatus.IDLE));
+        idle.removeIf(courier -> orderRepository
+                .findFirstByCourierIdAndStatusInOrderByDateOrderedAscIdAsc(courier.getUserId(), List.of(OrderStatus.READY))
+                .isPresent());
         for (Order order : orderRepository.findWaitingReadyOrdersForDispatch()) {
             if (idle.isEmpty()) {
                 logService.info("Dispatch queue: order #" + order.getId() + " is waiting for a courier");
@@ -49,9 +52,7 @@ public class DispatchService {
             CourierProfile courier = idle.stream().min(byDistanceTo(restaurant)).orElseThrow();
             idle.remove(courier);
             order.setCourierId(courier.getUserId());
-            courier.setStatus(CourierStatus.ASSIGNED);
-            logService.info("Dispatch queue: order #" + order.getId() + " assigned to courier #" + courier.getUserId()
-                    + " and removed from the queue");
+            logService.info("Dispatch queue: order #" + order.getId() + " offered to courier #" + courier.getUserId());
         }
     }
 

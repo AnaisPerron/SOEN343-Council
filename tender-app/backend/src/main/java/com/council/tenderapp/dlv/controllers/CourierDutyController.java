@@ -55,6 +55,33 @@ public class CourierDutyController {
         return ResponseEntity.ok(courierDutyService.goOffDuty(getCourierId(authentication)));
     }
 
+    @PostMapping("/orders/{orderId}/accept")
+    public ResponseEntity<CourierDutyResponseDto> acceptOrder(Authentication authentication, @PathVariable Long orderId)
+    {
+        return ResponseEntity.ok(courierDutyService.acceptOffer(getCourierId(authentication), orderId));
+    }
+
+    @PostMapping("/orders/{orderId}/decline")
+    public ResponseEntity<CourierDutyResponseDto> declineOrder(Authentication authentication, @PathVariable Long orderId)
+    {
+        return ResponseEntity.ok(courierDutyService.declineOffer(getCourierId(authentication), orderId));
+    }
+
+    @PostMapping("/orders/{orderId}/picked-up")
+    public ResponseEntity<CourierDutyResponseDto> markOrderPickedUp(
+            Authentication authentication,
+            @PathVariable Long orderId)
+    {
+        Long courierId = getCourierId(authentication);
+        CourierDutyResponseDto duty = courierDutyService.getDutyStatus(courierId);
+        if (!"assigned".equals(duty.status()) || duty.assignedOrder() == null
+                || !orderId.equals(duty.assignedOrder().orderId())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Accept this order before confirming pickup");
+        }
+        orderService.markPickedUpByCourier(courierId, orderId);
+        return ResponseEntity.ok(courierDutyService.getDutyStatus(courierId));
+    }
+
     @PostMapping("/orders/{orderId}/delivered")
     public ResponseEntity<CourierDutyResponseDto> markOrderDelivered(
             Authentication authentication,
