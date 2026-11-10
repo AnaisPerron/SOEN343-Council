@@ -1,5 +1,5 @@
 -- Demo seed for REG and ORD. Requires the existing database schema.
--- warning deletes and replaces all data in the fifteen tables below
+-- warning deletes and replaces all data in the sixteen tables below
 -- Run ONLY against a demo database.
 -- TRUNCATE RESTART IDENTITY ensures consistent data on every run.
 -- Executed in a transaction; errors roll back all changes.
@@ -19,6 +19,7 @@ TRUNCATE TABLE
     order_events,
     order_lines,
     orders,
+    menu_photos,
     menu_item_options,
     menu_items,
     menus,

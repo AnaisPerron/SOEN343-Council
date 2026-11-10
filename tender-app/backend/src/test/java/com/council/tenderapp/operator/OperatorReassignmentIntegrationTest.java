@@ -30,6 +30,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import com.council.tenderapp.dlv.services.DispatchService;
 import com.council.tenderapp.operator.services.OperatorReassignmentService;
+import com.council.tenderapp.operator.services.OperatorResetService;
 import com.council.tenderapp.ord.entities.Order;
 import com.council.tenderapp.ord.entities.OrderStatus;
 import com.council.tenderapp.ord.entities.Restaurant;
@@ -46,6 +47,7 @@ import com.council.tenderapp.reg.repositories.CourierProfileRepository;
 @SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:operator-reassignment;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE")
 class OperatorReassignmentIntegrationTest {
     @Autowired private OperatorReassignmentService service;
+    @Autowired private OperatorResetService resets;
     @Autowired private OrderRepository orders;
     @Autowired private RestaurantRepository restaurants;
     @Autowired private CourierProfileRepository couriers;
@@ -188,6 +190,13 @@ class OperatorReassignmentIntegrationTest {
         authenticate("CUSTOMER");
         assertThatThrownBy(() -> service.reassign(order.getId(), 101L)).isInstanceOf(AccessDeniedException.class);
         assertThat(events.count()).isZero();
+    }
+
+    @Test
+    void resetServiceAlsoRejectsNonOperatorsBeforeLoadingAnySeed() {
+        authenticate("CUSTOMER");
+        assertThatThrownBy(resets::reset).isInstanceOf(AccessDeniedException.class);
+        assertThat(orders.findById(order.getId())).isPresent();
     }
 
     @Test
