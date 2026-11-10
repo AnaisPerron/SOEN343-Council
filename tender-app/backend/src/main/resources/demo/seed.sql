@@ -44,10 +44,10 @@ INSERT INTO users (role, name, email, password_hash, phone) VALUES
 ('staff', 'Casey Closed Staff', 'casey@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550109'); -- 9
 
 -- demo coordinates are illustrative points around Montreal (lat, lon)
-INSERT INTO customer_profiles (user_id, td_cash_balance, latitude, longitude) VALUES
-(1, 75.00, 45.5080, -73.5710),
-(2, 40.00, 45.5140, -73.5620),
-(3, 22.50, 45.4970, -73.5800);
+INSERT INTO customer_profiles (user_id, td_cash_balance, address, latitude, longitude) VALUES
+(1, 75.00, '1250 Rue Peel, Montreal, Canada', 45.5080, -73.5710),
+(2, 40.00, '275 Rue Sherbrooke E, Montreal, Canada', 45.5140, -73.5620),
+(3, 22.50, '1455 Boul. De Maisonneuve O, Montreal, Canada', 45.4970, -73.5800);
 
 INSERT INTO operator_profiles (user_id) VALUES
 (8);

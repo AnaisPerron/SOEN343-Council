@@ -34,6 +34,18 @@ class CourierStatusTest {
     }
 
     @Test
+    void pickingUpTheOrderMakesTheCourierCarryIt() {
+        assertThat(CourierStatus.ASSIGNED.pickUp()).isEqualTo(CourierStatus.CARRYING);
+        assertThat(CourierStatus.CARRYING.pickUp()).isEqualTo(CourierStatus.CARRYING);
+    }
+
+    @Test
+    void cannotPickUpWithoutAnAssignedOrder() {
+        assertThatThrownBy(CourierStatus.IDLE::pickUp).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(CourierStatus.OFFLINE::pickUp).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
     void finishingADeliveryReturnsTheCourierToIdle() {
         assertThat(CourierStatus.ASSIGNED.finishDelivery()).isEqualTo(CourierStatus.IDLE);
         assertThat(CourierStatus.CARRYING.finishDelivery()).isEqualTo(CourierStatus.IDLE);

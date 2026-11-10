@@ -21,6 +21,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.council.tenderapp.reg.dtos.RegisterResponse;
 import com.council.tenderapp.reg.dtos.UpdateProfileRequest;
+import com.council.tenderapp.reg.services.CustomerProfileService;
 import com.council.tenderapp.reg.entities.Profile;
 import com.council.tenderapp.reg.entities.Role;
 import com.council.tenderapp.reg.repositories.ProfileRepository;
@@ -38,6 +39,7 @@ class ProfileControllerTest {
     @Mock private RestaurantStaffRepository restaurantStaff;
     @Mock private JdbcTemplate jdbc;
     @Mock private SessionService sessions;
+    @Mock private CustomerProfileService customerProfiles;
 
     private ProfileController controller;
     private Profile profile;
@@ -45,7 +47,7 @@ class ProfileControllerTest {
 
     @BeforeEach
     void setUp() {
-        controller = new ProfileController(profiles, restaurants, restaurantStaff, jdbc, sessions);
+        controller = new ProfileController(profiles, restaurants, restaurantStaff, jdbc, sessions, customerProfiles);
         profile = new Profile(Role.CUSTOMER, "Jane", "jane@example.com", "saved-hash", "514-555-0101");
         ReflectionTestUtils.setField(profile, "id", 7L);
         authentication = new UsernamePasswordAuthenticationToken(7L, null);
@@ -78,6 +80,21 @@ class ProfileControllerTest {
     }
 
     @Test
+    void customerAddressIsReadAndSavedInCustomerProfiles() {
+        when(profiles.findById(7L)).thenReturn(Optional.of(profile));
+        when(profiles.save(profile)).thenReturn(profile);
+        when(customerProfiles.deliveryAddress(7L))
+                .thenReturn(Optional.of(new CustomerProfileService.DeliveryAddress("Old address", null, null)))
+                .thenReturn(Optional.of(new CustomerProfileService.DeliveryAddress("New address", 45.5, -73.6)));
+
+        RegisterResponse response = controller.update(authentication,
+                new UpdateProfileRequest("Jane", "514-555-0101", "New address", 45.5, -73.6));
+
+        verify(customerProfiles).saveAddress(7L, "New address", 45.5, -73.6);
+        assertThat(response.address()).isEqualTo("New address");
+    }
+
+    @Test
     void rejectsRequestsWithoutAnAuthenticatedAccountId() {
         assertThatThrownBy(() -> controller.get(new UsernamePasswordAuthenticationToken("other", null)))
                 .isInstanceOf(ResponseStatusException.class)
@@ -99,7 +116,7 @@ class ProfileControllerTest {
 
         RegisterResponse before = controller.get(staffAuth);
         RegisterResponse after = controller.update(staffAuth,
-                new UpdateProfileRequest("Maple Bistro", "514-555-0199", "99 Rue St, Montreal"));
+                new UpdateProfileRequest("Maple Bistro", "514-555-0199", "99 Rue St, Montreal", 45.5, -73.6));
 
         assertThat(before.name()).isEqualTo("Maple & Main");
         assertThat(before.restaurantId()).isEqualTo(42L);
@@ -107,5 +124,17 @@ class ProfileControllerTest {
         assertThat(after.address()).isEqualTo("99 Rue St, Montreal");
         assertThat(restaurant.getPhone()).isEqualTo("514-555-0199");
         verify(restaurants).save(restaurant);
+    }
+
+    @Test
+    void rejectsAnUnverifiedCustomerAddressChange() {
+        when(profiles.findById(7L)).thenReturn(Optional.of(profile));
+        when(customerProfiles.deliveryAddress(7L)).thenReturn(Optional.of(
+                new CustomerProfileService.DeliveryAddress("Old address", null, null)));
+
+        assertThatThrownBy(() -> controller.update(authentication,
+                new UpdateProfileRequest("Jane", "514-555-0101", "New address")))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
     }
 }

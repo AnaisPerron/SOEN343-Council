@@ -17,6 +17,7 @@ public class OrderResponse {
     private final BigDecimal totalPrice;
     private final String customerName;
     private final String customerPhone;
+    private final String deliveryAddress;
     private final List<OrderLineResponse> orderLines;
 
     public OrderResponse(
@@ -29,6 +30,7 @@ public class OrderResponse {
         BigDecimal totalPrice,
         String customerName,
         String customerPhone,
+        String deliveryAddress,
         List<OrderLineResponse> orderLines
     ) {
         this.id = id;
@@ -40,6 +42,7 @@ public class OrderResponse {
         this.totalPrice = totalPrice;
         this.customerName = customerName;
         this.customerPhone = customerPhone;
+        this.deliveryAddress = deliveryAddress;
         this.orderLines = List.copyOf(orderLines);
     }
 
@@ -75,6 +78,10 @@ public class OrderResponse {
 
     public String getCustomerPhone() {
         return customerPhone;
+    }
+
+    public String getDeliveryAddress() {
+        return deliveryAddress;
     }
 
     public List<OrderLineResponse> getOrderLines() {

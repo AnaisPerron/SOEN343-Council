@@ -251,6 +251,7 @@ public class OrderService {
             order.getTotalPrice(),
             customer == null ? null : customer.getName(),
             customer == null ? null : customer.getPhone(),
+            order.getDeliveryAddress(),
             orderLines
         );
     }

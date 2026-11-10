@@ -9,6 +9,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.council.tenderapp.reg.dtos.RegisterRequest;
 import com.council.tenderapp.reg.dtos.RegisterResponse;
@@ -51,6 +53,11 @@ public class RegistrationService {
         if (request.role() == Role.OPERATOR) {
             throw new AccessDeniedException("Operator accounts must be predefined");
         }
+        if ((request.role() == Role.CUSTOMER || request.role() == Role.STAFF) &&
+                ((request.address() != null && !request.address().isBlank() && !request.hasLocation()) ||
+                 (request.hasLocation() && (request.address() == null || request.address().isBlank())))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Pick a verified address from the suggestions");
+        }
         String email = request.email().trim().toLowerCase(Locale.ROOT);
         if (repository.existsByEmailIgnoreCase(email)) {
             throw new DuplicateEmailException(email);
@@ -67,12 +74,17 @@ public class RegistrationService {
             Profile saved = repository.saveAndFlush(profile);
             if (saved.getRole() == Role.STAFF) {
                 Restaurant restaurant = restaurantRepository.saveAndFlush(
-                        restaurantWithDetails(saved.getName(), request.phone(), request.address()));
+                        restaurantWithDetails(saved.getName(), request));
                 restaurantStaffRepository.saveAndFlush(new RestaurantStaff(saved.getId(), restaurant.getId()));
                 return RegisterResponse.from(saved, restaurant);
             }
             if (saved.getRole() == Role.CUSTOMER) {
                 customerProfileService.ensureExists(saved.getId());
+                String address = request.address() == null || request.address().isBlank() ? null : request.address().trim();
+                if (address != null || request.hasLocation()) {
+                    customerProfileService.saveAddress(saved.getId(), address,
+                            request.hasLocation() ? request.latitude() : null, request.hasLocation() ? request.longitude() : null);
+                }
             }
             if (saved.getRole() == Role.COURIER) {
                 courierProfileRepository.saveAndFlush(new CourierProfile(saved.getId()));
@@ -87,10 +99,12 @@ public class RegistrationService {
         }
     }
 
-    private static Restaurant restaurantWithDetails(String name, String phone, String address) {
-        Restaurant restaurant = new Restaurant(name, "closed", null, null);
-        restaurant.setPhone(phone.trim());
-        restaurant.setAddress(address == null ? null : address.trim());
+    private static Restaurant restaurantWithDetails(String name, RegisterRequest request) {
+        // Without a picked address the restaurant has no location and stays off the map until one is set
+        Restaurant restaurant = new Restaurant(name, "closed",
+                request.hasLocation() ? request.latitude() : null, request.hasLocation() ? request.longitude() : null);
+        restaurant.setPhone(request.phone().trim());
+        restaurant.setAddress(request.address() == null ? null : request.address().trim());
         return restaurant;
     }
 

@@ -25,4 +25,9 @@ public record RegisterResponse(Long id, String name, String email, String phone,
                 restaurant.getPhone() == null ? profile.getPhone() : restaurant.getPhone(),
                 profile.getRole(), restaurant.getId(), restaurant.getAddress());
     }
+
+    public static RegisterResponse from(Profile profile, String address) {
+        return new RegisterResponse(profile.getId(), profile.getName(), profile.getEmail(),
+                profile.getPhone(), profile.getRole(), null, address);
+    }
 }

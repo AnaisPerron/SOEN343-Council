@@ -51,10 +51,10 @@ export default function RestaurantOrders() {
     // Refresh from the server so incoming and terminal orders reflect database state.
     const refresh = async () => {
       try {
-        const data = await requestJson<{ id: number; status: string; dateOrdered: string; acceptedAt: string | null; rejectionReason: string | null; customerName: string | null; customerPhone: string | null; orderLines: { itemName: string; quantity: number; unitPrice: number }[] }[]>('GET', `/api/restaurants/${restaurantId}/orders`, undefined, token);
+        const data = await requestJson<{ id: number; status: string; dateOrdered: string; acceptedAt: string | null; rejectionReason: string | null; customerName: string | null; customerPhone: string | null; deliveryAddress: string | null; orderLines: { itemName: string; quantity: number; unitPrice: number }[] }[]>('GET', `/api/restaurants/${restaurantId}/orders`, undefined, token);
         if (!active) return;
         console.info('Restaurant orders loaded', { restaurantId, count: data.length });
-        setOrders(data.map((order) => ({ id: order.id, restaurantId, status: order.status.toLowerCase() as RestaurantOrderStatus, createdAt: order.dateOrdered, updatedAt: null, acceptedAt: order.acceptedAt, rejectionReason: order.rejectionReason, customer: { name: order.customerName ?? 'Unavailable', address: 'Unavailable', phone: order.customerPhone ?? 'Unavailable' }, lines: order.orderLines.map((line) => ({ name: line.itemName, quantity: line.quantity, unitPrice: line.unitPrice, toppings: [] })) })));
+        setOrders(data.map((order) => ({ id: order.id, restaurantId, status: order.status.toLowerCase() as RestaurantOrderStatus, createdAt: order.dateOrdered, updatedAt: null, acceptedAt: order.acceptedAt, rejectionReason: order.rejectionReason, customer: { name: order.customerName ?? 'Unavailable', address: order.deliveryAddress ?? 'Unavailable', phone: order.customerPhone ?? 'Unavailable' }, lines: order.orderLines.map((line) => ({ name: line.itemName, quantity: line.quantity, unitPrice: line.unitPrice, toppings: [] })) })));
         setMessage('');
       } catch (error) { if (active) { console.error('Unable to load restaurant orders', error); setMessage(error instanceof Error ? error.message : 'Unable to load orders'); } }
     };

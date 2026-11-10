@@ -5,6 +5,9 @@ export interface Address {
   country: string;
   city: string;
   addressLine: string;
+  /** Set when the address was picked from the suggestions, so the account can be placed on the city map. */
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface Profile {

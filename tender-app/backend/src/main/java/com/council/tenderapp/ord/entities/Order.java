@@ -55,6 +55,16 @@ public class Order {
     @Column(name = "total_price", precision = 10, scale = 2)
     private BigDecimal totalPrice;
 
+    // Where the order goes, copied from the customer when it is placed so a later address change doesn't move past orders
+    @Column(name = "delivery_address")
+    private String deliveryAddress;
+
+    @Column(name = "delivery_latitude")
+    private Double deliveryLatitude;
+
+    @Column(name = "delivery_longitude")
+    private Double deliveryLongitude;
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderLine> orderLines = new ArrayList<>();
 
@@ -74,6 +84,16 @@ public class Order {
     }
 
     public Long getCustomerId() { return customerId; }
+    public String getDeliveryAddress() { return deliveryAddress; }
+    public Double getDeliveryLatitude() { return deliveryLatitude; }
+    public Double getDeliveryLongitude() { return deliveryLongitude; }
+
+    public void setDelivery(String address, Double latitude, Double longitude) {
+        this.deliveryAddress = address;
+        this.deliveryLatitude = latitude;
+        this.deliveryLongitude = longitude;
+    }
+
     public Long getCourierId() { return courierId; }
     public void setCourierId(Long courierId) { this.courierId = courierId; }
 

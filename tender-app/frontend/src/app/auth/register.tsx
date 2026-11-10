@@ -1,6 +1,6 @@
 import { homeRoute } from '@/lib/roleRoutes';
 import { Link, useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import AddressAutocomplete, { type AddressLookup, type PickedAddress } from '@/components/AddressAutocomplete';
 import { ROLE_OPTIONS, useAuth, type Role } from '@/context/AuthContext';
 import { authStyles as styles } from './auth.styles';
 import { selectedRole } from './selectedRole';
@@ -42,6 +43,11 @@ export default function RegisterScreen() {
   const [country, setCountry] = useState('');
   const [city, setCity] = useState('');
   const [addressLine, setAddressLine] = useState('');
+  // Known only when the address was picked from the suggestions; it puts the account on the city map
+  const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  // A new address must be selected from verified suggestions before registration.
+  const [lookup, setLookup] = useState<AddressLookup | null>(null);
+  const onLookup = useCallback((result: AddressLookup) => setLookup(result), []);
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
   const canRegister = role !== 'Operator';
@@ -60,6 +66,9 @@ export default function RegisterScreen() {
       if (!country.trim()) next.country = 'Country is required';
       if (!city.trim()) next.city = 'City is required';
       if (!addressLine.trim()) next.addressLine = 'Address line is required';
+      else if (!location && lookup === 'unavailable') next.addressLine = 'Address verification is unavailable. Retry the search before registering.';
+      else if (!location && lookup === 'none') next.addressLine = "We couldn't verify that address. Check it and pick a street address from the suggestions.";
+      else if (!location) next.addressLine = 'Pick a verified street address from the suggestions.';
     }
     setErrors(next);
     if (Object.keys(next).length) return;
@@ -73,6 +82,7 @@ export default function RegisterScreen() {
       country: country.trim(),
       city: city.trim(),
       addressLine: addressLine.trim(),
+      ...location,
     };
     setLoading(true);
     try {
@@ -92,6 +102,14 @@ export default function RegisterScreen() {
     } catch {
       router.replace({ pathname: '/auth/login', params: { role } });
     }
+  };
+
+  const pickAddress = (picked: PickedAddress) => {
+    setAddressLine(picked.addressLine);
+    setCity(picked.city);
+    setCountry(picked.country);
+    setLocation({ latitude: picked.latitude, longitude: picked.longitude });
+    setErrors((current) => ({ ...current, addressLine: undefined, city: undefined, country: undefined }));
   };
 
   return (
@@ -152,15 +170,27 @@ export default function RegisterScreen() {
               {needsAddress && <>
                 <Text style={styles.addressHeading}>Address</Text>
                 <Text style={styles.label}>Country</Text>
-                <TextInput style={[styles.input, errors.country && styles.inputError]} value={country} onChangeText={setCountry} placeholder="Country" placeholderTextColor="#9ca3af" autoComplete="country" />
+                <TextInput style={[styles.input, errors.country && styles.inputError]} value={country} onChangeText={(text) => { setCountry(text); setLocation(null); }} placeholder="Country" placeholderTextColor="#9ca3af" autoComplete="country" />
                 {errors.country && <Text style={styles.error}>{errors.country}</Text>}
 
                 <Text style={styles.label}>City</Text>
-                <TextInput style={[styles.input, errors.city && styles.inputError]} value={city} onChangeText={setCity} placeholder="City" placeholderTextColor="#9ca3af" />
+                <TextInput style={[styles.input, errors.city && styles.inputError]} value={city} onChangeText={(text) => { setCity(text); setLocation(null); }} placeholder="City" placeholderTextColor="#9ca3af" />
                 {errors.city && <Text style={styles.error}>{errors.city}</Text>}
 
                 <Text style={styles.label}>Address line</Text>
-                <TextInput style={[styles.input, errors.addressLine && styles.inputError]} value={addressLine} onChangeText={setAddressLine} placeholder="Street address" placeholderTextColor="#9ca3af" autoComplete="street-address" />
+                <AddressAutocomplete
+                  style={[styles.input, errors.addressLine && styles.inputError]}
+                  value={addressLine}
+                  onChangeText={(text) => {
+                    setAddressLine(text);
+                    setLocation(null);
+                  }}
+                  onPick={pickAddress}
+                  onLookup={onLookup}
+                  placeholder="Start typing your street address"
+                  placeholderTextColor="#9ca3af"
+                  autoComplete="street-address"
+                />
                 {errors.addressLine && <Text style={styles.error}>{errors.addressLine}</Text>}
               </>}
 
