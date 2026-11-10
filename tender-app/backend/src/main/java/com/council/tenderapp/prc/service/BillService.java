@@ -1,6 +1,7 @@
 package com.council.tenderapp.prc.service;
 
 import org.springframework.stereotype.Service;
+import java.math.BigDecimal;
 
 import com.council.tenderapp.prc.entities.Bill;
 import com.council.tenderapp.prc.repositories.BillRepository;
@@ -19,7 +20,10 @@ public class BillService
         Bill bill = billRepository.findByOrderId(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("No bill found for order ID: " + orderId));
 
-        Double totalAmount = bill.getAmount() + bill.getServiceFee() + bill.getDeliveryFee() + bill.getSmallOrderFee();
+        Double totalAmount = BigDecimal.valueOf(bill.getAmount())
+                .add(BigDecimal.valueOf(bill.getServiceFee()))
+                .add(BigDecimal.valueOf(bill.getDeliveryFee()))
+                .add(BigDecimal.valueOf(bill.getSmallOrderFee())).doubleValue();
         
         return totalAmount;
     }
