@@ -17,8 +17,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.council.tenderapp.reg.dtos.RegisterRequest;
 import com.council.tenderapp.reg.dtos.RegisterResponse;
@@ -52,6 +54,15 @@ class RegistrationServiceTest {
     @BeforeEach
     void setUp() {
         service = new RegistrationService(repository, passwordEncoder, restaurantRepository, restaurantStaffRepository, customerProfileService, courierProfileRepository);
+    }
+
+    @Test
+    void rejectsAnAddressThatWasNotPickedFromSuggestions() {
+        assertThatThrownBy(() -> service.register(new RegisterRequest(
+                "Jane", "jane@example.com", "secret123", "514-555-0101", Role.CUSTOMER,
+                "123 Main St, Montreal, Canada")))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
     }
 
     @Test

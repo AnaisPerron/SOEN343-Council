@@ -9,6 +9,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.council.tenderapp.reg.dtos.RegisterRequest;
 import com.council.tenderapp.reg.dtos.RegisterResponse;
@@ -50,6 +52,11 @@ public class RegistrationService {
     public RegisterResponse register(RegisterRequest request) {
         if (request.role() == Role.OPERATOR) {
             throw new AccessDeniedException("Operator accounts must be predefined");
+        }
+        if ((request.role() == Role.CUSTOMER || request.role() == Role.STAFF) &&
+                ((request.address() != null && !request.address().isBlank() && !request.hasLocation()) ||
+                 (request.hasLocation() && (request.address() == null || request.address().isBlank())))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Pick a verified address from the suggestions");
         }
         String email = request.email().trim().toLowerCase(Locale.ROOT);
         if (repository.existsByEmailIgnoreCase(email)) {
