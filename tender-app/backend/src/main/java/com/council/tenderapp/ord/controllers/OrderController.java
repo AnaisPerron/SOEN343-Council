@@ -20,6 +20,7 @@ import com.council.tenderapp.ord.dtos.OrderStatusResponseDto;
 import com.council.tenderapp.ord.dtos.PlaceOrderRequestDto;
 import com.council.tenderapp.ord.services.CustomerOrderHistoryService;
 import com.council.tenderapp.ord.services.CustomerOrderService;
+import com.council.tenderapp.prc.service.PricingService;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -44,6 +45,13 @@ public class OrderController {
     public OrderResponseDto placeOrder(@AuthenticationPrincipal Long customerId,
             @Valid @RequestBody PlaceOrderRequestDto request) {
         return orderService.placeOrder(customerId, request);
+    }
+
+    @PostMapping("/quote")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public PricingService.Quote quoteOrder(@AuthenticationPrincipal Long customerId,
+            @Valid @RequestBody PlaceOrderRequestDto request) {
+        return orderService.quoteOrder(customerId, request);
     }
 
     @PostMapping("/{id}/cancel")

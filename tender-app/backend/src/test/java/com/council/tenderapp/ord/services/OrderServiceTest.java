@@ -157,6 +157,18 @@ class OrderServiceTest {
     }
 
     @Test
+    void quotesTheSamePriceWithoutChargingOrSavingAnOrder() {
+        menu(item(1L, "Lunch", "12.00", "available"));
+        PricingService.Quote quote = new PricingService.Quote(new BigDecimal("12.00"), new BigDecimal("2.00"),
+                new BigDecimal("1.50"), new BigDecimal("1.60"), new BigDecimal("2.00"), new BigDecimal("17.10"));
+        when(pricingService.quote(any(), any(), any(), any())).thenReturn(quote);
+
+        assertThat(service.quoteOrder(CUSTOMER_ID, request(new OrderItemRequestDto(1L, 1))).total())
+                .isEqualByComparingTo("17.10");
+        verifyNoInteractions(paymentGateway, orderRepository);
+    }
+
+    @Test
     void copiesTheCustomersAddressOntoTheOrder() {
         menu(item(2L, "Pepperoni Pizza", "17.00", "available"));
         when(paymentGateway.charge(any(), any())).thenReturn(PaymentResult.approved("MOCK-1"));

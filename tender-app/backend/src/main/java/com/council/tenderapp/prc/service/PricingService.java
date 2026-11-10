@@ -39,6 +39,13 @@ public class PricingService {
     public record Quote(BigDecimal subtotal, BigDecimal distanceKm, BigDecimal serviceFee,
             BigDecimal deliveryFee, BigDecimal smallOrderFee, BigDecimal total) {}
 
+    public record Rules(BigDecimal deliveryFeePerKm, BigDecimal serviceFee,
+            BigDecimal smallOrderThreshold, BigDecimal smallOrderSurcharge) {}
+
+    public Rules rules() {
+        return new Rules(deliveryRate, serviceFee, smallOrderThreshold, smallOrderSurcharge);
+    }
+
     public Quote quote(BigDecimal subtotal, Long restaurantId, Double latitude, Double longitude) {
         Restaurant restaurant = restaurants.findById(restaurantId)
                 .orElseThrow(() -> new InvalidOrderException("Restaurant is unavailable for pricing"));
