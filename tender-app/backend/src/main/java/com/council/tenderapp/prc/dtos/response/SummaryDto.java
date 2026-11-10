@@ -13,6 +13,7 @@ public record SummaryDto (
     OffsetDateTime acceptedAt,
     OffsetDateTime pickedUpAt,
     OffsetDateTime deliveredAt,
+    OffsetDateTime cancelledAt,
     OffsetDateTime finishedAt,
     List<OrderLineDto> orderItems,
     List<ChargeDto> charges,

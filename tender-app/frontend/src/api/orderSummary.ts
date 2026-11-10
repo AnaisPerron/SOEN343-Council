@@ -8,6 +8,7 @@ export interface OrderSummary {
   acceptedAt: string | null;
   pickedUpAt: string | null;
   deliveredAt: string | null;
+  cancelledAt: string | null;
   finishedAt: string | null;
   orderItems: {
     menuItemId: number;
