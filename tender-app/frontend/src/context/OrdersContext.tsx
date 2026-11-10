@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { API_URL } from '../api/client';
 import type { RestaurantCartGroup } from '../app/customer/cart/cartStore';
 import { cancelPlacedOrder, createPlacedOrders, fromOrderHistory, type CustomerOrder } from '../app/customer/services/orderLifecycle';
-import { fetchOrderHistory, sendOrder, sendOrderCancellation, toOrderSubmission } from '../app/customer/services/orderApi';
+import { fetchOrderHistory, sendOrder, sendOrderCancellation, toOrderSubmission, type OrderSubmissionResult } from '../app/customer/services/orderApi';
 import { useAuth } from './AuthContext';
 
 export interface OrderFailure {
@@ -18,6 +18,7 @@ interface OrdersContextValue {
   refreshOrders: () => void;
   /** Places one backend order per restaurant; a failed restaurant does not undo the others. */
   placeOrders: (groups: RestaurantCartGroup[], destination?: { address: string; latitude: number; longitude: number }) => Promise<{ placed: CustomerOrder[]; failures: OrderFailure[] }>;
+  recordPaidOrders: (groups: RestaurantCartGroup[], receipts: OrderSubmissionResult[]) => CustomerOrder[];
   /** Rejects with the backend's reason when the order can no longer be cancelled. */
   cancelOrder: (orderId: string) => Promise<void>;
 }
@@ -63,13 +64,25 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     return { placed, failures };
   };
 
+  const recordPaidOrders: OrdersContextValue['recordPaidOrders'] = (groups, receipts) => {
+    const placed = receipts.map((receipt) => {
+      const group = groups.find((entry) => entry.restaurantId === receipt.restaurantId);
+      if (!group) throw new Error('PayPal returned an unexpected restaurant order.');
+      const [order] = createPlacedOrders([group], receipt.placedAt, receipt.orderId);
+      return { ...order, total: Number(receipt.total) };
+    });
+    setOrders((current) => [...placed, ...current]);
+    loadHistory();
+    return placed;
+  };
+
   const cancelOrder: OrdersContextValue['cancelOrder'] = async (orderId) => {
     if (!token) throw new Error('Sign in again to cancel your order.');
     await sendOrderCancellation(`${API_URL}/api/orders/${encodeURIComponent(orderId)}/cancel`, token);
     setOrders((current) => current.map((order) => order.id === orderId ? cancelPlacedOrder(order) : order));
   };
 
-  return <OrdersContext.Provider value={{ orders, historyStatus, historyError, refreshOrders: loadHistory, placeOrders, cancelOrder }}>{children}</OrdersContext.Provider>;
+  return <OrdersContext.Provider value={{ orders, historyStatus, historyError, refreshOrders: loadHistory, placeOrders, recordPaidOrders, cancelOrder }}>{children}</OrdersContext.Provider>;
 }
 
 export function useOrders() {
