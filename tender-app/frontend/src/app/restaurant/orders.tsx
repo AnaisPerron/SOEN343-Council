@@ -79,7 +79,7 @@ export default function RestaurantOrders() {
     setUpdatingId(target.id);
     try {
       // Update the database first; never report a local-only status change as successful.
-      const actions: Partial<Record<RestaurantOrderStatus, string>> = { accepted: 'accept', rejected: 'reject', preparing: 'prepare', ready: 'ready', picked_up: 'picked-up', delivered: 'delivered' };
+      const actions: Partial<Record<RestaurantOrderStatus, string>> = { accepted: 'accept', rejected: 'reject', preparing: 'prepare', ready: 'ready' };
       const action = actions[nextStatus];
       if (!action) throw new Error('This status change is not available.');
       const updated = await requestJson<{ status: string; acceptedAt: string | null; rejectionReason: string | null }>('POST', `/api/restaurants/${restaurantId}/orders/${target.id}/${action}`, nextStatus === 'rejected' ? { reason: reason?.trim() || null } : undefined, token);
@@ -165,8 +165,6 @@ export default function RestaurantOrders() {
           {order.status === 'placed' && <View style={styles.inlineActions}><Pressable accessibilityRole="button" style={styles.acceptButton} disabled={updatingId != null} onPress={() => changeStatus('accepted', undefined, order)}><Text style={styles.actionText}>Accept</Text></Pressable><Pressable accessibilityRole="button" style={styles.rejectButton} onPress={() => { setDetailId(order.id); setRejecting(true); }}><Text style={styles.rejectText}>Reject</Text></Pressable></View>}
           {order.status === 'accepted' && <Pressable accessibilityRole="button" style={styles.acceptButton} disabled={updatingId != null} onPress={() => changeStatus('preparing', undefined, order)}><Text style={styles.actionText}>Start preparing</Text></Pressable>}
           {order.status === 'preparing' && <Pressable accessibilityRole="button" style={styles.acceptButton} disabled={updatingId != null} onPress={() => changeStatus('ready', undefined, order)}><Text style={styles.actionText}>Mark ready</Text></Pressable>}
-          {order.status === 'ready' && <Pressable accessibilityRole="button" style={styles.acceptButton} disabled={updatingId != null} onPress={() => changeStatus('picked_up', undefined, order)}><Text style={styles.actionText}>Mark picked up</Text></Pressable>}
-          {order.status === 'picked_up' && <Pressable accessibilityRole="button" style={styles.acceptButton} disabled={updatingId != null} onPress={() => changeStatus('delivered', undefined, order)}><Text style={styles.actionText}>Mark delivered</Text></Pressable>}
           </View>
         </View>)}</View>}
       </>}
