@@ -1,15 +1,20 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Animated, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCart } from '@/context/CartContext';
 import { useOrders, type OrderFailure } from '@/context/OrdersContext';
 import { useCatalog } from '@/context/CatalogContext';
 import { useAuth } from '@/context/AuthContext';
+import { fetchPricingRules, type PricingRules } from '@/api/pricing';
+import type { OrderSubmissionResult } from '../services/orderApi';
+import { API_URL } from '@/api/client';
 import AddressAutocomplete, { type AddressLookup, type PickedAddress } from '@/components/AddressAutocomplete';
 import DeliveryMap from './DeliveryMap';
+import PayPalButton from './PayPalButton';
 import { groupCartLinesByRestaurant } from '../cart/cartStore';
 import { getCartOrderRestriction, type RestaurantOrderRestriction } from '../services/restaurantOrderRules';
+import { fetchOrderQuote, toOrderSubmission, type OrderQuote } from '../services/orderApi';
 import { styles } from './confirm-order.styles';
 
 type OrderPhase = 'review' | 'submitting' | 'success';
@@ -23,8 +28,17 @@ export default function ConfirmOrderScreen() {
   const router = useRouter();
   const { lines, removeRestaurant } = useCart();
   const { restaurants, findItem } = useCatalog();
-  const { orders, placeOrders, cancelOrder } = useOrders();
-  const { user } = useAuth();
+  const { orders, placeOrders, recordPaidOrders, cancelOrder } = useOrders();
+  const { user, token } = useAuth();
+  const [pricingRules, setPricingRules] = useState<PricingRules | null>(null);
+  const [pricingError, setPricingError] = useState('');
+  const [pricingLoading, setPricingLoading] = useState(true);
+  const [pricingRetry, setPricingRetry] = useState(0);
+  const [showPricingInfo, setShowPricingInfo] = useState(false);
+  const [quotes, setQuotes] = useState<Record<number, OrderQuote>>({});
+  const [quoteLoading, setQuoteLoading] = useState(true);
+  const [quoteError, setQuoteError] = useState('');
+  const [quoteRetry, setQuoteRetry] = useState(0);
   const savedAddress = user?.address ?? '';
   const [addressLine, setAddressLine] = useState(() => splitAddress(savedAddress).line);
   const [city, setCity] = useState(() => splitAddress(savedAddress).city);
@@ -37,13 +51,15 @@ export default function ConfirmOrderScreen() {
   const [placedIds, setPlacedIds] = useState<string[]>([]);
   const [restriction, setRestriction] = useState<RestaurantOrderRestriction | null>(null);
   const [failures, setFailures] = useState<OrderFailure[]>([]);
+  const [paypalError, setPaypalError] = useState('');
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [successOpacity] = useState(() => new Animated.Value(0));
   const [successScale] = useState(() => new Animated.Value(0.88));
   const sending = useRef(false);
-  const groups = groupCartLinesByRestaurant(lines);
-  const total = groups.reduce((sum, group) => sum + group.total, 0);
+  const groups = useMemo(() => groupCartLinesByRestaurant(lines), [lines]);
+  const quotedTotal = groups.reduce((sum, group) => sum + (quotes[group.restaurantId]?.total ?? 0), 0);
+  const quotesReady = groups.length > 0 && groups.every((group) => quotes[group.restaurantId] != null);
   const placedOrders = orders.filter((order) => placedIds.includes(order.id));
   const deliveryAddress = [addressLine.trim(), city.trim(), country.trim()].join(', ');
   const restaurantPoints = groups.flatMap((group) => {
@@ -57,50 +73,100 @@ export default function ConfirmOrderScreen() {
     successScale.stopAnimation();
   }, [successOpacity, successScale]);
 
+  useEffect(() => {
+    if (!token) return;
+    let active = true;
+    setPricingLoading(true);
+    setPricingError('');
+    fetchPricingRules(token)
+      .then((rules) => { if (active) setPricingRules(rules); })
+      .catch((error) => { if (active) setPricingError(error instanceof Error ? error.message : 'Could not load pricing rules.'); })
+      .finally(() => { if (active) setPricingLoading(false); });
+    return () => { active = false; };
+  }, [token, pricingRetry]);
+
+  useEffect(() => {
+    if (!token || groups.length === 0) { setQuoteLoading(false); return; }
+    const changed = deliveryAddress !== savedAddress.trim();
+    if (!addressLine.trim() || !city.trim() || !country.trim() || (changed && !destination)) {
+      setQuotes({}); setQuoteLoading(false); setQuoteError(''); return;
+    }
+    let active = true;
+    setQuotes({}); setQuoteLoading(true); setQuoteError('');
+    const override = destination ? { address: deliveryAddress, ...destination } : undefined;
+    Promise.all(groups.map(async (group) => [group.restaurantId,
+      await fetchOrderQuote(`${API_URL}/api/orders/quote`, token, toOrderSubmission(group, override))] as const))
+      .then((entries) => { if (active) setQuotes(Object.fromEntries(entries)); })
+      .catch((error) => { if (active) setQuoteError(error instanceof Error ? error.message : 'Could not calculate the order total.'); })
+      .finally(() => { if (active) setQuoteLoading(false); });
+    return () => { active = false; };
+  }, [token, groups, deliveryAddress, savedAddress, addressLine, city, country, destination, quoteRetry]);
+
   const goBack = () => phase === 'success'
     ? router.replace('/customer/home/home')
     : router.canGoBack() ? router.back() : router.replace('/customer/cart/cart');
 
-  const sendOrders = async () => {
-    if (sending.current || phase !== 'review' || lines.length === 0) return;
+  const validateCheckout = () => {
+    if (sending.current || phase !== 'review' || lines.length === 0 || quoteLoading || !quotesReady || quoteError) return false;
     const blocked = getCartOrderRestriction(groups.map((group) => group.restaurantId), restaurants);
     if (blocked) {
       setRestriction(blocked);
-      return;
+      return false;
     }
     if (!addressLine.trim() || !city.trim() || !country.trim()) {
-      setAddressError('Address line, city, and country are required.'); return;
+      setAddressError('Address line, city, and country are required.'); return false;
     }
-    if (deliveryAddress.length > 255) { setAddressError('Address must be at most 255 characters.'); return; }
+    if (deliveryAddress.length > 255) { setAddressError('Address must be at most 255 characters.'); return false; }
     const changed = deliveryAddress !== savedAddress.trim();
     if (changed && !destination) {
       setAddressError(addressLookup === 'unavailable'
         ? 'Address verification is unavailable. Retry the search before ordering.'
         : 'Pick a verified street address from the suggestions before ordering.');
-      return;
+      return false;
     }
-
     setRestriction(null);
     setAddressError('');
     setFailures([]);
-    sending.current = true;
-    setPhase('submitting');
-    const result = await placeOrders(groups, changed && destination
-      ? { address: deliveryAddress, ...destination } : undefined);
+    setPaypalError('');
+    return true;
+  };
+
+  const completeOrders = (placed: { id: string; restaurantId: number }[], orderFailures: OrderFailure[]) => {
     sending.current = false;
-    // Only placed restaurants leave the cart, so failed ones can be retried.
-    result.placed.forEach((order) => removeRestaurant(order.restaurantId));
-    setFailures(result.failures);
-    if (result.placed.length === 0) {
-      setPhase('review');
-      return;
-    }
-    setPlacedIds(result.placed.map((order) => order.id));
+    placed.forEach((order) => removeRestaurant(order.restaurantId));
+    setFailures(orderFailures);
+    if (placed.length === 0) { setPhase('review'); return; }
+    setPlacedIds(placed.map((order) => order.id));
     setPhase('success');
     Animated.parallel([
       Animated.timing(successOpacity, { toValue: 1, duration: 280, useNativeDriver: true }),
       Animated.spring(successScale, { toValue: 1, friction: 6, tension: 75, useNativeDriver: true }),
     ]).start();
+  };
+
+  const sendOrders = async () => {
+    if (!validateCheckout()) return;
+    sending.current = true;
+    setPhase('submitting');
+    const result = await placeOrders(groups, destination
+      ? { address: deliveryAddress, ...destination } : undefined);
+    completeOrders(result.placed, result.failures);
+  };
+
+  const beginPayPal = () => {
+    if (!validateCheckout()) return false;
+    sending.current = true;
+    setPhase('submitting');
+    return true;
+  };
+  const failPayPal = (message: string) => {
+    sending.current = false;
+    setPhase('review');
+    setPaypalError(message);
+  };
+  const paidWithPayPal = (receipts: OrderSubmissionResult[]) => {
+    try { completeOrders(recordPaidOrders(groups, receipts), []); }
+    catch (error) { failPayPal(error instanceof Error ? error.message : 'Payment completed, but the order could not be displayed. Check order history.'); }
   };
 
   const cancel = (orderId: string) => {
@@ -137,6 +203,7 @@ export default function ConfirmOrderScreen() {
             <Text style={styles.successTitle}>{placedOrders.every((order) => order.status === 'cancelled') ? 'Your order has been cancelled.' : 'Your order has been placed.'}</Text>
           </Animated.View>
           {failurePanel}
+          {paypalError ? <View style={styles.restrictionPanel} accessibilityRole="alert"><Text style={styles.restrictionText}>{paypalError}</Text></View> : null}
           {cancelError && <View style={styles.restrictionPanel} accessibilityRole="alert"><Text style={styles.restrictionText}>{cancelError}</Text></View>}
           {placedOrders.map((order) => {
             const restaurant = restaurants.find((entry) => entry.id === order.restaurantId);
@@ -181,6 +248,7 @@ export default function ConfirmOrderScreen() {
           <Text style={styles.sectionTitle}>Order summary</Text>
           {groups.map((group) => {
             const restaurant = restaurants.find((entry) => entry.id === group.restaurantId);
+            const quote = quotes[group.restaurantId];
             return <View key={group.restaurantId} style={styles.restaurantBlock}>
               <Text style={styles.restaurantName}>{restaurant?.name ?? 'Restaurant'}</Text>
               {group.lines.map((line) => {
@@ -190,9 +258,32 @@ export default function ConfirmOrderScreen() {
                   <Text style={styles.itemPrice}>${(line.quantity * line.unitPrice).toFixed(2)}</Text>
                 </View>;
               })}
+              {quote && <>
+                <View style={styles.itemRow}><Text style={styles.itemName}>Items subtotal</Text><Text style={styles.itemPrice}>${quote.subtotal.toFixed(2)}</Text></View>
+                <View style={styles.itemRow}><Text style={styles.itemName}>Service fee</Text><Text style={styles.itemPrice}>${quote.serviceFee.toFixed(2)}</Text></View>
+                <View style={styles.itemRow}><Text style={styles.itemName}>Delivery ({quote.distanceKm.toFixed(2)} km)</Text><Text style={styles.itemPrice}>${quote.deliveryFee.toFixed(2)}</Text></View>
+                <View style={styles.itemRow}><Text style={styles.itemName}>Small-order surcharge</Text><Text style={styles.itemPrice}>${quote.smallOrderFee.toFixed(2)}</Text></View>
+                <View style={styles.itemRow}><Text style={styles.totalLabel}>Restaurant total</Text><Text style={styles.totalValue}>${quote.total.toFixed(2)}</Text></View>
+              </>}
             </View>;
           })}
-          <View style={styles.totalRow}><Text style={styles.totalLabel}>Items subtotal</Text><Text style={styles.totalValue}>${total.toFixed(2)}</Text></View>
+          {quoteLoading && <ActivityIndicator color="#D42F50" accessibilityLabel="Calculating order total" />}
+          {quoteError ? <View style={styles.restrictionPanel} accessibilityRole="alert">
+            <Text style={styles.restrictionText}>{quoteError}</Text>
+            <TouchableOpacity accessibilityRole="button" onPress={() => setQuoteRetry((value) => value + 1)}>
+              <Text style={styles.pricingRetry}>Retry total</Text>
+            </TouchableOpacity>
+          </View> : null}
+          {quotesReady && !quoteLoading && <View style={styles.totalRow}>
+            <View style={styles.totalLabelRow}>
+              <Text style={styles.totalLabel}>Total to charge</Text>
+              <TouchableOpacity style={styles.pricingInfoButton} accessibilityRole="button" accessibilityLabel="Show pricing rules"
+                onPress={() => setShowPricingInfo(true)}>
+                <Text style={styles.pricingInfoSymbol}>i</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.totalValue}>${quotedTotal.toFixed(2)}</Text>
+          </View>}
 
           <View style={styles.addressPanel}>
             <Text style={styles.paymentTitle}>Delivery address</Text>
@@ -209,15 +300,22 @@ export default function ConfirmOrderScreen() {
                 setDestination({ latitude: picked.latitude, longitude: picked.longitude }); setAddressError('');
               }} onLookup={onLookup} accessibilityLabel="Delivery address line" autoComplete="street-address" />
             {addressError ? <Text style={styles.addressError} accessibilityRole="alert">{addressError}</Text> : null}
+            {!addressError && deliveryAddress !== savedAddress.trim() && !destination
+              ? <Text style={styles.pricingNote}>Pick a verified street address to calculate the total.</Text> : null}
             <Text style={styles.mapTitle}>Delivery map</Text>
             <DeliveryMap address={deliveryAddress === savedAddress.trim() ? deliveryAddress : ''}
               destination={destination} restaurants={restaurantPoints} />
             {restaurantPoints.length < groups.length && <Text style={styles.paymentText}>Some restaurants do not have a saved map location.</Text>}
           </View>
           <View style={styles.paymentPanel}>
-            <Text style={styles.paymentLabel}>PAYMENT</Text>
-            <Text style={styles.paymentTitle}>Final charge</Text>
-            <Text style={styles.paymentText}>The final charge includes configured delivery and service fees and any small-order surcharge. The placed-order receipt shows the charged total for each restaurant.</Text>
+            <Text style={styles.paymentTitle}>Payment</Text>
+            <Text style={styles.paymentText}>Pay for this order with PayPal.</Text>
+            {token && <PayPalButton token={token}
+              orders={groups.map((group) => toOrderSubmission(group, destination ? { address: deliveryAddress, ...destination } : undefined))}
+              disabled={phase === 'submitting' || lines.length === 0 || quoteLoading || !quotesReady || !!quoteError}
+              onBegin={beginPayPal} onSuccess={paidWithPayPal} onFailure={failPayPal}
+              onCancel={() => { sending.current = false; setPhase('review'); }} />}
+            {paypalError ? <Text style={styles.addressError} accessibilityRole="alert">{paypalError}</Text> : null}
           </View>
           {restriction && <View style={styles.restrictionPanel} accessibilityRole="alert">
             <Text style={styles.restrictionCode}>{restriction.code}</Text>
@@ -231,11 +329,38 @@ export default function ConfirmOrderScreen() {
         {phase === 'success' ? (
           <TouchableOpacity style={styles.sendButton} accessibilityRole="button" onPress={() => router.replace('/customer/home/home')}><Text style={styles.sendButtonText}>Browse restaurants</Text></TouchableOpacity>
         ) : (
-          <TouchableOpacity style={[styles.sendButton, (phase === 'submitting' || lines.length === 0) && styles.sendButtonDisabled]} accessibilityRole="button" accessibilityLabel="Send orders" accessibilityState={{ disabled: phase === 'submitting' || lines.length === 0, busy: phase === 'submitting' }} disabled={phase === 'submitting' || lines.length === 0} onPress={sendOrders}>
+          <TouchableOpacity style={[styles.sendButton, (phase === 'submitting' || lines.length === 0 || quoteLoading || !quotesReady || !!quoteError) && styles.sendButtonDisabled]} accessibilityRole="button" accessibilityLabel="Send orders" accessibilityState={{ disabled: phase === 'submitting' || lines.length === 0 || quoteLoading || !quotesReady || !!quoteError, busy: phase === 'submitting' }} disabled={phase === 'submitting' || lines.length === 0 || quoteLoading || !quotesReady || !!quoteError} onPress={sendOrders}>
             {phase === 'submitting' ? <><ActivityIndicator color="#FFFFFF" size="small" /><Text style={styles.sendButtonText}>Placing orders...</Text></> : <Text style={styles.sendButtonText}>Send orders</Text>}
           </TouchableOpacity>
         )}
       </View>
+      <Modal transparent visible={showPricingInfo} animationType="fade" onRequestClose={() => setShowPricingInfo(false)}>
+        <View style={styles.pricingBackdrop}>
+          <TouchableOpacity style={styles.pricingBackdropDismiss} accessibilityRole="button" accessibilityLabel="Close pricing rules" onPress={() => setShowPricingInfo(false)} />
+          <View style={styles.pricingDialog}>
+            <View style={styles.pricingDialogHeader}>
+              <Text style={styles.paymentTitle}>Pricing rules</Text>
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close pricing rules" onPress={() => setShowPricingInfo(false)}>
+                <Text style={styles.pricingClose}>×</Text>
+              </TouchableOpacity>
+            </View>
+            {pricingLoading && <ActivityIndicator color="#D42F50" accessibilityLabel="Loading pricing rules" />}
+            {!pricingLoading && pricingError ? <>
+              <Text style={styles.addressError} accessibilityRole="alert">{pricingError}</Text>
+              <TouchableOpacity accessibilityRole="button" onPress={() => setPricingRetry((value) => value + 1)}>
+                <Text style={styles.pricingRetry}>Retry loading pricing rules</Text>
+              </TouchableOpacity>
+            </> : null}
+            {pricingRules && !pricingLoading && !pricingError && <>
+              <View style={styles.pricingRow}><Text style={styles.pricingName}>Delivery</Text><Text style={styles.pricingAmount}>${Number(pricingRules.deliveryFeePerKm).toFixed(2)} / km</Text></View>
+              <View style={styles.pricingRow}><Text style={styles.pricingName}>Service fee</Text><Text style={styles.pricingAmount}>${Number(pricingRules.serviceFee).toFixed(2)} per order</Text></View>
+              <View style={styles.pricingRow}><Text style={styles.pricingName}>Small-order surcharge</Text><Text style={styles.pricingAmount}>${Number(pricingRules.smallOrderSurcharge).toFixed(2)}</Text></View>
+              <Text style={styles.pricingNote}>Applies when a restaurant's items subtotal is below ${Number(pricingRules.smallOrderThreshold).toFixed(2)}.</Text>
+              <Text style={styles.pricingNote}>Delivery uses the straight-line distance on the map, rounded to 0.01 km. Each restaurant order is charged separately.</Text>
+            </>}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

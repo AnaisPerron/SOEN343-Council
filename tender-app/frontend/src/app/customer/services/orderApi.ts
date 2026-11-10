@@ -20,6 +20,15 @@ export interface OrderSubmissionResult {
   paymentReference: string;
 }
 
+export interface OrderQuote {
+  subtotal: number;
+  distanceKm: number;
+  serviceFee: number;
+  deliveryFee: number;
+  smallOrderFee: number;
+  total: number;
+}
+
 export interface OrderCancellationResult {
   orderId: number;
   previousStatus: string;
@@ -71,6 +80,14 @@ export async function sendOrder(
   const result = await postWithToken<OrderSubmissionResult>(endpoint, token, order, 'Order submission failed', fetchImpl);
   // BigDecimal arrives as a JSON number, but coerce in case a proxy stringifies it.
   return { ...result, total: Number(result.total) };
+}
+
+export async function fetchOrderQuote(endpoint: string, token: string, order: OrderSubmission,
+  fetchImpl: typeof fetch = fetch): Promise<OrderQuote> {
+  const result = await postWithToken<OrderQuote>(endpoint, token, order, 'Could not calculate order total', fetchImpl);
+  return { subtotal: Number(result.subtotal), distanceKm: Number(result.distanceKm),
+    serviceFee: Number(result.serviceFee), deliveryFee: Number(result.deliveryFee),
+    smallOrderFee: Number(result.smallOrderFee), total: Number(result.total) };
 }
 
 export async function sendOrderCancellation(
