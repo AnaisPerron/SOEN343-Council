@@ -45,7 +45,7 @@ export default function RegisterScreen() {
   const [addressLine, setAddressLine] = useState('');
   // Known only when the address was picked from the suggestions; it puts the account on the city map
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  // What Google found for the typed address; unknown or 'unavailable' means it can't be checked, so it isn't required
+  // A new address must be selected from verified suggestions before registration.
   const [lookup, setLookup] = useState<AddressLookup | null>(null);
   const onLookup = useCallback((result: AddressLookup) => setLookup(result), []);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -66,8 +66,9 @@ export default function RegisterScreen() {
       if (!country.trim()) next.country = 'Country is required';
       if (!city.trim()) next.city = 'City is required';
       if (!addressLine.trim()) next.addressLine = 'Address line is required';
-      else if (!location && lookup === 'none') next.addressLine = "We couldn't find that address. Check it and pick it from the suggestions.";
-      else if (!location && lookup === 'found') next.addressLine = 'Pick your address from the suggestions.';
+      else if (!location && lookup === 'unavailable') next.addressLine = 'Address verification is unavailable. Retry the search before registering.';
+      else if (!location && lookup === 'none') next.addressLine = "We couldn't verify that address. Check it and pick a street address from the suggestions.";
+      else if (!location) next.addressLine = 'Pick a verified street address from the suggestions.';
     }
     setErrors(next);
     if (Object.keys(next).length) return;
@@ -105,9 +106,10 @@ export default function RegisterScreen() {
 
   const pickAddress = (picked: PickedAddress) => {
     setAddressLine(picked.addressLine);
-    if (picked.city) setCity(picked.city);
-    if (picked.country) setCountry(picked.country);
+    setCity(picked.city);
+    setCountry(picked.country);
     setLocation({ latitude: picked.latitude, longitude: picked.longitude });
+    setErrors((current) => ({ ...current, addressLine: undefined, city: undefined, country: undefined }));
   };
 
   return (
@@ -168,11 +170,11 @@ export default function RegisterScreen() {
               {needsAddress && <>
                 <Text style={styles.addressHeading}>Address</Text>
                 <Text style={styles.label}>Country</Text>
-                <TextInput style={[styles.input, errors.country && styles.inputError]} value={country} onChangeText={setCountry} placeholder="Country" placeholderTextColor="#9ca3af" autoComplete="country" />
+                <TextInput style={[styles.input, errors.country && styles.inputError]} value={country} onChangeText={(text) => { setCountry(text); setLocation(null); }} placeholder="Country" placeholderTextColor="#9ca3af" autoComplete="country" />
                 {errors.country && <Text style={styles.error}>{errors.country}</Text>}
 
                 <Text style={styles.label}>City</Text>
-                <TextInput style={[styles.input, errors.city && styles.inputError]} value={city} onChangeText={setCity} placeholder="City" placeholderTextColor="#9ca3af" />
+                <TextInput style={[styles.input, errors.city && styles.inputError]} value={city} onChangeText={(text) => { setCity(text); setLocation(null); }} placeholder="City" placeholderTextColor="#9ca3af" />
                 {errors.city && <Text style={styles.error}>{errors.city}</Text>}
 
                 <Text style={styles.label}>Address line</Text>

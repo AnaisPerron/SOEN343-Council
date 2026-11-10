@@ -140,6 +140,17 @@ describe('profile api', () => {
       name: 'Maple Bistro', phone: '5145550199', address: '99 Rue St',
     });
   });
+
+  it('sends a picked customer address and its location', async () => {
+    const fetchMock = mockFetch(200, { id: 1, name: 'Alex', email: 'alex@example.com',
+      phone: '5145550199', role: 'CUSTOMER', address: 'New address' });
+    await updateProfile('saved-token', 'Alex', '5145550199', 'New address',
+      { latitude: 45.5, longitude: -73.6 });
+    const [, init] = fetchMock.mock.calls[0].arguments as [string, RequestInit];
+    assert.deepEqual(JSON.parse(init.body as string), {
+      name: 'Alex', phone: '5145550199', address: 'New address', latitude: 45.5, longitude: -73.6,
+    });
+  });
 });
 
 describe('login api', () => {

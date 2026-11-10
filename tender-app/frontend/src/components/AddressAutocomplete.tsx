@@ -1,4 +1,5 @@
-import { TextInput, type TextInputProps } from 'react-native';
+import { Text, TextInput, View, type TextInputProps } from 'react-native';
+import { useEffect } from 'react';
 
 /** An address picked from the suggestions, split into the registration form's fields. */
 export interface PickedAddress {
@@ -20,7 +21,9 @@ export type AddressAutocompleteProps = Omit<TextInputProps, 'value' | 'onChangeT
   onLookup?: (result: AddressLookup) => void;
 };
 
-// Google Places suggestions need the browser's Maps JavaScript API (see AddressAutocomplete.web.tsx); phones get a plain field
-export default function AddressAutocomplete({ value, onChangeText, onPick: _onPick, onLookup: _onLookup, ...inputProps }: AddressAutocompleteProps) {
-  return <TextInput {...inputProps} value={value} onChangeText={onChangeText} />;
+// Google Places suggestions require the browser Maps JavaScript API.
+export default function AddressAutocomplete({ value, onChangeText, onPick: _onPick, onLookup, ...inputProps }: AddressAutocompleteProps) {
+  useEffect(() => { onLookup?.('unavailable'); }, [onLookup]);
+  return <View><TextInput {...inputProps} value={value} onChangeText={onChangeText} />
+    <Text>Address verification is unavailable on this device.</Text></View>;
 }

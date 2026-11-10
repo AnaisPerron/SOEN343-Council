@@ -72,8 +72,10 @@ export async function deleteAccount(token: string): Promise<void> {
   await requestJson<void>('DELETE', '/api/profile', undefined, token);
 }
 
-export async function updateProfile(token: string, name: string, phone: string, address?: string): Promise<RegisterResponse> {
-  return requestJson<RegisterResponse>('PATCH', '/api/profile', { name, phone, ...(address === undefined ? {} : { address }) }, token);
+export async function updateProfile(token: string, name: string, phone: string, address?: string,
+  location?: { latitude: number; longitude: number }): Promise<RegisterResponse> {
+  return requestJson<RegisterResponse>('PATCH', '/api/profile',
+    { name, phone, ...(address === undefined ? {} : { address, ...location }) }, token);
 }
 
 function toSession(response: LoginResponse): AuthSession {

@@ -22,7 +22,8 @@ type AuthContextValue = {
   signUp: (input: RegistrationInput) => Promise<void>;
   signOut: () => void;
   deleteAccount: () => Promise<void>;
-  saveProfile: (name: string, phoneNumber: string, address?: string) => Promise<void>;
+  saveProfile: (name: string, phoneNumber: string, address?: string,
+    location?: { latitude: number; longitude: number }) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -73,9 +74,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(null);
         setReady(true);
       },
-      saveProfile: async (name, phoneNumber, address) => {
+      saveProfile: async (name, phoneNumber, address, location) => {
         if (!session) throw new Error('Please sign in again');
-        const updated = await updateProfile(session.token, name, phoneNumber, address);
+        const updated = await updateProfile(session.token, name, phoneNumber, address, location);
         setSession((current) => current ? {
           ...current,
           user: { ...current.user, name: updated.name, phoneNumber: updated.phone,

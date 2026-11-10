@@ -15,13 +15,17 @@ const DEBOUNCE_MS = 250;
 /** Address field that suggests real addresses from Google Places and reports where the picked one is. */
 export default function AddressAutocomplete(props: AddressAutocompleteProps) {
   const { value, onChangeText, onPick: _onPick, onLookup: _onLookup, ...inputProps } = props;
-  // Without a key the field works as a plain input and the account is registered without a location
-  if (!googleMapsApiKey) return <TextInput {...inputProps} value={value} onChangeText={onChangeText} />;
+  if (!googleMapsApiKey) return <UnavailableInput {...inputProps} value={value} onChangeText={onChangeText} onLookup={_onLookup} />;
   return (
     <APIProvider apiKey={googleMapsApiKey}>
       <SuggestingInput {...props} />
     </APIProvider>
   );
+}
+
+function UnavailableInput({ onLookup, ...props }: Omit<AddressAutocompleteProps, 'onPick'>) {
+  useEffect(() => { onLookup?.('unavailable'); }, [onLookup]);
+  return <View><TextInput {...props} /><Text style={styles.noMatch}>Address verification is unavailable. Configure Google Maps Places to save an address.</Text></View>;
 }
 
 function SuggestingInput({ value, onChangeText, onPick, onLookup, ...inputProps }: AddressAutocompleteProps) {
@@ -30,6 +34,9 @@ function SuggestingInput({ value, onChangeText, onPick, onLookup, ...inputProps 
   const [suggestions, setSuggestions] = useState<google.maps.places.PlacePrediction[]>([]);
   // The text the shown suggestions were found for, so "no match" is only said about the current text
   const [searchedFor, setSearchedFor] = useState<string | null>(null);
+  const [lookupError, setLookupError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const requestId = useRef(0);
   // One token per search-and-pick, which Google bills as a single session
   const session = useRef<google.maps.places.AutocompleteSessionToken | null>(null);
 
@@ -38,7 +45,17 @@ function SuggestingInput({ value, onChangeText, onPick, onLookup, ...inputProps 
   const shown = searching ? suggestions : [];
 
   useEffect(() => {
+    if (places || !searching) return;
+    const timer = setTimeout(() => {
+      setLookupError(true);
+      onLookup?.('unavailable');
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [places, searching, onLookup, retryCount]);
+
+  useEffect(() => {
     if (!places || !searching) return;
+    const currentRequest = ++requestId.current;
     let cancelled = false;
     const timer = setTimeout(async () => {
       session.current ??= new places.AutocompleteSessionToken();
@@ -47,18 +64,18 @@ function SuggestingInput({ value, onChangeText, onPick, onLookup, ...inputProps 
           input: value,
           sessionToken: session.current,
           locationBias: MONTREAL,
-          includedRegionCodes: ['ca'],
         });
-        if (cancelled) return;
+        if (cancelled || currentRequest !== requestId.current) return;
         const predictions = found.flatMap((s) => (s.placePrediction ? [s.placePrediction] : []));
         setSuggestions(predictions);
         setSearchedFor(value);
+        setLookupError(false);
         onLookup?.(predictions.length ? 'found' : 'none');
       } catch {
-        // Places not enabled for the key, or offline: addresses can't be checked, so a typed one is accepted
-        if (cancelled) return;
+        if (cancelled || currentRequest !== requestId.current) return;
         setSuggestions([]);
         setSearchedFor(null);
+        setLookupError(true);
         onLookup?.('unavailable');
       }
     }, DEBOUNCE_MS);
@@ -66,27 +83,42 @@ function SuggestingInput({ value, onChangeText, onPick, onLookup, ...inputProps 
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [places, searching, value, onLookup]);
+  }, [places, searching, value, onLookup, retryCount]);
 
   const pick = async (prediction: google.maps.places.PlacePrediction) => {
+    requestId.current += 1;
     setTyping(false);
     setSuggestions([]);
     const place = prediction.toPlace();
     try {
       await place.fetchFields({ fields: ['addressComponents', 'location'] });
     } catch {
+      setLookupError(true);
+      onLookup?.('unavailable');
       return;
     } finally {
       // Fetching the details ends the session
       session.current = null;
     }
-    if (!place.location) return;
+    if (!place.location) {
+      setLookupError(true);
+      onLookup?.('unavailable');
+      return;
+    }
     const part = (type: string) => place.addressComponents?.find((c) => c.types.includes(type))?.longText ?? '';
     const street = [part('street_number'), part('route')].filter(Boolean).join(' ');
+    const city = part('locality') || part('sublocality') || part('administrative_area_level_2');
+    const country = part('country');
+    if (!part('street_number') || !part('route') || !city || !country) {
+      setLookupError(true);
+      onLookup?.('none');
+      return;
+    }
+    setLookupError(false);
     onPick({
-      addressLine: street || (prediction.mainText?.text ?? prediction.text.text),
-      city: part('locality') || part('sublocality') || part('administrative_area_level_2'),
-      country: part('country'),
+      addressLine: street,
+      city,
+      country,
       latitude: place.location.lat(),
       longitude: place.location.lng(),
     });
@@ -99,6 +131,8 @@ function SuggestingInput({ value, onChangeText, onPick, onLookup, ...inputProps 
         value={value}
         onChangeText={(text) => {
           setTyping(true);
+          setLookupError(false);
+          setSuggestions([]);
           onChangeText(text);
         }}
       />
@@ -121,6 +155,12 @@ function SuggestingInput({ value, onChangeText, onPick, onLookup, ...inputProps 
       {searching && searchedFor === value && shown.length === 0 && (
         <Text style={styles.noMatch}>No matching address found</Text>
       )}
+      {lookupError && <View style={styles.retryRow}>
+        <Text style={styles.noMatch}>Could not verify this address. Try another suggestion or retry.</Text>
+        <Pressable accessibilityRole="button" onPress={() => { setTyping(true); setLookupError(false); setRetryCount((count) => count + 1); }}>
+          <Text style={styles.retry}>Retry address search</Text>
+        </Pressable>
+      </View>}
     </View>
   );
 }
@@ -133,4 +173,6 @@ const styles = StyleSheet.create({
   secondary: { fontSize: 13, color: '#6b7280', marginTop: 2 },
   noMatch: { color: '#6b7280', fontSize: 13, marginTop: 4 },
   attribution: { fontSize: 11, color: '#9ca3af', textAlign: 'right', paddingHorizontal: 14, paddingVertical: 6 },
+  retryRow: { marginTop: 4 },
+  retry: { color: '#B52F4B', fontSize: 13, fontWeight: '700', marginTop: 6 },
 });
