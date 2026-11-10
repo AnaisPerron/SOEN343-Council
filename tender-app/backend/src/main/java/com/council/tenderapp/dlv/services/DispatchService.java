@@ -6,6 +6,7 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 
 import com.council.tenderapp.ord.entities.Order;
 import com.council.tenderapp.ord.entities.OrderStatus;
@@ -45,6 +46,11 @@ public class DispatchService {
             order.setCourierId(courier.getUserId());
             courier.setStatus(CourierStatus.ASSIGNED);
         }
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void retryQueueAfterCommit() {
+        retryQueue();
     }
 
     // Couriers without a known location (or a restaurant without one) fall back to lowest id
