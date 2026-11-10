@@ -65,6 +65,73 @@ public class CustomerOrderService {
 
     @Transactional
     public OrderResponseDto placeOrder(Long customerId, PlaceOrderRequestDto request) {
+        PreparedOrder prepared = prepareOrder(customerId, request);
+        PaymentResult payment = paymentGateway.charge(customerId, prepared.quote().total());
+        if (!payment.approved()) {
+            throw new PaymentDeclinedException("Payment declined: " + payment.message());
+        }
+        return persistOrder(customerId, request, prepared, payment);
+    }
+
+    @Transactional
+    public OrderResponseDto placePaidOrder(Long customerId, PlaceOrderRequestDto request,
+            String paymentReference, BigDecimal approvedAmount) {
+        PreparedOrder prepared = prepareOrder(customerId, request);
+        if (prepared.quote().total().compareTo(approvedAmount) != 0) {
+            throw new InvalidOrderException("Order price changed after PayPal approval");
+        }
+        return persistOrder(customerId, request, prepared, PaymentResult.approved(paymentReference));
+    }
+
+    private OrderResponseDto persistOrder(Long customerId, PlaceOrderRequestDto request,
+            PreparedOrder prepared, PaymentResult payment) {
+        Map<Long, MenuItem> menu = prepared.menu();
+        Map<Long, MenuItemOption> options = prepared.options();
+        PricingService.Quote quote = prepared.quote();
+        BigDecimal total = quote.total();
+        customerProfileService.ensureExists(customerId);
+        Instant placedAt = Instant.now();
+        Order order = new Order(customerId, request.restaurantId(), OrderStatus.PLACED, total);
+        order.setDelivery(prepared.deliveryAddress(), prepared.latitude(), prepared.longitude());
+        for (OrderItemRequestDto item : request.items()) {
+            order.addOrderLine(new OrderLine(menu.get(item.menuItemId()), item.quantity(),
+                    menu.get(item.menuItemId()).getPrice()));
+        }
+        order = orderRepository.save(order);
+        pricingService.saveBill(order, quote);
+        // Lines keep the base price; each add-on's cost is snapshotted in order_line_options.
+        orderRepository.flush();
+        List<OrderLine> savedLines = order.getOrderLines();
+        for (int i = 0; i < savedLines.size(); i++) {
+            OrderLine line = savedLines.get(i);
+            for (Long optionId : request.items().get(i).selectedOptionIds()) {
+                jdbc.update("INSERT INTO order_line_options (order_line_id, menu_item_id, menu_item_option_id, additional_cost) VALUES (?, ?, ?, ?)",
+                        line.getId(), line.getMenuItemId(), optionId, options.get(optionId).getAdditionalCost());
+            }
+        }
+        preparationQueueService.enqueue(order, placedAt);
+
+        List<OrderLineDto> lineDtos = new ArrayList<>();
+        for (int i = 0; i < savedLines.size(); i++) {
+            OrderLine line = savedLines.get(i);
+            BigDecimal unitPrice = paidUnitPrice(line.getMenuItem(), request.items().get(i), options);
+            lineDtos.add(new OrderLineDto(line.getMenuItemId(), line.getMenuItem().getName(),
+                    line.getQuantity(), unitPrice, unitPrice.multiply(BigDecimal.valueOf(line.getQuantity()))));
+        }
+        return new OrderResponseDto(order.getId(), order.getRestaurantId(),
+                order.getStatus().name().toLowerCase(), order.getTotalPrice(), placedAt,
+                payment.reference(), lineDtos);
+    }
+
+    @Transactional(readOnly = true)
+    public PricingService.Quote quoteOrder(Long customerId, PlaceOrderRequestDto request) {
+        return prepareOrder(customerId, request).quote();
+    }
+
+    private record PreparedOrder(Map<Long, MenuItem> menu, Map<Long, MenuItemOption> options,
+            String deliveryAddress, Double latitude, Double longitude, PricingService.Quote quote) {}
+
+    private PreparedOrder prepareOrder(Long customerId, PlaceOrderRequestDto request) {
         boolean override = request.deliveryAddress() != null;
         if (override && (request.deliveryAddress().isBlank() || request.deliveryLatitude() == null || request.deliveryLongitude() == null)) {
             throw new InvalidOrderException("Pick a verified delivery address from the suggestions");
@@ -105,7 +172,6 @@ public class CustomerOrderService {
                 .map(item -> paidUnitPrice(menu.get(item.menuItemId()), item, options)
                         .multiply(BigDecimal.valueOf(item.quantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        customerProfileService.ensureExists(customerId);
         CustomerProfileService.DeliveryAddress savedAddress = customerProfileService.deliveryAddress(customerId).orElse(null);
         String deliveryAddress = override ? request.deliveryAddress().trim() : savedAddress == null ? null : savedAddress.address();
         Double deliveryLatitude = override ? request.deliveryLatitude() : savedAddress == null ? null : savedAddress.latitude();
@@ -114,45 +180,7 @@ public class CustomerOrderService {
             throw new InvalidOrderException("A verified delivery address is required");
         }
         PricingService.Quote quote = pricingService.quote(subtotal, request.restaurantId(), deliveryLatitude, deliveryLongitude);
-        BigDecimal total = quote.total();
-        PaymentResult payment = paymentGateway.charge(customerId, total);
-        if (!payment.approved()) {
-            throw new PaymentDeclinedException("Payment declined: " + payment.message());
-        }
-
-        Instant placedAt = Instant.now();
-        Order order = new Order(customerId, request.restaurantId(), OrderStatus.PLACED, total);
-        order.setDelivery(deliveryAddress, deliveryLatitude, deliveryLongitude);
-        for (OrderItemRequestDto item : request.items()) {
-            order.addOrderLine(new OrderLine(menu.get(item.menuItemId()), item.quantity(),
-                    menu.get(item.menuItemId()).getPrice()));
-        }
-        order = orderRepository.save(order);
-        pricingService.saveBill(order, quote);
-        // Lines keep the base price; each add-on's cost is snapshotted in order_line_options.
-        // Written with JDBC because the table's composite keys have no JPA entity, so flush first:
-        // cascaded lines are otherwise only inserted at commit and would have no id yet.
-        orderRepository.flush();
-        List<OrderLine> savedLines = order.getOrderLines();
-        for (int i = 0; i < savedLines.size(); i++) {
-            OrderLine line = savedLines.get(i);
-            for (Long optionId : request.items().get(i).selectedOptionIds()) {
-                jdbc.update("INSERT INTO order_line_options (order_line_id, menu_item_id, menu_item_option_id, additional_cost) VALUES (?, ?, ?, ?)",
-                        line.getId(), line.getMenuItemId(), optionId, options.get(optionId).getAdditionalCost());
-            }
-        }
-        preparationQueueService.enqueue(order, placedAt);
-
-        List<OrderLineDto> lineDtos = new ArrayList<>();
-        for (int i = 0; i < savedLines.size(); i++) {
-            OrderLine line = savedLines.get(i);
-            BigDecimal unitPrice = paidUnitPrice(line.getMenuItem(), request.items().get(i), options);
-            lineDtos.add(new OrderLineDto(line.getMenuItemId(), line.getMenuItem().getName(),
-                    line.getQuantity(), unitPrice, unitPrice.multiply(BigDecimal.valueOf(line.getQuantity()))));
-        }
-        return new OrderResponseDto(order.getId(), order.getRestaurantId(),
-                order.getStatus().name().toLowerCase(), order.getTotalPrice(), placedAt,
-                payment.reference(), lineDtos);
+        return new PreparedOrder(menu, options, deliveryAddress, deliveryLatitude, deliveryLongitude, quote);
     }
 
     // What the customer pays per unit: the item's price plus its selected add-ons.
