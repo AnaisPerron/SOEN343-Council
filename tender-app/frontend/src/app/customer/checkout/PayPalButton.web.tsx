@@ -5,12 +5,12 @@ import type { OrderSubmission, OrderSubmissionResult } from '../services/orderAp
 import { styles } from './confirm-order.styles';
 
 interface PayPalSession {
-  start: (options: { presentationMode: 'auto' }, createOrder: Promise<string>) => Promise<void>;
+  start: (options: { presentationMode: 'auto' }, createOrder: Promise<{ orderId: string }>) => Promise<void>;
 }
 interface PayPalSdk {
   findEligibleMethods: () => Promise<{ isEligible: (method: string) => boolean }>;
   createPayPalOneTimePaymentSession: (callbacks: {
-    onApprove: () => Promise<void>;
+    onApprove: (data: { orderId: string }) => Promise<void>;
     onCancel: () => void;
     onError: (error: unknown) => void;
   }) => Promise<PayPalSession>;
@@ -65,8 +65,11 @@ export default function PayPalButton({ token, orders, disabled, onBegin, onSucce
         return;
       }
       const paymentSession = await sdk.createPayPalOneTimePaymentSession({
-        onApprove: async () => {
-          try { callbacks.current.onSuccess(await capturePayPalOrder(token, checkoutOrderId.current)); }
+        onApprove: async ({ orderId }) => {
+          try {
+            if (orderId !== checkoutOrderId.current) throw new Error('PayPal approved an unexpected order.');
+            callbacks.current.onSuccess(await capturePayPalOrder(token, orderId));
+          }
           catch (error) { callbacks.current.onFailure(error instanceof Error ? error.message : 'Could not confirm PayPal payment.'); }
         },
         onCancel: () => callbacks.current.onCancel(),
@@ -81,7 +84,11 @@ export default function PayPalButton({ token, orders, disabled, onBegin, onSucce
     if (!session || loading || disabled || !onBegin()) return;
     setLoading(true);
     // start must run in this click handler; PayPal accepts the order promise while it opens the checkout.
-    const createOrder = createPayPalOrder(token, orders).then(({ orderId }) => { checkoutOrderId.current = orderId; return orderId; });
+    const createOrder = createPayPalOrder(token, orders).then(({ orderId }) => {
+      if (typeof orderId !== 'string' || !orderId) throw new Error('PayPal did not provide a valid order ID.');
+      checkoutOrderId.current = orderId;
+      return { orderId };
+    });
     session.start({ presentationMode: 'auto' }, createOrder)
       .catch((error) => onFailure(error instanceof Error ? error.message : 'PayPal checkout failed.'))
       .finally(() => setLoading(false));
