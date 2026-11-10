@@ -4,6 +4,10 @@ export interface OrderSummary {
   orderId: number;
   status: string | null;
   restaurantName: string | null;
+  placedAt: string | null;
+  acceptedAt: string | null;
+  pickedUpAt: string | null;
+  deliveredAt: string | null;
   finishedAt: string | null;
   orderItems: {
     menuItemId: number;

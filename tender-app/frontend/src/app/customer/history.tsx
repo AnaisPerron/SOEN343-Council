@@ -41,10 +41,10 @@ export default function CustomerHistory() {
       .finally(() => setCancellingId(null));
   };
 
-  const toggleDetails = (orderId: string, status: string) => {
+  const toggleDetails = (orderId: string) => {
     if (expanded === orderId) { setExpanded(null); return; }
     setExpanded(orderId);
-    if (!token || !['delivered', 'rejected', 'cancelled'].includes(status) || summaries[orderId] || summaryLoading === orderId) return;
+    if (!token || summaryLoading === orderId) return;
     setSummaryLoading(orderId);
     setSummaryErrors((current) => ({ ...current, [orderId]: '' }));
     fetchCustomerOrderSummary(orderId, token)
@@ -71,7 +71,7 @@ export default function CustomerHistory() {
           const restaurantName = order.restaurantName ?? restaurants.find((entry) => entry.id === order.restaurantId)?.name ?? 'Restaurant';
           const current = lifecycle.indexOf(order.status);
           return <View key={order.id} style={styles.card}>
-            <Pressable accessibilityRole="button" accessibilityLabel={`View order ${order.id} details`} onPress={() => toggleDetails(order.id, order.status)}>
+            <Pressable accessibilityRole="button" accessibilityLabel={`View order ${order.id} details`} onPress={() => toggleDetails(order.id)}>
               <View style={styles.top}><Text style={styles.orderTitle}>Order #{order.id}</Text>{!!order.createdAt && <Text style={styles.muted}>{new Date(order.createdAt).toLocaleDateString()}</Text>}</View>
               <Text style={styles.restaurant}>{restaurantName}</Text>
               {current >= 0 && <ScrollView horizontal showsHorizontalScrollIndicator={false}><View style={styles.rail}>{lifecycle.map((step, index) => <View key={step} style={styles.step}><View style={[styles.dot, current >= index && styles.dotComplete]} /><Text style={styles.stepLabel}>{formatOrderStatus(step)}</Text></View>)}</View></ScrollView>}
@@ -92,7 +92,7 @@ export default function CustomerHistory() {
                 {!!order.rejectionReason && <Text style={styles.muted}>Reason: {order.rejectionReason}</Text>}
               </View>}
             </Pressable>
-            {['delivered', 'rejected', 'cancelled'].includes(order.status) && <Pressable accessibilityRole="button" accessibilityLabel={`View summary for order ${order.id}`} onPress={() => router.push({ pathname: '/customer/order-summary/[id]', params: { id: order.id } })} style={styles.cancel}><Text style={styles.cancelText}>View summary</Text></Pressable>}
+            <Pressable accessibilityRole="button" accessibilityLabel={`View summary for order ${order.id}`} onPress={() => router.push({ pathname: '/customer/order-summary/[id]', params: { id: order.id } })} style={styles.cancel}><Text style={styles.cancelText}>View summary</Text></Pressable>
             {order.status === 'placed' && <Pressable onPress={() => cancel(order.id)} disabled={cancellingId !== null} accessibilityRole="button" style={styles.cancel}><Text style={styles.cancelText}>{cancellingId === order.id ? 'Cancelling…' : 'Cancel order'}</Text></Pressable>}
             {!!cancelErrors[order.id] && <Text style={styles.message} accessibilityRole="alert">{cancelErrors[order.id]}</Text>}
           </View>;

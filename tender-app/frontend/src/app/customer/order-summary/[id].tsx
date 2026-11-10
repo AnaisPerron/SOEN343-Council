@@ -5,7 +5,6 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { fetchCustomerOrderSummary, type OrderSummary } from '@/api/orderSummary';
 import { useAuth } from '@/context/AuthContext';
-import { useOrders } from '@/context/OrdersContext';
 
 const money = (value: number) => `$${Number(value).toFixed(2)}`;
 
@@ -13,11 +12,9 @@ export default function CustomerOrderSummary() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { token } = useAuth();
-  const { orders } = useOrders();
   const [summary, setSummary] = useState<OrderSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const order = orders.find((entry) => entry.id === id);
 
   useEffect(() => {
     if (!id || !token) { setError('Order summary is unavailable.'); setLoading(false); return; }
@@ -41,6 +38,7 @@ export default function CustomerOrderSummary() {
       {error && <Text style={styles.error} accessibilityRole="alert">{error}</Text>}
       {summary && <>
         <Text style={styles.subtitle}>{summary.restaurantName ?? 'Restaurant'} · Order #{summary.orderId}</Text>
+        <Text style={styles.subtitle}>Status: {summary.status?.replaceAll('_', ' ').toLowerCase() ?? 'Unknown'}</Text>
         <View style={styles.panel}>
           <Text style={styles.heading}>Items</Text>
           {summary.orderItems.map((item, index) => <View key={`${item.menuItemId}-${index}`} style={styles.row}>
@@ -58,8 +56,11 @@ export default function CustomerOrderSummary() {
         </View>
         <View style={styles.panel}>
           <Text style={styles.heading}>Timestamps</Text>
-          {order?.createdAt ? <View style={styles.row}><Text style={styles.label}>Placed</Text><Text style={styles.amount}>{new Date(order.createdAt).toLocaleString()}</Text></View> : null}
-          <View style={styles.row}><Text style={styles.label}>Finished</Text><Text style={styles.amount}>{summary.finishedAt ? new Date(summary.finishedAt).toLocaleString() : 'Unavailable'}</Text></View>
+          {summary.placedAt && <View style={styles.row}><Text style={styles.label}>Placed</Text><Text style={styles.amount}>{new Date(summary.placedAt).toLocaleString()}</Text></View>}
+          {summary.acceptedAt && <View style={styles.row}><Text style={styles.label}>Accepted</Text><Text style={styles.amount}>{new Date(summary.acceptedAt).toLocaleString()}</Text></View>}
+          {summary.pickedUpAt && <View style={styles.row}><Text style={styles.label}>Picked up</Text><Text style={styles.amount}>{new Date(summary.pickedUpAt).toLocaleString()}</Text></View>}
+          {summary.deliveredAt && <View style={styles.row}><Text style={styles.label}>Delivered</Text><Text style={styles.amount}>{new Date(summary.deliveredAt).toLocaleString()}</Text></View>}
+          {summary.finishedAt && <View style={styles.row}><Text style={styles.label}>Finished</Text><Text style={styles.amount}>{new Date(summary.finishedAt).toLocaleString()}</Text></View>}
         </View>
       </>}
     </ScrollView>
