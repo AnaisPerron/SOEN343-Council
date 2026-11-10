@@ -1,0 +1,5 @@
+country_code,account_type,primary_email_alias,password,first_name,last_name,phone_nb,ppBalance,addBank,ccType,payment_card
+US,PERSONAL,e@demo-tender.com,Demo123!,Scooby,Doo,2026538451,6000,Y,VISA,PAYPAL
+US,PERSONAL,f@demo-tender.com,Demo123!,User,Demo,2027269906,5000,N,VISA,DISCOVER
+US,PERSONAL,g@demo-tender.com,Demo123!,Broke,Boy,2027070332,0,Y,AMEX,PAYPAL
+US,PERSONAL,h@demo-tender.com,Demo123!,John,Doe,2023167342,500,N,MASTERCARD,PAYPAL
