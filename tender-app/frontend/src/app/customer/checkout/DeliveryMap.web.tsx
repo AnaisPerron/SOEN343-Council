@@ -14,7 +14,7 @@ const distanceKm = (a: Point, b: Point) => {
   const dLat = (b.latitude - a.latitude) * rad;
   const dLng = (b.longitude - a.longitude) * rad;
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.latitude * rad) * Math.cos(b.latitude * rad) * Math.sin(dLng / 2) ** 2;
-  return 6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+  return 6371.0088 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 };
 
 export default function DeliveryMap({ address, destination, restaurants }: DeliveryMapProps) {
@@ -88,7 +88,7 @@ function MapScene({ center, destination, restaurants }: { center: Point; destina
         position={{ lat: (destination.latitude + restaurant.latitude) / 2, lng: (destination.longitude + restaurant.longitude) / 2 }}
         title={`Straight line distance from ${restaurant.name}`}>
         <div style={{ background: 'white', borderRadius: 6, padding: '5px 8px', boxShadow: '0 1px 5px #777', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>
-          {distanceKm(destination, restaurant).toFixed(1)} km
+          {distanceKm(destination, restaurant).toFixed(2)} km
         </div>
       </AdvancedMarker>)}
     </Map>
