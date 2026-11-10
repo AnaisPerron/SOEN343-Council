@@ -84,6 +84,7 @@ export default function CustomerHistory() {
                 {summaryLoading === order.id && <ActivityIndicator accessibilityLabel="Loading order summary" />}
                 {!!summaryErrors[order.id] && <Text style={styles.message} accessibilityRole="alert">{summaryErrors[order.id]}</Text>}
                 {summaries[order.id] ? <>
+                  {!!summaries[order.id].cancelledAt && <Text style={styles.muted}>Cancelled {new Date(summaries[order.id].cancelledAt ?? '').toLocaleString()}</Text>}
                   {!!summaries[order.id].finishedAt && <Text style={styles.muted}>Finished {new Date(summaries[order.id].finishedAt ?? '').toLocaleString()}</Text>}
                   {summaries[order.id].orderItems.map((item, index) => <Text key={index} style={styles.muted}>{item.quantity} × {item.name} · ${Number(item.lineTotal).toFixed(2)}</Text>)}
                   {summaries[order.id].charges.map((charge, index) => <Text key={index} style={styles.muted}>{charge.chargeType}: ${Number(charge.amount).toFixed(2)}</Text>)}

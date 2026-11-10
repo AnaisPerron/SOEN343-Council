@@ -60,6 +60,7 @@ export default function CustomerOrderSummary() {
           {summary.acceptedAt && <View style={styles.row}><Text style={styles.label}>Accepted</Text><Text style={styles.amount}>{new Date(summary.acceptedAt).toLocaleString()}</Text></View>}
           {summary.pickedUpAt && <View style={styles.row}><Text style={styles.label}>Picked up</Text><Text style={styles.amount}>{new Date(summary.pickedUpAt).toLocaleString()}</Text></View>}
           {summary.deliveredAt && <View style={styles.row}><Text style={styles.label}>Delivered</Text><Text style={styles.amount}>{new Date(summary.deliveredAt).toLocaleString()}</Text></View>}
+          {summary.cancelledAt && <View style={styles.row}><Text style={styles.label}>Cancelled</Text><Text style={styles.amount}>{new Date(summary.cancelledAt).toLocaleString()}</Text></View>}
           {summary.finishedAt && <View style={styles.row}><Text style={styles.label}>Finished</Text><Text style={styles.amount}>{new Date(summary.finishedAt).toLocaleString()}</Text></View>}
         </View>
       </>}
