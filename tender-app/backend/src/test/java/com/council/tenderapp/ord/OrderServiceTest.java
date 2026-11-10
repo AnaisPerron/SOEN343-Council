@@ -195,16 +195,17 @@ class OrderServiceTest {
     }
 
     @Test
-    void advancesReadyOrderToPickedUpAndDelivered() {
+    void courierAdvancesAssignedOrderFromReadyThroughDelivery() {
         Order ready = order(42L, OrderStatus.READY, new Date());
         ready.setId(13L);
+        ready.setCourierId(77L);
         when(orderRepository.findByIdForUpdate(13L)).thenReturn(Optional.of(ready));
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        assertThat(orderService.markPickedUp(42L, 13L).getStatus()).isEqualTo(OrderStatus.PICKED_UP);
+        assertThat(orderService.markPickedUpByCourier(77L, 13L).getStatus()).isEqualTo(OrderStatus.PICKED_UP);
 
         when(orderRepository.findByIdForUpdate(13L)).thenReturn(Optional.of(ready));
-        assertThat(orderService.markDelivered(42L, 13L).getStatus()).isEqualTo(OrderStatus.DELIVERED);
+        assertThat(orderService.markDeliveredByCourier(77L, 13L).getStatus()).isEqualTo(OrderStatus.DELIVERED);
     }
 
     @Test

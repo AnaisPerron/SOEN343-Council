@@ -39,9 +39,10 @@ schema and does not create or update tables.
 `GET /api/restaurants/{restaurantId}/orders/pickup` returns `READY` orders that
 are awaiting courier or customer pickup, ordered by placement time.
 
-Restaurant order actions are `POST /api/restaurants/{restaurantId}/orders/{orderId}/accept`,
-`/reject` (JSON body `{"reason":"..."}`), `/cancel`, `/prepare`, `/ready`,
-`/picked-up`, `/delivered`, and `/refund`. The lifecycle is
+Restaurant dashboard actions are `POST /api/restaurants/{restaurantId}/orders/{orderId}/accept`,
+`/reject` (JSON body `{"reason":"..."}`), `/cancel`, `/prepare`, `/ready`, and
+`/refund`. The restaurant prepares an order through `READY`; the courier
+confirms pickup and delivery. The lifecycle is
 `PLACED → ACCEPTED → PREPARING → READY → PICKED_UP → DELIVERED`.
 `READY`, `PICKED_UP`, or `DELIVERED` orders may transition to `REFUNDED`.
 `PLACED → REJECTED|CANCELLED` are terminal alternatives. Accepting records the
@@ -62,7 +63,7 @@ refresh and the existing lifecycle actions remain available.
 
 - **Command:** Each restaurant action is captured as an immutable request object
   (`OrderCommands.Accept`, `Reject`, `Cancel`, `StartPreparation`, `MarkReady`,
-  `MarkPickedUp`, `MarkDelivered`, or `Refund`). `RestaurantOrderController`
+  or `Refund`). `RestaurantOrderController`
   submits these commands to `OrderCommandInvoker`, which dispatches them to the
   existing `OrderService`. The service remains responsible for authorization
   checks, transactions, persistence, and publishing status changes. Queue reads
@@ -78,8 +79,8 @@ refresh and the existing lifecycle actions remain available.
 
 The patterns have separate responsibilities: commands carry and dispatch
 requests, the state machine validates lifecycle transitions, and observers
-react to committed status changes. Existing routes, queue results, and order
-behavior remain unchanged.
+react to committed status changes. The restaurant command flow ends when the
+order is marked ready; courier-only routes own pickup and delivery.
 
 ### Design decision: courier dispatch queue (R-DLV-04)
 
@@ -87,23 +88,33 @@ The dispatch queue is derived from persisted orders in `READY` status with no
 `courier_id`; it is not an in-memory collection, so waiting orders survive page
 refreshes and are cleared when the underlying orders are reset. `status_changed_at`
 is not used for dispatch ordering. Instead, a persisted `order_ready` event in
-`order_events` records when an order became ready; waiting orders are dispatched
+`order_events` records when an order became ready; waiting orders are considered
 in that event-time FIFO order, with order ID as a tie-breaker. Existing ready
 orders without a corresponding event use their creation time as a fallback.
 
 The Observer pattern connects committed order and courier state changes to
 dispatch: the order-status observer retries after an order becomes ready, and
 the courier duty service retries after a courier goes on duty or finishes a
-delivery. The dispatch service assigns each oldest waiting order to the nearest
-idle courier, removing it from the derived queue by setting `courier_id`.
-Waiting and assignment/removal events are logged to the application console.
+delivery. For each idle courier, dispatch creates at most one offer by setting
+the order's `courier_id`; the courier remains `IDLE` until accepting. This keeps
+the offer visible through the existing duty response without a new order entity
+field. The nearest idle courier receives the oldest eligible order. A courier
+with an outstanding offer is not offered another one.
 
-After an assigned order has been marked `PICKED_UP`, its courier can complete
-the delivery with `POST /api/courier/duty/orders/{orderId}/delivered`. The
-backend verifies that the order belongs to the authenticated courier, marks it
-delivered, releases the courier to idle, and retries dispatch for the oldest
-waiting order. The response includes the courier's resulting duty status and
-any newly assigned order.
+Courier actions use `POST /api/courier/duty/on` and
+`POST /api/courier/duty/off` for the duty toggle,
+`POST /api/courier/duty/orders/{orderId}/accept` to accept an offer, and
+`POST /api/courier/duty/orders/{orderId}/decline` to decline it and go offline. Declining clears the
+order's `courier_id`, putting it back in the FIFO queue, then retries dispatch
+for another idle courier. Going off duty while an offer is pending also
+withdraws it. After acceptance,
+`POST /api/courier/duty/orders/{orderId}/picked-up` changes the order to
+`PICKED_UP` and the courier from `ASSIGNED` to `CARRYING`; the courier can
+then call `POST /api/courier/duty/orders/{orderId}/delivered`, which changes the order to `DELIVERED`,
+returns the courier to `IDLE`, and retries the queue. The API verifies that the
+order is offered to or assigned to the authenticated courier. Waiting, offer,
+acceptance, decline, pickup, and delivery events are logged to the application
+console.
 
 The current project has no authentication/authorization integration. The local
 restaurant profile is a demo context, not an authenticated account. Actions

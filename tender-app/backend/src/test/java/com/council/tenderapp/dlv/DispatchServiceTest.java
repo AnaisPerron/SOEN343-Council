@@ -44,7 +44,7 @@ class DispatchServiceTest {
     }
 
     @Test
-    void assignsTheNearestIdleCourier() {
+    void offersTheNearestIdleCourier() {
         CourierProfile far = idleCourier(1, 45.60, -73.70);
         CourierProfile near = idleCourier(2, 45.501, -73.571);
         Order order = readyOrder(10);
@@ -55,7 +55,7 @@ class DispatchServiceTest {
         new DispatchService(orders, restaurants, couriers, logService).retryQueue();
 
         assertThat(order.getCourierId()).isEqualTo(2L);
-        assertThat(near.getStatus()).isEqualTo(CourierStatus.ASSIGNED);
+        assertThat(near.getStatus()).isEqualTo(CourierStatus.IDLE);
         assertThat(far.getStatus()).isEqualTo(CourierStatus.IDLE);
     }
 
@@ -71,6 +71,7 @@ class DispatchServiceTest {
         new DispatchService(orders, restaurants, couriers, logService).retryQueue();
 
         assertThat(oldest.getCourierId()).isEqualTo(1L);
+        assertThat(only.getStatus()).isEqualTo(CourierStatus.IDLE);
         assertThat(newer.getCourierId()).isNull();
     }
 

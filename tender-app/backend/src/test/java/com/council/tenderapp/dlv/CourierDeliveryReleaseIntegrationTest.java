@@ -51,7 +51,7 @@ class CourierDeliveryReleaseIntegrationTest {
             orderService.markReady(restaurantId, orderId);
 
             assertThat(orders.findById(orderId).orElseThrow().getCourierId()).isEqualTo(courierId);
-            assertThat(statusOf(courierId)).isEqualTo(CourierStatus.ASSIGNED);
+            assertThat(statusOf(courierId)).isEqualTo(CourierStatus.IDLE);
             assertThat(orderEvents.findAll()).anySatisfy(event -> {
                 assertThat(event.getOrderId()).isEqualTo(orderId);
                 assertThat(event.getEventType()).isEqualTo("order_ready");
@@ -83,14 +83,15 @@ class CourierDeliveryReleaseIntegrationTest {
             assertThat(orders.findById(first).orElseThrow().getCourierId()).isEqualTo(courierId);
             assertThat(orders.findById(second).orElseThrow().getCourierId()).isNull();
 
-            orderService.markPickedUp(restaurantId, first);
+            courierDutyService.acceptOffer(courierId, first);
+            orderService.markPickedUpByCourier(courierId, first);
             assertThat(statusOf(courierId)).isEqualTo(CourierStatus.CARRYING);
 
             orderService.markDeliveredByCourier(courierId, first);
 
             // Freed by the delivery, then immediately handed the order that was waiting
             assertThat(orders.findById(second).orElseThrow().getCourierId()).isEqualTo(courierId);
-            assertThat(statusOf(courierId)).isEqualTo(CourierStatus.ASSIGNED);
+            assertThat(statusOf(courierId)).isEqualTo(CourierStatus.IDLE);
 
             orderService.refundOrder(restaurantId, second);
             assertThat(statusOf(courierId)).isEqualTo(CourierStatus.IDLE);

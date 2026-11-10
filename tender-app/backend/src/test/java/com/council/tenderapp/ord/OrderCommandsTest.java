@@ -22,8 +22,6 @@ class OrderCommandsTest {
         invoker.execute(new OrderCommands.Cancel(1L, 12L));
         invoker.execute(new OrderCommands.StartPreparation(1L, 13L));
         invoker.execute(new OrderCommands.MarkReady(1L, 14L));
-        invoker.execute(new OrderCommands.MarkPickedUp(1L, 15L));
-        invoker.execute(new OrderCommands.MarkDelivered(1L, 16L));
         invoker.execute(new OrderCommands.Refund(1L, 17L));
 
         verify(orderService).acceptOrder(1L, 10L);
@@ -31,8 +29,6 @@ class OrderCommandsTest {
         verify(orderService).cancelOrder(1L, 12L);
         verify(orderService).startPreparation(1L, 13L);
         verify(orderService).markReady(1L, 14L);
-        verify(orderService).markPickedUp(1L, 15L);
-        verify(orderService).markDelivered(1L, 16L);
         verify(orderService).refundOrder(1L, 17L);
         verifyNoMoreInteractions(orderService);
     }
