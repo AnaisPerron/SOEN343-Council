@@ -192,7 +192,7 @@ export default function ConfirmOrderScreen() {
               })}
             </View>;
           })}
-          <View style={styles.totalRow}><Text style={styles.totalLabel}>Total</Text><Text style={styles.totalValue}>${total.toFixed(2)}</Text></View>
+          <View style={styles.totalRow}><Text style={styles.totalLabel}>Items subtotal</Text><Text style={styles.totalValue}>${total.toFixed(2)}</Text></View>
 
           <View style={styles.addressPanel}>
             <Text style={styles.paymentTitle}>Delivery address</Text>
@@ -216,8 +216,8 @@ export default function ConfirmOrderScreen() {
           </View>
           <View style={styles.paymentPanel}>
             <Text style={styles.paymentLabel}>PAYMENT</Text>
-            <Text style={styles.paymentTitle}>Payment info upcoming</Text>
-            <Text style={styles.paymentText}>Payment details will be added when checkout is connected.</Text>
+            <Text style={styles.paymentTitle}>Final charge</Text>
+            <Text style={styles.paymentText}>The final charge includes configured delivery and service fees and any small-order surcharge. The placed-order receipt shows the charged total for each restaurant.</Text>
           </View>
           {restriction && <View style={styles.restrictionPanel} accessibilityRole="alert">
             <Text style={styles.restrictionCode}>{restriction.code}</Text>
