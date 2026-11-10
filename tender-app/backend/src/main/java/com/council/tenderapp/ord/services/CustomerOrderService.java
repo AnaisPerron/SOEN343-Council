@@ -61,6 +61,13 @@ public class CustomerOrderService {
 
     @Transactional
     public OrderResponseDto placeOrder(Long customerId, PlaceOrderRequestDto request) {
+        boolean override = request.deliveryAddress() != null;
+        if (override && (request.deliveryAddress().isBlank() || request.deliveryLatitude() == null || request.deliveryLongitude() == null)) {
+            throw new InvalidOrderException("Pick a verified delivery address from the suggestions");
+        }
+        if (!override && (request.deliveryLatitude() != null || request.deliveryLongitude() != null)) {
+            throw new InvalidOrderException("A delivery location requires an address");
+        }
         browseService.checkRestaurantOpen(request.restaurantId());
         Map<Long, MenuItem> menu = menuItemRepository.findMenuItemsByRestaurantId(request.restaurantId())
                 .stream().collect(Collectors.toMap(MenuItem::getId, Function.identity()));
@@ -104,7 +111,8 @@ public class CustomerOrderService {
         Instant placedAt = Instant.now();
         Order order = new Order(customerId, request.restaurantId(), OrderStatus.PLACED, total);
         CustomerProfileService.DeliveryAddress deliverTo = customerProfileService.deliveryAddress(customerId).orElse(null);
-        if (deliverTo != null) order.setDelivery(deliverTo.address(), deliverTo.latitude(), deliverTo.longitude());
+        if (override) order.setDelivery(request.deliveryAddress().trim(), request.deliveryLatitude(), request.deliveryLongitude());
+        else if (deliverTo != null) order.setDelivery(deliverTo.address(), deliverTo.latitude(), deliverTo.longitude());
         for (OrderItemRequestDto item : request.items()) {
             order.addOrderLine(new OrderLine(menu.get(item.menuItemId()), item.quantity(),
                     menu.get(item.menuItemId()).getPrice()));

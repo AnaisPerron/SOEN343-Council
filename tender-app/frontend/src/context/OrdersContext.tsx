@@ -17,7 +17,7 @@ interface OrdersContextValue {
   /** Reload the customer's orders from the backend, e.g. to pick up status changes. */
   refreshOrders: () => void;
   /** Places one backend order per restaurant; a failed restaurant does not undo the others. */
-  placeOrders: (groups: RestaurantCartGroup[]) => Promise<{ placed: CustomerOrder[]; failures: OrderFailure[] }>;
+  placeOrders: (groups: RestaurantCartGroup[], destination?: { address: string; latitude: number; longitude: number }) => Promise<{ placed: CustomerOrder[]; failures: OrderFailure[] }>;
   /** Rejects with the backend's reason when the order can no longer be cancelled. */
   cancelOrder: (orderId: string) => Promise<void>;
 }
@@ -43,14 +43,14 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
 
   useEffect(loadHistory, [loadHistory]);
 
-  const placeOrders: OrdersContextValue['placeOrders'] = async (groups) => {
+  const placeOrders: OrdersContextValue['placeOrders'] = async (groups, destination) => {
     const placed: CustomerOrder[] = [];
     const failures: OrderFailure[] = [];
     // Send restaurants one at a time so each charge and failure is attributed to its own order.
     for (const group of groups) {
       try {
         if (!token) throw new Error('Sign in again to place your order.');
-        const receipt = await sendOrder(`${API_URL}/api/orders`, token, toOrderSubmission(group));
+        const receipt = await sendOrder(`${API_URL}/api/orders`, token, toOrderSubmission(group, destination));
         const [order] = createPlacedOrders([group], receipt.placedAt, receipt.orderId);
         placed.push({ ...order, total: receipt.total });
       } catch (error) {

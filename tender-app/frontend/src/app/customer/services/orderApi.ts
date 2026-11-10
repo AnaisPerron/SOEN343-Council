@@ -5,6 +5,9 @@ import type { OrderHistoryEntry } from './orderLifecycle';
 export interface OrderSubmission {
   restaurantId: number;
   items: { menuItemId: number; quantity: number; optionIds: number[] }[];
+  deliveryAddress?: string;
+  deliveryLatitude?: number;
+  deliveryLongitude?: number;
 }
 
 /** Server receipt for a placed order; total includes add-ons and is what was charged. */
@@ -24,10 +27,12 @@ export interface OrderCancellationResult {
   changedAt: string;
 }
 
-export function toOrderSubmission(group: RestaurantCartGroup): OrderSubmission {
+export function toOrderSubmission(group: RestaurantCartGroup, destination?: { address: string; latitude: number; longitude: number }): OrderSubmission {
   return {
     restaurantId: group.restaurantId,
     items: group.lines.map((line) => ({ menuItemId: line.itemId, quantity: line.quantity, optionIds: [...line.optionIds] })),
+    ...(destination ? { deliveryAddress: destination.address, deliveryLatitude: destination.latitude,
+      deliveryLongitude: destination.longitude } : {}),
   };
 }
 
