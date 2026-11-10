@@ -22,11 +22,21 @@ public interface LedgerEntryRepository extends JpaRepository<LedgerEntry, Long>
     """, nativeQuery = true)
     String findFinalOrderStatusByOrderId(@Param("orderId") Long orderId);
 
+    @Query(value = """
+        SELECT l.* FROM ledger_entries l
+        JOIN bill b ON b.id = l.bill_id
+        WHERE b.order_id = :orderId
+        ORDER BY l.timestamp DESC, l.id DESC
+        LIMIT 1
+        """, nativeQuery = true)
     Optional<LedgerEntry> findByOrderId(@Param("orderId") Long orderId);
 
+    @Query("SELECT l.finalOrderStatus FROM LedgerEntry l WHERE l.id = :ledgerId")
     Optional<String> findFinalOrderStatusById(@Param("ledgerId") Long ledgerId);
 
+    @Query("SELECT l.timestamp FROM LedgerEntry l WHERE l.id = :ledgerId")
     Optional<OffsetDateTime> findTimestampById(@Param("ledgerId") Long ledgerId);
 
+    @Query("SELECT l.totalCharge FROM LedgerEntry l WHERE l.id = :ledgerId")
     Optional<Double> findTotalChargeById(@Param("ledgerId") Long ledgerId);
 }
