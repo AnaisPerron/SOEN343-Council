@@ -1,21 +1,38 @@
-import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Animated, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCart } from '@/context/CartContext';
 import { useOrders, type OrderFailure } from '@/context/OrdersContext';
 import { useCatalog } from '@/context/CatalogContext';
+import { useAuth } from '@/context/AuthContext';
+import AddressAutocomplete, { type AddressLookup, type PickedAddress } from '@/components/AddressAutocomplete';
+import DeliveryMap from './DeliveryMap';
 import { groupCartLinesByRestaurant } from '../cart/cartStore';
 import { getCartOrderRestriction, type RestaurantOrderRestriction } from '../services/restaurantOrderRules';
 import { styles } from './confirm-order.styles';
 
 type OrderPhase = 'review' | 'submitting' | 'success';
+const splitAddress = (address: string) => {
+  const parts = address.split(',').map((part) => part.trim());
+  return { line: parts.slice(0, Math.max(1, parts.length - 2)).join(', '),
+    city: parts.length >= 2 ? parts[parts.length - 2] : '', country: parts.length >= 3 ? parts[parts.length - 1] : '' };
+};
 
 export default function ConfirmOrderScreen() {
   const router = useRouter();
   const { lines, removeRestaurant } = useCart();
   const { restaurants, findItem } = useCatalog();
   const { orders, placeOrders, cancelOrder } = useOrders();
+  const { user } = useAuth();
+  const savedAddress = user?.address ?? '';
+  const [addressLine, setAddressLine] = useState(() => splitAddress(savedAddress).line);
+  const [city, setCity] = useState(() => splitAddress(savedAddress).city);
+  const [country, setCountry] = useState(() => splitAddress(savedAddress).country);
+  const [destination, setDestination] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [addressLookup, setAddressLookup] = useState<AddressLookup | null>(null);
+  const onLookup = useCallback((value: AddressLookup) => setAddressLookup(value), []);
+  const [addressError, setAddressError] = useState('');
   const [phase, setPhase] = useState<OrderPhase>('review');
   const [placedIds, setPlacedIds] = useState<string[]>([]);
   const [restriction, setRestriction] = useState<RestaurantOrderRestriction | null>(null);
@@ -28,6 +45,12 @@ export default function ConfirmOrderScreen() {
   const groups = groupCartLinesByRestaurant(lines);
   const total = groups.reduce((sum, group) => sum + group.total, 0);
   const placedOrders = orders.filter((order) => placedIds.includes(order.id));
+  const deliveryAddress = [addressLine.trim(), city.trim(), country.trim()].join(', ');
+  const restaurantPoints = groups.flatMap((group) => {
+    const restaurant = restaurants.find((entry) => entry.id === group.restaurantId);
+    return restaurant?.latitude != null && restaurant.longitude != null
+      ? [{ id: restaurant.id, name: restaurant.name, status: restaurant.status, latitude: restaurant.latitude, longitude: restaurant.longitude }] : [];
+  });
 
   useEffect(() => () => {
     successOpacity.stopAnimation();
@@ -45,12 +68,25 @@ export default function ConfirmOrderScreen() {
       setRestriction(blocked);
       return;
     }
+    if (!addressLine.trim() || !city.trim() || !country.trim()) {
+      setAddressError('Address line, city, and country are required.'); return;
+    }
+    if (deliveryAddress.length > 255) { setAddressError('Address must be at most 255 characters.'); return; }
+    const changed = deliveryAddress !== savedAddress.trim();
+    if (changed && !destination) {
+      setAddressError(addressLookup === 'unavailable'
+        ? 'Address verification is unavailable. Retry the search before ordering.'
+        : 'Pick a verified street address from the suggestions before ordering.');
+      return;
+    }
 
     setRestriction(null);
+    setAddressError('');
     setFailures([]);
     sending.current = true;
     setPhase('submitting');
-    const result = await placeOrders(groups);
+    const result = await placeOrders(groups, changed && destination
+      ? { address: deliveryAddress, ...destination } : undefined);
     sending.current = false;
     // Only placed restaurants leave the cart, so failed ones can be retried.
     result.placed.forEach((order) => removeRestaurant(order.restaurantId));
@@ -158,6 +194,26 @@ export default function ConfirmOrderScreen() {
           })}
           <View style={styles.totalRow}><Text style={styles.totalLabel}>Total</Text><Text style={styles.totalValue}>${total.toFixed(2)}</Text></View>
 
+          <View style={styles.addressPanel}>
+            <Text style={styles.paymentTitle}>Delivery address</Text>
+            <Text style={styles.paymentText}>This address applies to the orders placed now. Your profile address stays saved for future orders.</Text>
+            <Text style={styles.addressLabel}>Country</Text>
+            <TextInput style={styles.addressInput} value={country} onChangeText={(value) => { setCountry(value); setDestination(null); }} accessibilityLabel="Delivery country" />
+            <Text style={styles.addressLabel}>City</Text>
+            <TextInput style={styles.addressInput} value={city} onChangeText={(value) => { setCity(value); setDestination(null); }} accessibilityLabel="Delivery city" />
+            <Text style={styles.addressLabel}>Address line</Text>
+            <AddressAutocomplete style={styles.addressInput} value={addressLine}
+              onChangeText={(value) => { setAddressLine(value); setDestination(null); }}
+              onPick={(picked: PickedAddress) => {
+                setAddressLine(picked.addressLine); setCity(picked.city); setCountry(picked.country);
+                setDestination({ latitude: picked.latitude, longitude: picked.longitude }); setAddressError('');
+              }} onLookup={onLookup} accessibilityLabel="Delivery address line" autoComplete="street-address" />
+            {addressError ? <Text style={styles.addressError} accessibilityRole="alert">{addressError}</Text> : null}
+            <Text style={styles.mapTitle}>Delivery map</Text>
+            <DeliveryMap address={deliveryAddress === savedAddress.trim() ? deliveryAddress : ''}
+              destination={destination} restaurants={restaurantPoints} />
+            {restaurantPoints.length < groups.length && <Text style={styles.paymentText}>Some restaurants do not have a saved map location.</Text>}
+          </View>
           <View style={styles.paymentPanel}>
             <Text style={styles.paymentLabel}>PAYMENT</Text>
             <Text style={styles.paymentTitle}>Payment info upcoming</Text>
