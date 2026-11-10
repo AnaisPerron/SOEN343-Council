@@ -18,6 +18,7 @@ import com.council.tenderapp.reg.exceptions.MissingSessionTokenException;
 import com.council.tenderapp.reg.services.LoginService;
 import com.council.tenderapp.reg.services.RegistrationService;
 import com.council.tenderapp.reg.services.SessionService;
+import com.council.tenderapp.reg.services.CustomerProfileService;
 import com.council.tenderapp.reg.repositories.ProfileRepository;
 import com.council.tenderapp.ord.entities.Restaurant;
 import com.council.tenderapp.ord.repositories.RestaurantRepository;
@@ -39,14 +40,17 @@ public class AuthController {
     private final SessionService sessionService;
     private final ProfileRepository profiles;
     private final RestaurantRepository restaurants;
+    private final CustomerProfileService customerProfiles;
 
     public AuthController(RegistrationService registrationService, LoginService loginService,
-            SessionService sessionService, ProfileRepository profiles, RestaurantRepository restaurants) {
+            SessionService sessionService, ProfileRepository profiles, RestaurantRepository restaurants,
+            CustomerProfileService customerProfiles) {
         this.registrationService = registrationService;
         this.loginService = loginService;
         this.sessionService = sessionService;
         this.profiles = profiles;
         this.restaurants = restaurants;
+        this.customerProfiles = customerProfiles;
     }
 
     @PostMapping("/register")
@@ -57,7 +61,8 @@ public class AuthController {
 
     @PostMapping("/login")
     public LoginResponse login(@Valid @RequestBody LoginRequest request) {
-        return loginService.login(request);
+        LoginResponse response = loginService.login(request);
+        return response.role() == Role.CUSTOMER ? response.withAddress(customerAddress(response.id())) : response;
     }
 
     @GetMapping("/session")
@@ -75,7 +80,13 @@ public class AuthController {
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Restaurant unavailable"));
             return LoginResponse.from(session, profile, restaurant);
         }
-        return LoginResponse.from(session, profile);
+        LoginResponse response = LoginResponse.from(session, profile);
+        return profile.getRole() == Role.CUSTOMER ? response.withAddress(customerAddress(session.accountId())) : response;
+    }
+
+    private String customerAddress(Long accountId) {
+        return customerProfiles.deliveryAddress(accountId)
+                .map(CustomerProfileService.DeliveryAddress::address).orElse(null);
     }
 
     // Logging out an unknown or expired token still succeeds, so retries are safe

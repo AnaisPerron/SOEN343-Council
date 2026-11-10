@@ -18,6 +18,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import com.council.tenderapp.reg.services.SessionService;
+import com.council.tenderapp.reg.services.CustomerProfileService;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -34,14 +35,17 @@ public class ProfileController {
     private final RestaurantStaffRepository restaurantStaff;
     private final JdbcTemplate jdbc;
     private final SessionService sessions;
+    private final CustomerProfileService customerProfiles;
 
     public ProfileController(ProfileRepository profiles, RestaurantRepository restaurants,
-            RestaurantStaffRepository restaurantStaff, JdbcTemplate jdbc, SessionService sessions) {
+            RestaurantStaffRepository restaurantStaff, JdbcTemplate jdbc, SessionService sessions,
+            CustomerProfileService customerProfiles) {
         this.profiles = profiles;
         this.restaurants = restaurants;
         this.restaurantStaff = restaurantStaff;
         this.jdbc = jdbc;
         this.sessions = sessions;
+        this.customerProfiles = customerProfiles;
     }
 
     @Transactional
@@ -75,6 +79,8 @@ public class ProfileController {
         Profile profile = currentProfile(authentication);
         return profile.getRole() == Role.STAFF
                 ? RegisterResponse.from(profile, currentRestaurant(profile))
+                : profile.getRole() == Role.CUSTOMER
+                ? RegisterResponse.from(profile, customerAddress(profile.getId()))
                 : RegisterResponse.from(profile);
     }
 
@@ -82,17 +88,47 @@ public class ProfileController {
     @PatchMapping
     public RegisterResponse update(Authentication authentication, @Valid @RequestBody UpdateProfileRequest request) {
         Profile profile = currentProfile(authentication);
+        if ((request.latitude() == null) != (request.longitude() == null) ||
+                (request.hasLocation() && (request.address() == null || request.address().isBlank()))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A location requires an address and both coordinates");
+        }
         profile.updateContact(request.name(), request.phone());
         if (profile.getRole() == Role.STAFF) {
             Restaurant restaurant = currentRestaurant(profile);
             restaurant.setName(request.name().trim());
             restaurant.setPhone(request.phone().trim());
-            if (request.address() != null) restaurant.setAddress(request.address().trim());
+            if (request.address() != null) {
+                String address = request.address().trim();
+                if (address.isEmpty()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Restaurant address is required");
+                if (!address.equals(restaurant.getAddress())) {
+                    if (!request.hasLocation()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Pick a verified address from the suggestions");
+                    restaurant.setAddress(address);
+                    restaurant.setLatitude(request.latitude());
+                    restaurant.setLongitude(request.longitude());
+                }
+            }
             restaurants.save(restaurant);
             profiles.save(profile);
             return RegisterResponse.from(profile, restaurant);
         }
+        if (profile.getRole() == Role.CUSTOMER) {
+            if (request.address() != null) {
+                String address = request.address().trim();
+                if (address.isEmpty()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Customer address is required");
+                customerProfiles.ensureExists(profile.getId());
+                if (!address.equals(customerAddress(profile.getId()))) {
+                    if (!request.hasLocation()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Pick a verified address from the suggestions");
+                    customerProfiles.saveAddress(profile.getId(), address, request.latitude(), request.longitude());
+                }
+            }
+            return RegisterResponse.from(profiles.save(profile), customerAddress(profile.getId()));
+        }
         return RegisterResponse.from(profiles.save(profile));
+    }
+
+    private String customerAddress(Long accountId) {
+        return customerProfiles.deliveryAddress(accountId)
+                .map(CustomerProfileService.DeliveryAddress::address).orElse(null);
     }
 
     private Profile currentProfile(Authentication authentication) {

@@ -126,6 +126,23 @@ class OrderServiceTest {
     }
 
     @Test
+    void copiesTheCustomersAddressOntoTheOrder() {
+        menu(item(2L, "Pepperoni Pizza", "17.00", "available"));
+        when(paymentGateway.charge(any(), any())).thenReturn(PaymentResult.approved("MOCK-1"));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(customerProfileService.deliveryAddress(CUSTOMER_ID)).thenReturn(Optional.of(
+                new CustomerProfileService.DeliveryAddress("1250 Rue Peel, Montreal, Canada", 45.508, -73.571)));
+
+        service.placeOrder(CUSTOMER_ID, request(new OrderItemRequestDto(2L, 1)));
+
+        ArgumentCaptor<Order> saved = ArgumentCaptor.forClass(Order.class);
+        verify(orderRepository).save(saved.capture());
+        assertThat(saved.getValue().getDeliveryAddress()).isEqualTo("1250 Rue Peel, Montreal, Canada");
+        assertThat(saved.getValue().getDeliveryLatitude()).isEqualTo(45.508);
+        assertThat(saved.getValue().getDeliveryLongitude()).isEqualTo(-73.571);
+    }
+
+    @Test
     void storesMenuPriceSnapshotOnEachLine() {
         menu(item(2L, "Pepperoni Pizza", "17.00", "available"));
         when(paymentGateway.charge(any(), any())).thenReturn(PaymentResult.approved("MOCK-1"));

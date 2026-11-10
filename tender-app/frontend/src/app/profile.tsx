@@ -1,11 +1,23 @@
 import { homeRoute } from '@/lib/roleRoutes';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Redirect, useRouter } from 'expo-router';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AccountMenu from '@/components/AccountMenu';
 import { useAuth } from '@/context/AuthContext';
 import type { AuthUser } from '@/types/auth';
+import AddressAutocomplete, { type AddressLookup, type PickedAddress } from '@/components/AddressAutocomplete';
+
+function splitAddress(value: string | undefined) {
+  const parts = (value ?? '').split(',').map((part) => part.trim());
+  if (parts.length === 1) return { addressLine: parts[0], city: '', country: '' };
+  if (parts.length === 2) return { addressLine: parts[0], city: parts[1], country: '' };
+  return {
+    addressLine: parts.slice(0, -2).join(', '),
+    city: parts[parts.length - 2],
+    country: parts[parts.length - 1],
+  };
+}
 
 export default function ProfileScreen() {
   const { user, ready } = useAuth();
@@ -19,7 +31,13 @@ function ProfileForm({ user }: { user: AuthUser }) {
   const router = useRouter();
   const [name, setName] = useState(user.name);
   const [phone, setPhone] = useState(user.phoneNumber);
-  const [address, setAddress] = useState(user.address ?? '');
+  const initialAddress = splitAddress(user.address);
+  const [addressLine, setAddressLine] = useState(initialAddress.addressLine);
+  const [city, setCity] = useState(initialAddress.city);
+  const [country, setCountry] = useState(initialAddress.country);
+  const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [lookup, setLookup] = useState<AddressLookup | null>(null);
+  const onLookup = useCallback((result: AddressLookup) => setLookup(result), []);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -29,11 +47,27 @@ function ProfileForm({ user }: { user: AuthUser }) {
     if (saving) return;
     if (!name.trim()) { setMessage('Name is required'); return; }
     if (!/^\+?[0-9 ()-]{7,20}$/.test(phone.trim())) { setMessage('Enter a valid phone number'); return; }
-    if (user.role === 'restaurant' && !address.trim()) { setMessage('Restaurant address is required'); return; }
+    if (user.role === 'restaurant' || user.role === 'customer') {
+      if (!addressLine.trim() || !city.trim() || !country.trim()) {
+        setMessage('Address line, city, and country are required'); return;
+      }
+    }
+    const address = [addressLine.trim(), city.trim(), country.trim()].join(', ');
+    if (address.length > 255) { setMessage('Address must be at most 255 characters'); return; }
+    const addressChanged = (user.role === 'restaurant' || user.role === 'customer') && address !== (user.address ?? '').trim();
+    if (addressChanged && !location) {
+      setMessage(lookup === 'unavailable'
+        ? 'Address verification is unavailable. Retry the search before saving.'
+        : 'Pick a verified street address from the suggestions before saving.');
+      return;
+    }
     setSaving(true);
     setMessage('');
     try {
-      await saveProfile(name.trim(), phone.trim(), user.role === 'restaurant' ? address.trim() : undefined);
+      await saveProfile(name.trim(), phone.trim(),
+        user.role === 'restaurant' || user.role === 'customer' ? address.trim() : undefined,
+        location ?? undefined);
+      setLocation(null);
       setMessage('Profile saved');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Could not save profile');
@@ -51,9 +85,24 @@ function ProfileForm({ user }: { user: AuthUser }) {
       {user.role !== 'restaurant' && <><Text style={styles.label}>Name</Text><TextInput style={[styles.input, user.role === 'customer' && styles.customerName]} value={name} onChangeText={setName} accessibilityLabel="Name" autoCapitalize="words" maxLength={100} /></>}
       <Text style={styles.label}>Phone number</Text>
       <TextInput style={styles.input} value={phone} onChangeText={setPhone} accessibilityLabel="Phone number" keyboardType="phone-pad" maxLength={20} />
-      {user.role === 'restaurant' ? <>
-        <Text style={styles.label}>Restaurant address</Text>
-        <TextInput style={styles.input} value={address} onChangeText={setAddress} accessibilityLabel="Restaurant address" maxLength={255} />
+      {(user.role === 'restaurant' || user.role === 'customer') ? <>
+        <Text style={styles.label}>Country</Text>
+        <TextInput style={styles.input} value={country} onChangeText={(text) => { setCountry(text); setLocation(null); }}
+          accessibilityLabel="Country" autoComplete="country" maxLength={100} />
+        <Text style={styles.label}>City</Text>
+        <TextInput style={styles.input} value={city} onChangeText={(text) => { setCity(text); setLocation(null); }}
+          accessibilityLabel="City" maxLength={100} />
+        <Text style={styles.label}>Address line</Text>
+        <AddressAutocomplete style={styles.input} value={addressLine} onChangeText={(text) => { setAddressLine(text); setLocation(null); }}
+          onPick={(picked: PickedAddress) => {
+            setAddressLine(picked.addressLine);
+            setCity(picked.city);
+            setCountry(picked.country);
+            setLocation({ latitude: picked.latitude, longitude: picked.longitude });
+            setMessage('');
+          }}
+          onLookup={onLookup}
+          accessibilityLabel="Address line" maxLength={255} autoComplete="street-address" />
       </> : null}
       <Text style={styles.label}>Email</Text>
       <Text style={styles.readonly}>{user.email}</Text>

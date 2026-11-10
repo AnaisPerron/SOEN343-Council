@@ -48,7 +48,7 @@ class CourierDeliveryReleaseIntegrationTest {
             assertThat(orders.findById(second).orElseThrow().getCourierId()).isNull();
 
             orderService.markPickedUp(restaurantId, first);
-            assertThat(statusOf(courierId)).isEqualTo(CourierStatus.ASSIGNED);
+            assertThat(statusOf(courierId)).isEqualTo(CourierStatus.CARRYING);
 
             orderService.markDelivered(restaurantId, first);
 

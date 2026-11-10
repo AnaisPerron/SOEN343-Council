@@ -8,6 +8,7 @@
   "dependencies": {
     "@expo/metro-runtime": "~58.0.15",
     "@expo/ui": "~58.0.25",
+    "@vis.gl/react-google-maps": "^1.10.2",
     "expo": "^58.0.21",
     "expo-asset": "~58.0.19",
     "expo-constants": "~58.0.14",
@@ -47,7 +48,7 @@
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
-    "test": "node --experimental-strip-types --test src/tests/customer/restaurantSearch.test.ts src/tests/customer/restaurantOrderRules.test.ts src/tests/customer/menuCatalog.test.ts src/tests/customer/cartStore.test.ts src/tests/customer/orderApi.test.ts src/tests/customer/orderLifecycle.test.ts src/tests/auth/authApi.test.ts src/tests/auth/selectedRole.test.ts src/tests/restaurant/orderQueue.test.ts src/tests/restaurant/offlineMocks.test.ts src/tests/restaurant/deliveryFee.test.ts src/tests/courier/courierDuty.test.ts src/tests/auth/roleRoutes.test.ts src/tests/operator/operatorApi.test.ts src/tests/operator/operatorLogic.test.ts src/tests/operator/operatorDashboard.test.ts"
+    "test": "node --experimental-strip-types --test src/tests/customer/restaurantSearch.test.ts src/tests/customer/restaurantOrderRules.test.ts src/tests/customer/menuCatalog.test.ts src/tests/customer/cartStore.test.ts src/tests/customer/orderApi.test.ts src/tests/customer/orderLifecycle.test.ts src/tests/auth/authApi.test.ts src/tests/auth/selectedRole.test.ts src/tests/restaurant/orderQueue.test.ts src/tests/restaurant/offlineMocks.test.ts src/tests/restaurant/deliveryFee.test.ts src/tests/courier/courierDuty.test.ts src/tests/auth/roleRoutes.test.ts src/tests/operator/operatorApi.test.ts src/tests/operator/operatorLogic.test.ts src/tests/operator/operatorDashboard.test.ts src/tests/dash/cityMap.test.ts"
   },
   "private": true
 }

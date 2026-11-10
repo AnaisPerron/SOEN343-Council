@@ -29,6 +29,7 @@ import com.council.tenderapp.reg.security.Session;
 import com.council.tenderapp.reg.services.LoginService;
 import com.council.tenderapp.reg.services.RegistrationService;
 import com.council.tenderapp.reg.services.SessionService;
+import com.council.tenderapp.reg.services.CustomerProfileService;
 import com.council.tenderapp.reg.repositories.ProfileRepository;
 import com.council.tenderapp.ord.repositories.RestaurantRepository;
 import com.council.tenderapp.ord.entities.Restaurant;
@@ -53,6 +54,9 @@ class AuthControllerTest {
 
     @MockitoBean
     private RestaurantRepository restaurants;
+
+    @MockitoBean
+    private CustomerProfileService customerProfiles;
 
     private static final String VALID_BODY = """
             {"name":"Jane","email":"jane@example.com","password":"secret123","phone":"514-555-0101","role":"CUSTOMER"}
@@ -121,12 +125,15 @@ class AuthControllerTest {
         when(loginService.login(any())).thenReturn(new LoginResponse(
                 "abc123", Instant.parse("2026-01-02T00:00:00Z"), 1L, "Jane", "jane@example.com", "514-555-0101",
                 Role.CUSTOMER));
+        when(customerProfiles.deliveryAddress(1L)).thenReturn(Optional.of(
+                new CustomerProfileService.DeliveryAddress("123 Main St", 45.5, -73.6)));
 
         mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(LOGIN_BODY))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").value("abc123"))
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.role").value("CUSTOMER"))
+                .andExpect(jsonPath("$.address").value("123 Main St"))
                 .andExpect(jsonPath("$.passwordHash").doesNotExist());
     }
 
@@ -153,11 +160,14 @@ class AuthControllerTest {
         Session session = new Session("abc123", 1L, null, Role.CUSTOMER, Instant.parse("2026-01-02T00:00:00Z"));
         when(sessionService.find("abc123")).thenReturn(Optional.of(session));
         when(profiles.findById(1L)).thenReturn(Optional.of(new Profile(Role.CUSTOMER, "Jane", "jane@example.com", "hash", "514-555-0101")));
+        when(customerProfiles.deliveryAddress(1L)).thenReturn(Optional.of(
+                new CustomerProfileService.DeliveryAddress("123 Main St", 45.5, -73.6)));
 
         mockMvc.perform(get("/api/auth/session").header("Authorization", "Bearer abc123"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").value("abc123"))
-                .andExpect(jsonPath("$.name").value("Jane"));
+                .andExpect(jsonPath("$.name").value("Jane"))
+                .andExpect(jsonPath("$.address").value("123 Main St"));
     }
 
     @Test

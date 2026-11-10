@@ -103,6 +103,8 @@ public class CustomerOrderService {
         customerProfileService.ensureExists(customerId);
         Instant placedAt = Instant.now();
         Order order = new Order(customerId, request.restaurantId(), OrderStatus.PLACED, total);
+        CustomerProfileService.DeliveryAddress deliverTo = customerProfileService.deliveryAddress(customerId).orElse(null);
+        if (deliverTo != null) order.setDelivery(deliverTo.address(), deliverTo.latitude(), deliverTo.longitude());
         for (OrderItemRequestDto item : request.items()) {
             order.addOrderLine(new OrderLine(menu.get(item.menuItemId()), item.quantity(),
                     menu.get(item.menuItemId()).getPrice()));

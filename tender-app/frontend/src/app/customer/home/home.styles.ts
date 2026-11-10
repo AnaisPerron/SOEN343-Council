@@ -238,4 +238,17 @@ export const styles = StyleSheet.create({
     marginTop: 6,
     textAlign: 'center',
   },
+  cityMap: {
+    marginTop: 32,
+  },
+  single: { flex: 1 },
+  splitRow: { flex: 1, flexDirection: 'row' },
+  sidePanel: {
+    flexGrow: 0,
+    width: 440,
+    borderRightWidth: 1,
+    borderRightColor: '#F0E4E6',
+    backgroundColor: '#FFFAF9',
+  },
+  mapPane: { flex: 1 },
 });

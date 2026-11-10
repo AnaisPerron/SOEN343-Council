@@ -29,6 +29,7 @@ describe('registration api', () => {
       password: 'customer-pass',
       phone: '5145550123',
       role: 'CUSTOMER',
+      address: '123 Main St, Montreal, Canada',
     });
   });
 
@@ -44,6 +45,27 @@ describe('registration api', () => {
     assert.equal(request.role, 'STAFF');
     assert.equal(request.name, 'Maple & Main');
     assert.equal(request.address, '123 Main St, Montreal, Canada');
+  });
+
+  it('sends where a picked address is so the customer appears on the map', () => {
+    const request = toRegisterRequest({ ...customer, address: { ...address, latitude: 45.4972, longitude: -73.579 } });
+    assert.equal(request.latitude, 45.4972);
+    assert.equal(request.longitude, -73.579);
+    assert.equal(request.address, '123 Main St, Montreal, Canada');
+  });
+
+  it('places a restaurant at its picked address', () => {
+    const request = toRegisterRequest({
+      role: 'restaurant',
+      restaurantName: 'Maple & Main',
+      email: 'hello@maple.example',
+      password: 'restaurant-pass',
+      phoneNumber: '5145550199',
+      address: { ...address, latitude: 45.5017, longitude: -73.5689 },
+    });
+    assert.equal(request.address, '123 Main St, Montreal, Canada');
+    assert.equal(request.latitude, 45.5017);
+    assert.equal(request.longitude, -73.5689);
   });
 
   it('registers a courier with their name and no address', () => {
@@ -116,6 +138,17 @@ describe('profile api', () => {
     const [, init] = fetchMock.mock.calls[0].arguments as [string, RequestInit];
     assert.deepEqual(JSON.parse(init.body as string), {
       name: 'Maple Bistro', phone: '5145550199', address: '99 Rue St',
+    });
+  });
+
+  it('sends a picked customer address and its location', async () => {
+    const fetchMock = mockFetch(200, { id: 1, name: 'Alex', email: 'alex@example.com',
+      phone: '5145550199', role: 'CUSTOMER', address: 'New address' });
+    await updateProfile('saved-token', 'Alex', '5145550199', 'New address',
+      { latitude: 45.5, longitude: -73.6 });
+    const [, init] = fetchMock.mock.calls[0].arguments as [string, RequestInit];
+    assert.deepEqual(JSON.parse(init.body as string), {
+      name: 'Alex', phone: '5145550199', address: 'New address', latitude: 45.5, longitude: -73.6,
     });
   });
 });

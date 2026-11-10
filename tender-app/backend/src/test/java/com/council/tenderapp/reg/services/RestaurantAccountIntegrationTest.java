@@ -28,7 +28,7 @@ class RestaurantAccountIntegrationTest {
     void newlyRegisteredRestaurantCanLogInWithItsOwnRestaurant() {
         RegisterResponse registered = registrationService.register(new RegisterRequest(
                 "Bistro", "bistro-integration@example.com", "secret123",
-                "514-555-0199", Role.STAFF, "123 Main St, Montreal, Canada"));
+                "514-555-0199", Role.STAFF, "123 Main St, Montreal, Canada", 45.5, -73.6));
 
         LoginResponse login = loginService.login(new LoginRequest(
                 "bistro-integration@example.com", "secret123"));
