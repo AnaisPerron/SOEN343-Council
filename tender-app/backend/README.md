@@ -100,7 +100,7 @@ your configured database.
 
 The `demo` Spring profile automatically loads `src/main/resources/demo/seed.sql` into PostgreSQL at startup.
 
-**Warning:** Every demo startup clears and reseeds the 15 tables listed in the seed. Use a dedicated demo database/branch. Normal startup preserves existing data.
+**Warning:** Every demo startup clears and reseeds the 16 tables listed in the seed. Use a dedicated demo database/branch. Normal startup preserves existing data.
 
 ### Setup
 
@@ -164,3 +164,12 @@ constraint to include `refunded`; it does not perform refunds or reseed data.
 
 The demo seed retains open, paused, and closed restaurant scenarios, so its
 restaurant statuses and generated IDs can differ from the frontend mock state.
+
+## Operator actions
+
+- `POST /api/operator/orders/{orderId}/reassign`: operator-only reassignment.
+- `POST /api/operator/reset`: operator-only reset, disabled by default.
+- Enable reset with `app.operator.reset-enabled=true`. The baseline defaults to
+  `classpath:demo/seed.sql`; override it with `app.operator.reset-seed`.
+- A successful reset invalidates all sessions.
+- Tests use isolated fixtures; the real demo seed has not been verified.
