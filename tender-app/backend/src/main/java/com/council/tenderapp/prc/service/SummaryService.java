@@ -1,19 +1,22 @@
 package com.council.tenderapp.prc.service;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.council.tenderapp.ord.dtos.OrderLineDto;
+import com.council.tenderapp.ord.entities.Order;
+import com.council.tenderapp.ord.exceptions.OrderNotFoundException;
 import com.council.tenderapp.ord.repositories.OrderRepository;
 import com.council.tenderapp.ord.services.OrderService;
 import com.council.tenderapp.prc.dtos.response.ChargeDto;
 import com.council.tenderapp.prc.dtos.response.SummaryDto;
 import com.council.tenderapp.prc.entities.Bill;
 import com.council.tenderapp.prc.entities.LedgerEntry;
-import com.council.tenderapp.prc.exceptions.OrderNotFinishedException;
 import com.council.tenderapp.prc.repositories.BillRepository;
 import com.council.tenderapp.prc.repositories.LedgerEntryRepository;
 
@@ -32,31 +35,36 @@ public class SummaryService {
         this.orderService = orderService;
     }
 
+    @Transactional(readOnly = true)
     public SummaryDto generateOrderSummary(Long orderId) {
-        LedgerEntry ledger = ledgerRepository.findByOrderId(orderId)
-                .orElseThrow(() -> new OrderNotFinishedException(
-                        "Summary requested but order: " + orderId + " is still being processed."));
-
-        Optional<String> status = ledgerRepository.findFinalOrderStatusById(ledger.getId());
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException("Order " + orderId + " not found."));
+        Optional<LedgerEntry> ledger = ledgerRepository.findByOrderId(orderId);
         String restaurantName = orderRepository.findRestaurantNameByOrderId(orderId);
-        Optional<OffsetDateTime> finishedAt = ledgerRepository.findTimestampById(ledger.getId());
         List<OrderLineDto> orderLines = orderService.getOrderLinesForOrder(orderId);
         List<ChargeDto> charges = getChargesForOrder(orderId);
-        Optional<Double> totalCharge = ledgerRepository.findTotalChargeById(ledger.getId());
+        Double totalCharge = ledger.map(LedgerEntry::getTotalCharge)
+                .orElseGet(() -> order.getTotalPrice().doubleValue());
 
-        return new SummaryDto(orderId, status.orElse(null), restaurantName, finishedAt.orElse(null),
-                orderLines, charges,totalCharge.orElse(null));
+        return new SummaryDto(orderId, order.getStatus().name(), restaurantName,
+                toOffsetDateTime(order.getDateOrdered()), toOffsetDateTime(order.getAcceptedAt()),
+                toOffsetDateTime(order.getPickupDate()), toOffsetDateTime(order.getDateDelivered()),
+                ledger.map(LedgerEntry::getTimestamp).orElse(null), orderLines, charges, totalCharge);
+    }
+
+    private static OffsetDateTime toOffsetDateTime(java.util.Date date) {
+        return date == null ? null : date.toInstant().atOffset(ZoneOffset.UTC);
     }
 
     public List<ChargeDto> getChargesForOrder(Long orderId) 
     {
-        Bill bill = billRepository.findByOrderId(orderId)
-                .orElseThrow(() -> new IllegalArgumentException("No bill found for order ID: " + orderId)); 
+        Optional<Bill> bill = billRepository.findByOrderId(orderId);
+        if (bill.isEmpty()) return List.of();
         
         return List.of(
-            new ChargeDto("Service Fee", bill.getServiceFee()),
-            new ChargeDto("Delivery Fee", bill.getDeliveryFee()),
-            new ChargeDto("Small Order Fee", bill.getSmallOrderFee())
+            new ChargeDto("Service Fee", bill.get().getServiceFee()),
+            new ChargeDto("Delivery Fee", bill.get().getDeliveryFee()),
+            new ChargeDto("Small Order Fee", bill.get().getSmallOrderFee())
         );
     }
 }
