@@ -28,6 +28,7 @@ import com.council.tenderapp.ord.repositories.MenuItemOptionRepository;
 import com.council.tenderapp.ord.repositories.MenuItemRepository;
 import com.council.tenderapp.ord.repositories.OrderRepository;
 import com.council.tenderapp.reg.services.CustomerProfileService;
+import com.council.tenderapp.prc.service.PricingService;
 import com.council.tenderapp.technicalservices.payment.PaymentDeclinedException;
 import com.council.tenderapp.technicalservices.payment.PaymentGateway;
 import com.council.tenderapp.technicalservices.payment.PaymentResult;
@@ -43,11 +44,13 @@ public class CustomerOrderService {
     private final OrderCancellationService cancellations;
     private final JdbcTemplate jdbc;
     private final CustomerProfileService customerProfileService;
+    private final PricingService pricingService;
 
     public CustomerOrderService(BrowseService browseService, MenuItemRepository menuItemRepository,
             MenuItemOptionRepository menuItemOptionRepository, OrderRepository orderRepository,
             PaymentGateway paymentGateway, PreparationQueueService preparationQueueService, JdbcTemplate jdbc,
-            CustomerProfileService customerProfileService, OrderCancellationService cancellations) {
+            CustomerProfileService customerProfileService, OrderCancellationService cancellations,
+            PricingService pricingService) {
         this.browseService = browseService;
         this.menuItemRepository = menuItemRepository;
         this.menuItemOptionRepository = menuItemOptionRepository;
@@ -57,6 +60,7 @@ public class CustomerOrderService {
         this.cancellations = cancellations;
         this.jdbc = jdbc;
         this.customerProfileService = customerProfileService;
+        this.pricingService = pricingService;
     }
 
     @Transactional
@@ -97,27 +101,34 @@ public class CustomerOrderService {
             }
         }
 
-        BigDecimal total = request.items().stream()
+        BigDecimal subtotal = request.items().stream()
                 .map(item -> paidUnitPrice(menu.get(item.menuItemId()), item, options)
                         .multiply(BigDecimal.valueOf(item.quantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+        customerProfileService.ensureExists(customerId);
+        CustomerProfileService.DeliveryAddress savedAddress = customerProfileService.deliveryAddress(customerId).orElse(null);
+        String deliveryAddress = override ? request.deliveryAddress().trim() : savedAddress == null ? null : savedAddress.address();
+        Double deliveryLatitude = override ? request.deliveryLatitude() : savedAddress == null ? null : savedAddress.latitude();
+        Double deliveryLongitude = override ? request.deliveryLongitude() : savedAddress == null ? null : savedAddress.longitude();
+        if (deliveryAddress == null || deliveryAddress.isBlank()) {
+            throw new InvalidOrderException("A verified delivery address is required");
+        }
+        PricingService.Quote quote = pricingService.quote(subtotal, request.restaurantId(), deliveryLatitude, deliveryLongitude);
+        BigDecimal total = quote.total();
         PaymentResult payment = paymentGateway.charge(customerId, total);
         if (!payment.approved()) {
             throw new PaymentDeclinedException("Payment declined: " + payment.message());
         }
 
-        // orders.customer_id references customer_profiles; older accounts may lack that row.
-        customerProfileService.ensureExists(customerId);
         Instant placedAt = Instant.now();
         Order order = new Order(customerId, request.restaurantId(), OrderStatus.PLACED, total);
-        CustomerProfileService.DeliveryAddress deliverTo = customerProfileService.deliveryAddress(customerId).orElse(null);
-        if (override) order.setDelivery(request.deliveryAddress().trim(), request.deliveryLatitude(), request.deliveryLongitude());
-        else if (deliverTo != null) order.setDelivery(deliverTo.address(), deliverTo.latitude(), deliverTo.longitude());
+        order.setDelivery(deliveryAddress, deliveryLatitude, deliveryLongitude);
         for (OrderItemRequestDto item : request.items()) {
             order.addOrderLine(new OrderLine(menu.get(item.menuItemId()), item.quantity(),
                     menu.get(item.menuItemId()).getPrice()));
         }
         order = orderRepository.save(order);
+        pricingService.saveBill(order, quote);
         // Lines keep the base price; each add-on's cost is snapshotted in order_line_options.
         // Written with JDBC because the table's composite keys have no JPA entity, so flush first:
         // cascaded lines are otherwise only inserted at commit and would have no id yet.
