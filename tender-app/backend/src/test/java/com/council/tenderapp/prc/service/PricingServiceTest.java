@@ -20,16 +20,16 @@ class PricingServiceTest {
         Restaurant restaurant = new Restaurant("Bistro", "open", 0.0, 0.0);
         when(restaurants.findById(1L)).thenReturn(Optional.of(restaurant));
         PricingService pricing = new PricingService(restaurants, mock(BillRepository.class),
-                new BigDecimal("0.80"), new BigDecimal("1.50"), new BigDecimal("15.00"), new BigDecimal("10.00"));
+                new BigDecimal("0.80"), new BigDecimal("1.50"), new BigDecimal("10.00"), new BigDecimal("2.00"));
 
-        PricingService.Quote small = pricing.quote(new BigDecimal("12.00"), 1L, 0.0, 0.0179864);
+        PricingService.Quote small = pricing.quote(new BigDecimal("9.00"), 1L, 0.0, 0.0179864);
         assertThat(small.distanceKm()).isEqualByComparingTo("2.00");
         assertThat(small.deliveryFee()).isEqualByComparingTo("1.60");
-        assertThat(small.smallOrderFee()).isEqualByComparingTo("10.00");
-        assertThat(small.total()).isEqualByComparingTo("25.10");
+        assertThat(small.smallOrderFee()).isEqualByComparingTo("2.00");
+        assertThat(small.total()).isEqualByComparingTo("14.10");
 
-        PricingService.Quote threshold = pricing.quote(new BigDecimal("15.00"), 1L, 0.0, 0.0179864);
+        PricingService.Quote threshold = pricing.quote(new BigDecimal("10.00"), 1L, 0.0, 0.0179864);
         assertThat(threshold.smallOrderFee()).isEqualByComparingTo("0.00");
-        assertThat(threshold.total()).isEqualByComparingTo("18.10");
+        assertThat(threshold.total()).isEqualByComparingTo("13.10");
     }
 }
