@@ -32,7 +32,7 @@ export default function CustomerOrderSummary() {
 
   return <SafeAreaView style={styles.page}>
     <ScrollView contentContainerStyle={styles.content}>
-      <Pressable onPress={() => router.back()} accessibilityRole="button" style={styles.backButton}><Text style={styles.back}>‹ Back to orders</Text></Pressable>
+      <Pressable onPress={() => router.replace('/customer/history')} accessibilityRole="button" style={styles.backButton}><Text style={styles.back}>‹ Back to orders</Text></Pressable>
       <Text style={styles.title}>Order summary</Text>
       {loading && <ActivityIndicator style={styles.loading} accessibilityLabel="Loading order summary" />}
       {error && <Text style={styles.error} accessibilityRole="alert">{error}</Text>}
