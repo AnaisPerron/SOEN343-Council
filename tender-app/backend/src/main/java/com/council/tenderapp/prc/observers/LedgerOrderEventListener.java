@@ -26,10 +26,6 @@ public class LedgerOrderEventListener {
     public void onOrderStatusChanged(OrderStatusEvent event) {
         OrderStatus currentStatus = event.newStatus();
 
-        if (!isFinalStatus(currentStatus)) {
-            return;
-        }
-
         try {
             ledgerService.createLedgerEntry(event.orderId(), currentStatus.toString());
         } catch (Exception exception) {
@@ -37,10 +33,4 @@ public class LedgerOrderEventListener {
         }
     }
 
-    private boolean isFinalStatus(OrderStatus status) {
-        return status == OrderStatus.DELIVERED ||
-               status == OrderStatus.CANCELLED ||
-               status == OrderStatus.REJECTED ||
-               status == OrderStatus.REFUNDED;
-    }
 }
