@@ -7,6 +7,7 @@ import { useOrders, type OrderFailure } from '@/context/OrdersContext';
 import { useCatalog } from '@/context/CatalogContext';
 import { useAuth } from '@/context/AuthContext';
 import { fetchPricingRules, type PricingRules } from '@/api/pricing';
+import { fetchTenderCash } from '@/api/tenderCash';
 import type { OrderSubmissionResult } from '../services/orderApi';
 import { API_URL } from '@/api/client';
 import AddressAutocomplete, { type AddressLookup, type PickedAddress } from '@/components/AddressAutocomplete';
@@ -52,6 +53,8 @@ export default function ConfirmOrderScreen() {
   const [restriction, setRestriction] = useState<RestaurantOrderRestriction | null>(null);
   const [failures, setFailures] = useState<OrderFailure[]>([]);
   const [paypalError, setPaypalError] = useState('');
+  const [tenderBalance, setTenderBalance] = useState(0);
+  const [useTenders, setUseTenders] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [successOpacity] = useState(() => new Animated.Value(0));
@@ -59,6 +62,13 @@ export default function ConfirmOrderScreen() {
   const sending = useRef(false);
   const groups = useMemo(() => groupCartLinesByRestaurant(lines), [lines]);
   const quotedTotal = groups.reduce((sum, group) => sum + (quotes[group.restaurantId]?.total ?? 0), 0);
+  const tendersApplied = useTenders ? Math.min(tenderBalance, Math.floor((quotedTotal + 0.00001) * 10)) : 0;
+  const tenderAllocations = groups.reduce((result, group) => {
+    const used = Object.values(result).reduce((sum, value) => sum + value, 0);
+    result[group.restaurantId] = Math.min(Math.max(0, tendersApplied - used), Math.floor(((quotes[group.restaurantId]?.total ?? 0) + 0.00001) * 10));
+    return result;
+  }, {} as Record<number, number>);
+  const amountDue = Math.round((quotedTotal - tendersApplied / 10) * 100) / 100;
   const quotesReady = groups.length > 0 && groups.every((group) => quotes[group.restaurantId] != null);
   const placedOrders = orders.filter((order) => placedIds.includes(order.id));
   const deliveryAddress = [addressLine.trim(), city.trim(), country.trim()].join(', ');
@@ -72,6 +82,14 @@ export default function ConfirmOrderScreen() {
     successOpacity.stopAnimation();
     successScale.stopAnimation();
   }, [successOpacity, successScale]);
+
+  useEffect(() => {
+    if (!token) return;
+    let active = true;
+    fetchTenderCash(token).then((balance) => { if (active) setTenderBalance(balance.tenders); })
+      .catch(() => { if (active) setTenderBalance(0); });
+    return () => { active = false; };
+  }, [token]);
 
   useEffect(() => {
     if (!token) return;
@@ -149,7 +167,7 @@ export default function ConfirmOrderScreen() {
     sending.current = true;
     setPhase('submitting');
     const result = await placeOrders(groups, destination
-      ? { address: deliveryAddress, ...destination } : undefined);
+      ? { address: deliveryAddress, ...destination } : undefined, tenderAllocations);
     completeOrders(result.placed, result.failures);
   };
 
@@ -224,7 +242,8 @@ export default function ConfirmOrderScreen() {
                 <View style={styles.itemRow}><Text style={styles.itemName}>Items subtotal</Text><Text style={styles.itemPrice}>${itemsSubtotal.toFixed(2)}</Text></View>
                 {/* It shows the “Additional charges” row only when the order total differs from the sum of its items.*/}
                 {Math.abs(otherCharges) > 0.005 && <View style={styles.itemRow}><Text style={styles.itemName}>Additional charges</Text><Text style={styles.itemPrice}>${otherCharges.toFixed(2)}</Text></View>}
-                <View style={styles.itemRow}><Text style={styles.totalLabel}>Total</Text><Text style={styles.totalValue}>${order.total.toFixed(2)}</Text></View>
+                {(tenderAllocations[order.restaurantId] ?? 0) > 0 && <View style={styles.itemRow}><Text style={styles.itemName}>Tender Cash used</Text><Text style={styles.itemPrice}>−${((tenderAllocations[order.restaurantId] ?? 0) / 10).toFixed(2)}</Text></View>}
+                <View style={styles.itemRow}><Text style={styles.totalLabel}>Amount paid</Text><Text style={styles.totalValue}>${(order.total - (tenderAllocations[order.restaurantId] ?? 0) / 10).toFixed(2)}</Text></View>
               </View>
               <View style={styles.statusStep}><View style={styles.statusDotGrey} /><Text style={styles.statusCurrent}>{order.status === 'cancelled' ? 'Placed' : 'Placed · awaiting restaurant'}</Text></View>
               {order.status === 'cancelled' ? (
@@ -309,9 +328,13 @@ export default function ConfirmOrderScreen() {
           </View>
           <View style={styles.paymentPanel}>
             <Text style={styles.paymentTitle}>Payment</Text>
-            <Text style={styles.paymentText}>Pay for this order with PayPal.</Text>
-            {token && <PayPalButton token={token}
-              orders={groups.map((group) => toOrderSubmission(group, destination ? { address: deliveryAddress, ...destination } : undefined))}
+            <Text style={styles.paymentText}>Tender Cash balance: {tenderBalance} tenders (${(tenderBalance / 10).toFixed(2)}). Earn 10 tenders per $1 paid.</Text>
+            {tenderBalance > 0 && <TouchableOpacity accessibilityRole="checkbox" accessibilityState={{ checked: useTenders }} onPress={() => setUseTenders((value) => !value)} style={{ paddingVertical: 12 }}>
+              <Text style={styles.paymentText}>{useTenders ? '☑' : '□'} Use Tender Cash ({tendersApplied} tenders, −${(tendersApplied / 10).toFixed(2)})</Text>
+            </TouchableOpacity>}
+            <Text style={styles.paymentText}>Amount due: ${amountDue.toFixed(2)}</Text>
+            {token && amountDue > 0 && <PayPalButton token={token}
+              orders={groups.map((group) => ({ ...toOrderSubmission(group, destination ? { address: deliveryAddress, ...destination } : undefined), tendersToUse: tenderAllocations[group.restaurantId] ?? 0 }))}
               disabled={phase === 'submitting' || lines.length === 0 || quoteLoading || !quotesReady || !!quoteError}
               onBegin={beginPayPal} onSuccess={paidWithPayPal} onFailure={failPayPal}
               onCancel={() => { sending.current = false; setPhase('review'); }} />}
@@ -328,11 +351,11 @@ export default function ConfirmOrderScreen() {
       <View style={styles.footer}>
         {phase === 'success' ? (
           <TouchableOpacity style={styles.sendButton} accessibilityRole="button" onPress={() => router.replace('/customer/home/home')}><Text style={styles.sendButtonText}>Browse restaurants</Text></TouchableOpacity>
-        ) : (
-          <TouchableOpacity style={[styles.sendButton, (phase === 'submitting' || lines.length === 0 || quoteLoading || !quotesReady || !!quoteError) && styles.sendButtonDisabled]} accessibilityRole="button" accessibilityLabel="Send orders" accessibilityState={{ disabled: phase === 'submitting' || lines.length === 0 || quoteLoading || !quotesReady || !!quoteError, busy: phase === 'submitting' }} disabled={phase === 'submitting' || lines.length === 0 || quoteLoading || !quotesReady || !!quoteError} onPress={sendOrders}>
-            {phase === 'submitting' ? <><ActivityIndicator color="#FFFFFF" size="small" /><Text style={styles.sendButtonText}>Placing orders...</Text></> : <Text style={styles.sendButtonText}>Send orders</Text>}
+        ) : amountDue === 0 ? (
+          <TouchableOpacity style={[styles.sendButton, (phase === 'submitting' || lines.length === 0 || quoteLoading || !quotesReady || !!quoteError) && styles.sendButtonDisabled]} accessibilityRole="button" accessibilityLabel={amountDue === 0 ? 'Pay with Tender Cash' : 'Send orders'} accessibilityState={{ disabled: phase === 'submitting' || lines.length === 0 || quoteLoading || !quotesReady || !!quoteError, busy: phase === 'submitting' }} disabled={phase === 'submitting' || lines.length === 0 || quoteLoading || !quotesReady || !!quoteError} onPress={sendOrders}>
+            {phase === 'submitting' ? <><ActivityIndicator color="#FFFFFF" size="small" /><Text style={styles.sendButtonText}>Placing orders...</Text></> : <Text style={styles.sendButtonText}>{amountDue === 0 ? 'Pay with Tender Cash' : 'Send orders'}</Text>}
           </TouchableOpacity>
-        )}
+        ) : <View />}
       </View>
       <Modal transparent visible={showPricingInfo} animationType="fade" onRequestClose={() => setShowPricingInfo(false)}>
         <View style={styles.pricingBackdrop}>

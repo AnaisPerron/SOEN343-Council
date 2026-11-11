@@ -8,9 +8,10 @@ export interface OrderSubmission {
   deliveryAddress?: string;
   deliveryLatitude?: number;
   deliveryLongitude?: number;
+  tendersToUse?: number;
 }
 
-/** Server receipt for a placed order; total includes add-ons and is what was charged. */
+/** Server receipt for a placed order; total is the gross order price before Tender Cash. */
 export interface OrderSubmissionResult {
   orderId: number;
   restaurantId: number;
