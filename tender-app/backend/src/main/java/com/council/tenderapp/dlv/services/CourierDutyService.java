@@ -1,5 +1,6 @@
 package com.council.tenderapp.dlv.services;
 
+import java.time.Instant;
 import java.util.List;
 
 import jakarta.persistence.EntityManager;
@@ -13,10 +14,12 @@ import org.springframework.transaction.annotation.Transactional;
 import com.council.tenderapp.dlv.dtos.AssignedOrderDto;
 import com.council.tenderapp.dlv.dtos.CourierDutyResponseDto;
 import com.council.tenderapp.dlv.exceptions.InvalidCourierStateException;
+import com.council.tenderapp.ord.entities.Order;
+import com.council.tenderapp.ord.entities.OrderEvent;
 import com.council.tenderapp.ord.entities.OrderStatus;
+import com.council.tenderapp.ord.repositories.OrderEventRepository;
 import com.council.tenderapp.ord.repositories.OrderRepository;
 import com.council.tenderapp.ord.repositories.RestaurantRepository;
-import com.council.tenderapp.ord.entities.Order;
 import com.council.tenderapp.reg.entities.CourierProfile;
 import com.council.tenderapp.reg.entities.CourierStatus;
 import com.council.tenderapp.reg.repositories.CourierProfileRepository;
@@ -35,13 +38,15 @@ public class CourierDutyService {
     private final CourierProfileRepository courierProfileRepository;
     private final OrderRepository orderRepository;
     private final RestaurantRepository restaurantRepository;
+    private final OrderEventRepository orderEventRepository;
     private final DispatchService dispatchService;
 
     public CourierDutyService(CourierProfileRepository courierProfileRepository, OrderRepository orderRepository,
-            RestaurantRepository restaurantRepository, DispatchService dispatchService) {
+            RestaurantRepository restaurantRepository, OrderEventRepository orderEventRepository, DispatchService dispatchService) {
         this.courierProfileRepository = courierProfileRepository;
         this.orderRepository = orderRepository;
         this.restaurantRepository = restaurantRepository;
+        this.orderEventRepository = orderEventRepository;
         this.dispatchService = dispatchService;
     }
 
@@ -80,6 +85,7 @@ public class CourierDutyService {
         }
         courier.setStatus(CourierStatus.ASSIGNED);
         courierProfileRepository.saveAndFlush(courier);
+        orderEventRepository.save(new OrderEvent(orderId, "ready", "ready", "courier_accepted", Instant.now()));
         logger.info("Courier_{} accepted order #{}: new status: assigned", courierId, orderId);
         return toResponse(courier);
     }

@@ -17,6 +17,7 @@ export type RestaurantOrder = {
   id: number;
   restaurantId: number;
   courierId?: number | null;
+  courierName?: string | null;
   status: RestaurantOrderStatus;
   createdAt: string;
   acceptedAt: string | null;

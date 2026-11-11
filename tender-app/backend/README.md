@@ -38,6 +38,8 @@ schema and does not create or update tables.
 
 `GET /api/restaurants/{restaurantId}/orders/pickup` returns `READY` orders that
 are awaiting courier or customer pickup, ordered by placement time.
+The all-orders response also includes the courier's name once an offer has
+been accepted; pending offers are shown without a courier name.
 
 Restaurant dashboard actions are `POST /api/restaurants/{restaurantId}/orders/{orderId}/accept`,
 `/reject` (JSON body `{"reason":"..."}`), `/cancel`, `/prepare`, `/ready`, and
@@ -115,6 +117,9 @@ returns the courier to `IDLE`, and retries the queue. The API verifies that the
 order is offered to or assigned to the authenticated courier. Waiting, offer,
 acceptance, decline, pickup, and delivery events are logged to the application
 console.
+Courier acceptance is recorded as a `courier_accepted` row in `order_events`;
+the restaurant order response uses that record to show the courier name even
+after the courier's current duty status changes.
 
 The current project has no authentication/authorization integration. The local
 restaurant profile is a demo context, not an authenticated account. Actions

@@ -65,6 +65,39 @@ class CourierDeliveryReleaseIntegrationTest {
     }
 
     @Test
+    void restaurantOrderResponseShowsCourierAfterOfferIsAccepted() {
+        Long courierId = registrationService.register(new RegisterRequest(
+                "Accepted Courier", "accepted-courier-name@example.com", "secret123", "514-555-0182", Role.COURIER)).id();
+        Long restaurantId = restaurants.saveAndFlush(new Restaurant("Offer Cafe", "open", 45.50, -73.57)).getId();
+        Long orderId = orders.saveAndFlush(new Order(restaurantId, new Date(), OrderStatus.READY)).getId();
+        try {
+            courierDutyService.goOnDuty(courierId);
+
+            assertThat(orderService.getAllOrders(restaurantId))
+                    .filteredOn(order -> order.getId().equals(orderId))
+                    .singleElement()
+                    .extracting(order -> order.getCourierName())
+                    .isNull();
+
+            courierDutyService.acceptOffer(courierId, orderId);
+            assertThat(orderEvents.findAll()).anySatisfy(event -> {
+                assertThat(event.getOrderId()).isEqualTo(orderId);
+                assertThat(event.getEventType()).isEqualTo("courier_accepted");
+            });
+
+            assertThat(orderService.getAllOrders(restaurantId))
+                    .filteredOn(order -> order.getId().equals(orderId))
+                    .singleElement()
+                    .extracting(order -> order.getCourierName())
+                    .isEqualTo("Accepted Courier");
+        } finally {
+            orders.findById(orderId).filter(order -> order.getStatus() == OrderStatus.READY)
+                    .ifPresent(order -> orderService.refundOrder(restaurantId, orderId));
+            if (statusOf(courierId) == CourierStatus.IDLE) courierDutyService.goOffDuty(courierId);
+        }
+    }
+
+    @Test
     void courierReturnsToIdleAfterDeliveringAndTakesTheNextWaitingOrder() {
         Long courierId = registrationService.register(new RegisterRequest(
                 "Release Tester", "release-courier@example.com", "secret123", "514-555-0180", Role.COURIER)).id();
@@ -92,6 +125,12 @@ class CourierDeliveryReleaseIntegrationTest {
             // Freed by the delivery, then immediately handed the order that was waiting
             assertThat(orders.findById(second).orElseThrow().getCourierId()).isEqualTo(courierId);
             assertThat(statusOf(courierId)).isEqualTo(CourierStatus.IDLE);
+            assertThat(orders.findById(first).orElseThrow().getCourierId()).isEqualTo(courierId);
+            assertThat(orderService.getAllOrders(restaurantId))
+                    .filteredOn(order -> order.getId().equals(first))
+                    .singleElement()
+                    .extracting(order -> order.getCourierName())
+                    .isEqualTo("Release Tester");
 
             orderService.refundOrder(restaurantId, second);
             assertThat(statusOf(courierId)).isEqualTo(CourierStatus.IDLE);

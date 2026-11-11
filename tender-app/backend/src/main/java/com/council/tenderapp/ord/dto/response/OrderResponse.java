@@ -11,6 +11,7 @@ public class OrderResponse {
     private final Long id;
     private final Long restaurantId;
     private final Long courierId;
+    private final String courierName;
     private final OrderStatus status;
     private final Date dateOrdered;
     private final Date acceptedAt;
@@ -25,6 +26,7 @@ public class OrderResponse {
         Long id,
         Long restaurantId,
         Long courierId,
+        String courierName,
         OrderStatus status,
         Date dateOrdered,
         Date acceptedAt,
@@ -38,6 +40,7 @@ public class OrderResponse {
         this.id = id;
         this.restaurantId = restaurantId;
         this.courierId = courierId;
+        this.courierName = courierName;
         this.status = status;
         this.dateOrdered = dateOrdered == null ? null : new Date(dateOrdered.getTime());
         this.acceptedAt = acceptedAt == null ? null : new Date(acceptedAt.getTime());
@@ -56,6 +59,8 @@ public class OrderResponse {
     public Long getRestaurantId() { return restaurantId; }
 
     public Long getCourierId() { return courierId; }
+
+    public String getCourierName() { return courierName; }
 
     public OrderStatus getStatus() {
         return status;

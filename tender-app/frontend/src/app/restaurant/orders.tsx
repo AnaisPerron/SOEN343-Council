@@ -51,10 +51,10 @@ export default function RestaurantOrders() {
     // Refresh from the server so incoming and terminal orders reflect database state.
     const refresh = async () => {
       try {
-        const data = await requestJson<{ id: number; courierId: number | null; status: string; dateOrdered: string; acceptedAt: string | null; rejectionReason: string | null; customerName: string | null; customerPhone: string | null; orderLines: { itemName: string; quantity: number; unitPrice: number }[] }[]>('GET', `/api/restaurants/${restaurantId}/orders`, undefined, token);
+        const data = await requestJson<{ id: number; courierId: number | null; courierName: string | null; status: string; dateOrdered: string; acceptedAt: string | null; rejectionReason: string | null; customerName: string | null; customerPhone: string | null; orderLines: { itemName: string; quantity: number; unitPrice: number }[] }[]>('GET', `/api/restaurants/${restaurantId}/orders`, undefined, token);
         if (!active) return;
         console.info('Restaurant orders loaded', { restaurantId, count: data.length });
-        setOrders(data.map((order) => ({ id: order.id, restaurantId, courierId: order.courierId, status: order.status.toLowerCase() as RestaurantOrderStatus, createdAt: order.dateOrdered, updatedAt: null, acceptedAt: order.acceptedAt, rejectionReason: order.rejectionReason, customer: { name: order.customerName ?? 'Unavailable', address: 'Unavailable', phone: order.customerPhone ?? 'Unavailable' }, lines: order.orderLines.map((line) => ({ name: line.itemName, quantity: line.quantity, unitPrice: line.unitPrice, toppings: [] })) })));
+        setOrders(data.map((order) => ({ id: order.id, restaurantId, courierId: order.courierId, courierName: order.courierName, status: order.status.toLowerCase() as RestaurantOrderStatus, createdAt: order.dateOrdered, updatedAt: null, acceptedAt: order.acceptedAt, rejectionReason: order.rejectionReason, customer: { name: order.customerName ?? 'Unavailable', address: 'Unavailable', phone: order.customerPhone ?? 'Unavailable' }, lines: order.orderLines.map((line) => ({ name: line.itemName, quantity: line.quantity, unitPrice: line.unitPrice, toppings: [] })) })));
         setMessage('');
       } catch (error) { if (active) { console.error('Unable to load restaurant orders', error); setMessage(error instanceof Error ? error.message : 'Unable to load orders'); } }
     };
@@ -155,6 +155,13 @@ export default function RestaurantOrders() {
           <Pressable accessibilityRole="button" accessibilityLabel={`View order ${order.id} details`} style={styles.orderBody} onPress={() => setDetailId(order.id)}>
             <View style={styles.cardContent}><View style={styles.cardTop}><Text style={styles.cardOrderId}>Order #{order.id}</Text><Text style={styles.cardTime}>{new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text></View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}><View style={styles.statusRail}>{LIFECYCLE.map((status, index) => { const currentIndex = LIFECYCLE.indexOf(order.status as typeof LIFECYCLE[number]); const complete = currentIndex >= index; return <View key={status} style={styles.statusStep}><View style={[styles.statusDot, complete && styles.statusDotComplete]}><Text style={[styles.statusDotText, complete && styles.statusDotTextComplete]}>{complete ? '✓' : ''}</Text></View>{index < LIFECYCLE.length - 1 && <View style={[styles.statusConnector, currentIndex > index && styles.statusConnectorComplete]} />}<Text numberOfLines={1} style={[styles.statusStepLabel, complete && styles.statusStepLabelComplete]}>{label(status)}</Text></View>; })}</View></ScrollView>
+            {order.status !== 'placed' && order.status !== 'accepted' && order.status !== 'preparing' && <Text style={[styles.cardMutedText, styles.courierLine]}>
+              {order.courierName
+                ? `Courier: ${order.courierName}`
+                : order.status === 'ready'
+                  ? order.courierId != null ? 'Awaiting courier acceptance…' : 'Awaiting courier…'
+                  : 'Courier: not assigned'}
+            </Text>}
             <View style={styles.orderLines}>{order.lines.map((line, index) => <View key={`${order.id}-${index}`} style={index > 0 ? styles.additionalLine : undefined}>
               <Text style={[styles.itemName, styles.cardItemText]}>{line.quantity} × {line.name}</Text>
               {line.toppings.length > 0 && <Text style={[styles.toppings, styles.cardMutedText]}>+ {line.toppings.map((topping) => topping.name).join(' · ')}</Text>}
@@ -179,6 +186,13 @@ export default function RestaurantOrders() {
           <Info label="Placed" value={dateTime(detail.createdAt)} />
           {detail.acceptedAt && <Info label="Accepted" value={dateTime(detail.acceptedAt)} />}
           <Info label="Customer" value={detail.customer.name} />
+          {detail.status !== 'placed' && detail.status !== 'accepted' && detail.status !== 'preparing' && <Info
+            label="Courier"
+            value={detail.courierName
+              ?? (detail.status === 'ready'
+                ? detail.courierId != null ? 'Awaiting courier acceptance…' : 'Awaiting courier…'
+                : 'Not assigned')}
+          />}
           <Info label="Delivery address" value={detail.customer.address} />
           <Info label="Contact" value={detail.customer.phone} />
           {detail.rejectionReason && <Info label="Rejection reason" value={detail.rejectionReason} />}
@@ -310,6 +324,7 @@ const styles = StyleSheet.create({
   infoLabel: { width: 106, color: '#68737C', fontSize: 12, fontWeight: '700' },
   infoValue: { flex: 1, color: '#273039', fontSize: 13, textAlign: 'right' },
   customerName: { fontFamily: 'LoveLight', fontSize: 26, fontWeight: '400' },
+  courierLine: { marginTop: 10, fontWeight: '700' },
   sectionTitle: { color: '#273039', fontSize: 16, fontWeight: '800', marginBottom: 6 },
   detailLine: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#EEF0F1' },
   detailLineHeader: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
