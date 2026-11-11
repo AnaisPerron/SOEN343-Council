@@ -23,6 +23,7 @@ import com.council.tenderapp.ord.repositories.OrderLineRepository;
 import com.council.tenderapp.ord.repositories.OrderRepository;
 import com.council.tenderapp.reg.entities.Profile;
 import com.council.tenderapp.reg.repositories.ProfileRepository;
+import com.council.tenderapp.technicalservices.payment.TenderCash;
 
 @Service
 public class OrderService {
@@ -35,17 +36,19 @@ public class OrderService {
     private final OrderStatusPublisher orderStatusPublisher;
     private final ProfileRepository profileRepository;
     private final OrderLineRepository orderLineRepository;
+    private final TenderCash tenderCash;
 
     public OrderService(
         OrderRepository orderRepository,
         OrderStatusPublisher orderStatusPublisher,
         ProfileRepository profileRepository,
-        OrderLineRepository orderLineRepository
+        OrderLineRepository orderLineRepository, TenderCash tenderCash
     ) {
         this.orderRepository = orderRepository;
         this.orderStatusPublisher = orderStatusPublisher;
         this.profileRepository = profileRepository;
         this.orderLineRepository = orderLineRepository;
+        this.tenderCash = tenderCash;
     }
 
     @Transactional(readOnly = true)
@@ -94,6 +97,7 @@ public class OrderService {
         Order order = getOwnedOrderForUpdate(restaurantId, orderId);
         OrderStatus previousStatus = order.getStatus();
         transitionOrder(order, OrderStatus.REJECTED, "reject");
+        tenderCash.refunded(order);
         order.setRejectionReason(trimmedReason.isEmpty() ? null : trimmedReason);
         Order savedOrder = orderRepository.save(order);
         log.info("Restaurant order rejected: orderId={}, restaurantId={}", orderId, restaurantId);
@@ -106,6 +110,7 @@ public class OrderService {
         Order order = getOwnedOrderForUpdate(restaurantId, orderId);
         OrderStatus previousStatus = order.getStatus();
         transitionOrder(order, OrderStatus.CANCELLED, "cancel");
+        tenderCash.refunded(order);
         Order savedOrder = orderRepository.save(order);
         publishStatusChange(savedOrder, previousStatus, "cancelled", null);
         return toResponse(savedOrder);
@@ -152,10 +157,28 @@ public class OrderService {
     }
 
     @Transactional
+    public OrderResponse confirmDelivery(Long courierId, Long orderId) {
+        Order order = orderRepository.findByIdForUpdate(orderId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+        if (!Objects.equals(order.getCourierId(), courierId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Order is not assigned to this courier");
+        }
+        OrderStatus previousStatus = order.getStatus();
+        transitionOrder(order, OrderStatus.DELIVERED, "confirm delivery");
+        Order savedOrder = orderRepository.save(order);
+        publishStatusChange(savedOrder, previousStatus, "confirmed delivery", null);
+        return toResponse(savedOrder);
+    }
+
+    @Transactional
     public OrderResponse refundOrder(Long restaurantId, Long orderId) {
         Order order = getOwnedOrderForUpdate(restaurantId, orderId);
         OrderStatus previousStatus = order.getStatus();
+        if (previousStatus != OrderStatus.DELIVERED) {
+            throw invalidTransition(previousStatus, "refund");
+        }
         transitionOrder(order, OrderStatus.REFUNDED, "refund");
+        tenderCash.refunded(order);
         Order savedOrder = orderRepository.save(order);
         publishStatusChange(savedOrder, previousStatus, "refunded", null);
         return toResponse(savedOrder);

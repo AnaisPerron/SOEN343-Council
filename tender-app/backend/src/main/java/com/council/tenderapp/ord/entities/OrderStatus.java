@@ -33,7 +33,7 @@ public enum OrderStatus {
     READY {
         @Override
         public OrderStatus transitionTo(OrderStatus nextStatus) {
-            if (nextStatus == PICKED_UP || nextStatus == REFUNDED) {
+            if (nextStatus == PICKED_UP) {
                 return nextStatus;
             }
             throw invalidTransition(nextStatus);
@@ -42,7 +42,7 @@ public enum OrderStatus {
     PICKED_UP {
         @Override
         public OrderStatus transitionTo(OrderStatus nextStatus) {
-            if (nextStatus == DELIVERED || nextStatus == REFUNDED) {
+            if (nextStatus == DELIVERED) {
                 return nextStatus;
             }
             throw invalidTransition(nextStatus);

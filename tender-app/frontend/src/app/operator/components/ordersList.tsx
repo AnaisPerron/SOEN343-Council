@@ -1,9 +1,11 @@
-import { Text, TextStyle, View, ViewStyle } from 'react-native';
+import { Text, TextStyle, TouchableOpacity, View, ViewStyle } from 'react-native';
 import type { OperatorOrder as Order } from '../../../types/operator';
 import { styles } from './orders.styles';
 
 interface OrderListProps {
   orders: Order[];
+  onRefund?: (orderId: number) => void;
+  changingId?: number | null;
 }
 
 const CHIP_STYLES: Record<Order['status'], ViewStyle> = {
@@ -42,7 +44,7 @@ const STATUS_LABEL: Record<Order['status'], string> = {
   refunded: 'Refunded',
 };
 
-export default function OrderList({ orders }: OrderListProps) {
+export default function OrderList({ orders, onRefund, changingId }: OrderListProps) {
   const activeCount = orders.filter((o) => 
     ['placed', 'accepted', 'preparing', 'ready', 'picked_up'].includes(o.status)
   ).length;
@@ -85,6 +87,11 @@ export default function OrderList({ orders }: OrderListProps) {
 
           {rejectionReason && (
             <Text style={styles.rejectionText}>Reason: {rejectionReason}</Text>
+          )}
+          {onRefund && status === 'delivered' && (
+            <TouchableOpacity accessibilityRole="button" disabled={changingId != null} onPress={() => onRefund(id)} style={{ paddingVertical: 12 }}>
+              <Text style={styles.detail}>Refund as Tender Cash</Text>
+            </TouchableOpacity>
           )}
         </View>
       ))}

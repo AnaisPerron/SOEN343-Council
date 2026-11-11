@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/AuthContext';
-import { ApiError } from '@/api/client';
+import { ApiError, requestJson } from '@/api/client';
 import { appendOperatorSection, fetchOperatorSection, fetchOperatorSummary } from '@/lib/operatorDashboard';
 import type { OperatorSection, OperatorSectionName, OperatorSummary, RestaurantStatus } from '@/types/operator';
 import { styles } from './dashboard.styles';
@@ -95,6 +95,23 @@ export default function OperatorHome() {
     }
   };
 
+  const refundOrder = async (orderId: number) => {
+    if (!token || changing.current) return;
+    changing.current = true;
+    setChangingId(orderId);
+    try {
+      await requestJson('POST', `/api/operator/orders/${orderId}/refund`, undefined, token);
+      changing.current = false;
+      setChangingId(null);
+      await loadPage();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Unable to refund order');
+    } finally {
+      changing.current = false;
+      setChangingId(null);
+    }
+  };
+
   const visible = section?.kind === activeFilter ? section : null;
   const busy = loading || changingId !== null;
 
@@ -124,7 +141,7 @@ export default function OperatorHome() {
         {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
         {loading && <ActivityIndicator accessibilityLabel="Loading dashboard" color="#D42F50" />}
         {visible?.kind === 'restaurants' && <RestaurantList restaurants={visible.data.items} onStatusChange={updateStatus} changingId={changingId} disabled={busy} />}
-        {visible?.kind === 'orders' && <OrdersList orders={visible.data.items} />}
+        {visible?.kind === 'orders' && <OrdersList orders={visible.data.items} onRefund={(orderId) => void refundOrder(orderId)} changingId={changingId} />}
         {visible?.kind === 'customers' && <CustomerList customers={visible.data.items} />}
         {visible?.kind === 'couriers' && <CourrierList couriers={visible.data.items} />}
         {visible && <Text style={styles.statLabel}>Showing {visible.data.items.length} of {visible.data.total} {activeFilter}</Text>}
