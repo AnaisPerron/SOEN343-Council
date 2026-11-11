@@ -87,6 +87,7 @@ export default function CustomerHistory() {
                   {!!summaries[order.id].cancelledAt && <Text style={styles.muted}>Cancelled {new Date(summaries[order.id].cancelledAt ?? '').toLocaleString()}</Text>}
                   {!!summaries[order.id].finishedAt && <Text style={styles.muted}>Finished {new Date(summaries[order.id].finishedAt ?? '').toLocaleString()}</Text>}
                   {summaries[order.id].orderItems.map((item, index) => <Text key={index} style={styles.muted}>{item.quantity} × {item.name} · ${Number(item.lineTotal).toFixed(2)}</Text>)}
+                  {summaries[order.id].itemSubtotal != null && <Text style={styles.muted}>Items subtotal: ${Number(summaries[order.id].itemSubtotal).toFixed(2)}</Text>}
                   {summaries[order.id].charges.map((charge, index) => <Text key={index} style={styles.muted}>{charge.chargeType}: ${Number(charge.amount).toFixed(2)}</Text>)}
                   {summaries[order.id].totalCharge != null && <Text style={styles.total}>Total charged: ${Number(summaries[order.id].totalCharge).toFixed(2)}</Text>}
                 </> : order.items?.map((item, index) => <Text key={index} style={styles.muted}>{item.quantity} × {item.name} · ${(item.quantity * item.unitPrice).toFixed(2)}</Text>)}

@@ -28,7 +28,7 @@ export default function CustomerOrderSummary() {
     return () => { active = false; };
   }, [id, token]);
 
-  const subtotal = summary?.orderItems.reduce((sum, item) => sum + Number(item.lineTotal), 0) ?? 0;
+  const subtotal = summary?.itemSubtotal ?? summary?.orderItems.reduce((sum, item) => sum + Number(item.lineTotal), 0) ?? 0;
 
   return <SafeAreaView style={styles.page}>
     <ScrollView contentContainerStyle={styles.content}>

@@ -17,6 +17,7 @@ public record SummaryDto (
     OffsetDateTime finishedAt,
     List<OrderLineDto> orderItems,
     List<ChargeDto> charges,
-    Double totalCharge
+    Double totalCharge,
+    Double itemSubtotal
 ) 
 {}

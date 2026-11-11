@@ -62,11 +62,11 @@ public class OrderSummaryController
     }
 
     @GetMapping("restaurant/{id}")
-    @PreAuthorize("hasRole('RESTAURANT')")
+    @PreAuthorize("hasRole('STAFF')")
     public SummaryDto getRestaurantOrderSummary(@PathVariable Long id, Authentication auth) 
     {
         Session session = (Session) auth.getDetails();
-        Long restaurantId = session.accountId();
+        Long restaurantId = session.restaurantId();
         if(!orderService.isRestaurantOrder(id, restaurantId)) {
             throw new UnauthorizedOrderAccessException("Order " + id + " does not belong to restaurant " + restaurantId + " or does not exist.");
         }
