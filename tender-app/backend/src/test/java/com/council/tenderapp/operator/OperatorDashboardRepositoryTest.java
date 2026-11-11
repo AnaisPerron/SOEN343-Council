@@ -20,6 +20,7 @@ import com.council.tenderapp.operator.dto.DashboardSummary;
 import com.council.tenderapp.operator.dto.OrderSummary;
 import com.council.tenderapp.operator.dto.RestaurantSummary;
 import com.council.tenderapp.operator.repositories.OperatorDashboardRepository;
+import com.council.tenderapp.technicalservices.payment.TenderCash;
 
 class OperatorDashboardRepositoryTest {
     private Connection connection;
@@ -38,6 +39,15 @@ class OperatorDashboardRepositoryTest {
 
     @AfterEach
     void tearDown() throws SQLException { connection.close(); }
+
+    @Test
+    void tenderCashStartsFromExistingProfileBalanceAndIncludesTransactions() {
+        TenderCash cash = new TenderCash(jdbc);
+        assertThat(cash.balance(1L).tenders()).isEqualTo(255L);
+        jdbc.update("INSERT INTO tender_cash_transactions (id, customer_id, order_id, reason, tenders) VALUES (1, 1, 10, 'EARNED', 20)");
+        assertThat(cash.balance(1L).tenders()).isEqualTo(275L);
+        assertThat(repository.customers(0, 1).items().get(0).tdCashBalance()).isEqualByComparingTo("27.50");
+    }
 
     @Test
     void summaryCountsAllAccountsAndOnlyIdleCouriersAsAvailable() {
