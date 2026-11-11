@@ -7,6 +7,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
 @Entity 
@@ -23,8 +24,13 @@ public class LedgerEntry
     @Column(name = "transaction_type", nullable = false)
     private String transactionType;
 
-    @Column(name = "timestamp", nullable = false, insertable = false, updatable = false)
+    @Column(name = "timestamp", nullable = false)
     private OffsetDateTime timestamp;
+
+    @PrePersist
+    void ensureTimestamp() {
+        if (timestamp == null) timestamp = OffsetDateTime.now();
+    }
 
     @Column(name = "final_order_status", nullable = false)
     private String finalOrderStatus;
