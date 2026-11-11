@@ -48,7 +48,7 @@ class PayPalCheckoutServiceTest {
                     Instant.now(), "PAYPAL-CAPTURE-1", List.of());
             when(orders.placePaidOrder(eq(4L), eq(request), eq("PAYPAL-CAPTURE-1"), eq(new BigDecimal("25.10"))))
                     .thenReturn(receipt);
-            PayPalCheckoutService paypal = new PayPalCheckoutService(orders, new ObjectMapper(), "client", "secret",
+            PayPalCheckoutService paypal = new PayPalCheckoutService(orders, new ObjectMapper(), mock(TenderCash.class), "client", "secret",
                     "http://127.0.0.1:" + server.getAddress().getPort());
 
             var created = paypal.create(4L, List.of(request), "tender-mobile-app://customer/checkout/confirm-order");

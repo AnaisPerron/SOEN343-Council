@@ -17,9 +17,17 @@ public record PlaceOrderRequestDto(
     List<@Valid @NotNull(message = "Order item is required") OrderItemRequestDto> items,
     @Size(max = 255) String deliveryAddress,
     @DecimalMin("-90") @DecimalMax("90") Double deliveryLatitude,
-    @DecimalMin("-180") @DecimalMax("180") Double deliveryLongitude
+    @DecimalMin("-180") @DecimalMax("180") Double deliveryLongitude,
+    Long tendersToUse
 ) {
     public PlaceOrderRequestDto(Long restaurantId, List<OrderItemRequestDto> items) {
-        this(restaurantId, items, null, null, null);
+        this(restaurantId, items, null, null, null, null);
     }
+
+    public PlaceOrderRequestDto(Long restaurantId, List<OrderItemRequestDto> items, String address,
+            Double latitude, Double longitude) {
+        this(restaurantId, items, address, latitude, longitude, null);
+    }
+
+    public long tenderAmount() { return tendersToUse == null ? 0 : tendersToUse; }
 }

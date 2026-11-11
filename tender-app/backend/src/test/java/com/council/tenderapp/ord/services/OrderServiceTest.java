@@ -51,6 +51,7 @@ import com.council.tenderapp.prc.service.PricingService;
 import com.council.tenderapp.technicalservices.payment.PaymentDeclinedException;
 import com.council.tenderapp.technicalservices.payment.PaymentGateway;
 import com.council.tenderapp.technicalservices.payment.PaymentResult;
+import com.council.tenderapp.technicalservices.payment.TenderCash;
 
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
@@ -76,6 +77,8 @@ class OrderServiceTest {
     private CustomerProfileService customerProfileService;
     @Mock
     private PricingService pricingService;
+    @Mock
+    private TenderCash tenderCash;
 
     @Mock
     private OrderStatusPublisher publisher;
@@ -85,7 +88,8 @@ class OrderServiceTest {
     @BeforeEach
     void setUp() {
         service = new CustomerOrderService(browseService, menuItemRepository, menuItemOptionRepository, orderRepository, paymentGateway, preparationQueueService, jdbc, customerProfileService,
-                new OrderCancellationService(orderRepository, preparationQueueService, publisher), pricingService);
+                new OrderCancellationService(orderRepository, preparationQueueService, publisher, tenderCash), pricingService,
+                org.mockito.Mockito.mock(com.council.tenderapp.prc.service.LedgerService.class), tenderCash, true);
         lenient().when(customerProfileService.deliveryAddress(CUSTOMER_ID)).thenReturn(Optional.of(
                 new CustomerProfileService.DeliveryAddress("1250 Rue Peel, Montreal, Canada", 45.508, -73.571)));
         lenient().when(pricingService.quote(any(), any(), any(), any())).thenAnswer(inv -> {
@@ -105,6 +109,16 @@ class OrderServiceTest {
 
     private static PlaceOrderRequestDto request(OrderItemRequestDto... items) {
         return new PlaceOrderRequestDto(RESTAURANT_ID, List.of(items));
+    }
+
+    @Test
+    void directOrderCannotUseMockPaymentByDefault() {
+        menu(item(1L, "Lunch", "12.00", "available"));
+        ReflectionTestUtils.setField(service, "allowMockPayments", false);
+        assertThatThrownBy(() -> service.placeOrder(CUSTOMER_ID, request(new OrderItemRequestDto(1L, 1))))
+                .isInstanceOf(InvalidOrderException.class)
+                .hasMessageContaining("PayPal checkout");
+        verifyNoInteractions(paymentGateway, orderRepository);
     }
 
     @Test

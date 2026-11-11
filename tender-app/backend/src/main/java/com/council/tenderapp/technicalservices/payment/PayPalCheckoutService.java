@@ -28,6 +28,7 @@ import tools.jackson.databind.ObjectMapper;
 public class PayPalCheckoutService {
     private final CustomerOrderService orders;
     private final ObjectMapper json;
+    private final TenderCash tenderCash;
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
     private final String clientId;
     private final String clientSecret;
@@ -52,12 +53,13 @@ public class PayPalCheckoutService {
 
     public record CreatedOrder(String orderId, String approvalUrl) {}
 
-    public PayPalCheckoutService(CustomerOrderService orders, ObjectMapper json,
+    public PayPalCheckoutService(CustomerOrderService orders, ObjectMapper json, TenderCash tenderCash,
             @Value("${app.paypal.client-id:}") String clientId,
             @Value("${app.paypal.client-secret:}") String clientSecret,
             @Value("${app.paypal.base-url:https://api-m.sandbox.paypal.com}") String baseUrl) {
         this.orders = orders;
         this.json = json;
+        this.tenderCash = tenderCash;
         this.clientId = clientId;
         this.clientSecret = clientSecret;
         this.baseUrl = baseUrl.replaceAll("/+$", "");
@@ -78,7 +80,16 @@ public class PayPalCheckoutService {
         }
         List<PlaceOrderRequestDto> snapshot = List.copyOf(requests);
         List<BigDecimal> totals = snapshot.stream().map(request -> orders.quoteOrder(customerId, request).total()).toList();
-        BigDecimal amount = totals.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+        long requested = snapshot.stream().mapToLong(PlaceOrderRequestDto::tenderAmount).sum();
+        BigDecimal gross = totals.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal amount = gross.subtract(BigDecimal.valueOf(requested, 1));
+        if (requested > 0) tenderCash.discount(customerId, requested, gross);
+        if (amount.signum() <= 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Use Tender Cash checkout for a fully covered order");
+        for (int index = 0; index < snapshot.size(); index++) {
+            long tenders = snapshot.get(index).tenderAmount();
+            if (tenders < 0 || BigDecimal.valueOf(tenders, 1).compareTo(totals.get(index)) > 0)
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid Tender Cash amount");
+        }
         try {
             Map<String, Object> payload = new java.util.HashMap<>();
             payload.put("intent", "CAPTURE");
@@ -113,6 +124,10 @@ public class PayPalCheckoutService {
         synchronized (checkout) {
             if (checkout.receipts != null) return checkout.receipts;
             if (checkout.captureId == null) {
+                tenderCash.lockCustomer(customerId);
+                long tenders = checkout.requests.stream().mapToLong(PlaceOrderRequestDto::tenderAmount).sum();
+                if (tenders > 0) tenderCash.discount(customerId, tenders,
+                        checkout.amount.add(BigDecimal.valueOf(tenders, 1)));
                 for (int index = 0; index < checkout.requests.size(); index++) {
                     if (orders.quoteOrder(customerId, checkout.requests.get(index)).total().compareTo(checkout.totals.get(index)) != 0) {
                         throw new ResponseStatusException(HttpStatus.CONFLICT, "Order price changed; start PayPal checkout again");
@@ -131,7 +146,8 @@ public class PayPalCheckoutService {
             if (checkout.captureId.isBlank()) throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "PayPal capture reference is missing");
             List<OrderResponseDto> receipts = java.util.stream.IntStream.range(0, checkout.requests.size())
                     .mapToObj(index -> orders.placePaidOrder(customerId, checkout.requests.get(index),
-                            "PAYPAL-" + checkout.captureId, checkout.totals.get(index))).toList();
+                            "PAYPAL-" + checkout.captureId, checkout.totals.get(index)
+                                    .subtract(BigDecimal.valueOf(checkout.requests.get(index).tenderAmount(), 1)))).toList();
             checkout.receipts = receipts;
             return receipts;
         }
