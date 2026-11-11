@@ -23,6 +23,7 @@ export type RestaurantOrder = {
   rejectionReason: string | null;
   customer: { name: string; address: string; phone: string };
   lines: RestaurantOrderLine[];
+  totalPrice?: number | null;
 };
 
 const STATUS_PRIORITY: Record<RestaurantOrderStatus, number> = {
@@ -58,6 +59,7 @@ export function transitionOrder(order: RestaurantOrder, next: RestaurantOrderSta
 }
 
 export function orderTotal(order: RestaurantOrder): number {
+  if (order.totalPrice != null) return order.totalPrice;
   return order.lines.reduce((total, line) =>
     total + line.quantity * (line.unitPrice + line.toppings.reduce((extras, topping) => extras + topping.additionalCost, 0)), 0);
 }

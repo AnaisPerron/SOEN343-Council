@@ -51,10 +51,10 @@ export default function RestaurantOrders() {
     // Refresh from the server so incoming and terminal orders reflect database state.
     const refresh = async () => {
       try {
-        const data = await requestJson<{ id: number; status: string; dateOrdered: string; acceptedAt: string | null; rejectionReason: string | null; customerName: string | null; customerPhone: string | null; deliveryAddress: string | null; orderLines: { itemName: string; quantity: number; unitPrice: number }[] }[]>('GET', `/api/restaurants/${restaurantId}/orders`, undefined, token);
+        const data = await requestJson<{ id: number; status: string; dateOrdered: string; acceptedAt: string | null; rejectionReason: string | null; customerName: string | null; customerPhone: string | null; deliveryAddress: string | null; totalPrice: number | null; orderLines: { itemName: string; quantity: number; unitPrice: number }[] }[]>('GET', `/api/restaurants/${restaurantId}/orders`, undefined, token);
         if (!active) return;
         console.info('Restaurant orders loaded', { restaurantId, count: data.length });
-        setOrders(data.map((order) => ({ id: order.id, restaurantId, status: order.status.toLowerCase() as RestaurantOrderStatus, createdAt: order.dateOrdered, updatedAt: null, acceptedAt: order.acceptedAt, rejectionReason: order.rejectionReason, customer: { name: order.customerName ?? 'Unavailable', address: order.deliveryAddress ?? 'Unavailable', phone: order.customerPhone ?? 'Unavailable' }, lines: order.orderLines.map((line) => ({ name: line.itemName, quantity: line.quantity, unitPrice: line.unitPrice, toppings: [] })) })));
+        setOrders(data.map((order) => ({ id: order.id, restaurantId, status: order.status.toLowerCase() as RestaurantOrderStatus, createdAt: order.dateOrdered, updatedAt: null, acceptedAt: order.acceptedAt, rejectionReason: order.rejectionReason, totalPrice: order.totalPrice, customer: { name: order.customerName ?? 'Unavailable', address: order.deliveryAddress ?? 'Unavailable', phone: order.customerPhone ?? 'Unavailable' }, lines: order.orderLines.map((line) => ({ name: line.itemName, quantity: line.quantity, unitPrice: line.unitPrice, toppings: [] })) })));
         setMessage('');
       } catch (error) { if (active) { console.error('Unable to load restaurant orders', error); setMessage(error instanceof Error ? error.message : 'Unable to load orders'); } }
     };
@@ -79,7 +79,7 @@ export default function RestaurantOrders() {
     setUpdatingId(target.id);
     try {
       // Update the database first; never report a local-only status change as successful.
-      const actions: Partial<Record<RestaurantOrderStatus, string>> = { accepted: 'accept', rejected: 'reject', preparing: 'prepare', ready: 'ready', picked_up: 'picked-up', delivered: 'delivered' };
+      const actions: Partial<Record<RestaurantOrderStatus, string>> = { accepted: 'accept', rejected: 'reject', preparing: 'prepare', ready: 'ready', picked_up: 'picked-up' };
       const action = actions[nextStatus];
       if (!action) throw new Error('This status change is not available.');
       const updated = await requestJson<{ status: string; acceptedAt: string | null; rejectionReason: string | null }>('POST', `/api/restaurants/${restaurantId}/orders/${target.id}/${action}`, nextStatus === 'rejected' ? { reason: reason?.trim() || null } : undefined, token);
@@ -165,7 +165,6 @@ export default function RestaurantOrders() {
           {order.status === 'accepted' && <Pressable accessibilityRole="button" style={styles.acceptButton} disabled={updatingId != null} onPress={() => changeStatus('preparing', undefined, order)}><Text style={styles.actionText}>Start preparing</Text></Pressable>}
           {order.status === 'preparing' && <Pressable accessibilityRole="button" style={styles.acceptButton} disabled={updatingId != null} onPress={() => changeStatus('ready', undefined, order)}><Text style={styles.actionText}>Mark ready</Text></Pressable>}
           {order.status === 'ready' && <Pressable accessibilityRole="button" style={styles.acceptButton} disabled={updatingId != null} onPress={() => changeStatus('picked_up', undefined, order)}><Text style={styles.actionText}>Mark picked up</Text></Pressable>}
-          {order.status === 'picked_up' && <Pressable accessibilityRole="button" style={styles.acceptButton} disabled={updatingId != null} onPress={() => changeStatus('delivered', undefined, order)}><Text style={styles.actionText}>Mark delivered</Text></Pressable>}
           </View>
         </View>)}</View>}
       </>}
