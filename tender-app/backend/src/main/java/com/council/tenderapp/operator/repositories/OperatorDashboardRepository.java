@@ -50,7 +50,9 @@ public class OperatorDashboardRepository {
 
     public DashboardPage<CustomerSummary> customers(int page, int size) {
         return page("SELECT COUNT(*) FROM users WHERE role = 'customer'", """
-                SELECT u.id, u.name, u.email, u.phone, c.td_cash_balance, c.latitude, c.longitude
+                SELECT u.id, u.name, u.email, u.phone,
+                    (CASE WHEN c.user_id IS NULL THEN NULL ELSE COALESCE(c.td_cash_balance, 0) + COALESCE((SELECT SUM(t.tenders) FROM tender_cash_transactions t WHERE t.customer_id = u.id), 0) / 10.0 END) AS td_cash_balance,
+                    c.latitude, c.longitude
                 FROM users u LEFT JOIN customer_profiles c ON c.user_id = u.id
                 WHERE u.role = 'customer' ORDER BY u.id LIMIT ? OFFSET ?
                 """, (rs, row) -> new CustomerSummary(rs.getLong("id"), rs.getString("name"),
