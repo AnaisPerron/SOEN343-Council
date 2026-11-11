@@ -3,6 +3,9 @@ import type { Restaurant, RestaurantStatus } from '../../types/restaurant';
 import type { ProfileResponse, ProfileUpdateRequest } from './operatorApi';
 import type { AuthUser } from '../../types/auth';
 import type { CustomerProfile, User } from '../../types/users';
+import type { OperatorOrder } from '../../types/operator';
+
+
 
 export const ACTIVE_ORDER_STATUSES: Order['status'][] = [
   'placed',
@@ -67,6 +70,23 @@ export function applyRestaurantStatus(
   return restaurants.map((r) => (r.id === restaurantId ? { ...r, status } : r));
 }
 
+export type OrderStatus=OperatorOrder['status'];
+
+const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
+  placed: ['accepted', 'rejected'],
+  accepted: ['preparing', 'cancelled'],
+  preparing: ['ready', 'cancelled'],
+  ready: ['picked_up', 'cancelled'],
+  picked_up: ['delivered'],
+  delivered: ['refunded'], // R-PRC-05: refunded only from delivered, by operator command
+  rejected: [],
+  cancelled: [],
+  refunded: [],
+};
+
+export function availableOrderStatusChanges(current:OrderStatus):OrderStatus[]{
+  return ORDER_TRANSITIONS[current]??[];
+}
 
 export type ProfileErrors = Partial<Record<'phone' | 'password' | 'form', string>>;
 export type ProfileValidation =
