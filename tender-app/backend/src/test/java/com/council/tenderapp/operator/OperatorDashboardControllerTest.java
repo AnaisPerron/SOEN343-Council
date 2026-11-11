@@ -28,6 +28,8 @@ import com.council.tenderapp.operator.dto.RestaurantSummary;
 import com.council.tenderapp.operator.services.OperatorDashboardService;
 import com.council.tenderapp.reg.entities.Role;
 import com.council.tenderapp.reg.services.SessionService;
+import com.council.tenderapp.ord.services.OrderService;
+import com.council.tenderapp.ord.repositories.OrderRepository;
 
 @WebMvcTest(controllers = OperatorDashboardController.class)
 @Import({SecurityConfig.class, SessionService.class})
@@ -35,6 +37,8 @@ class OperatorDashboardControllerTest {
     @Autowired private MockMvc mvc;
     @Autowired private SessionService sessions;
     @MockitoBean private OperatorDashboardService service;
+    @MockitoBean private OrderService orderService;
+    @MockitoBean private OrderRepository orderRepository;
 
     private String bearer(Role role) { return "Bearer " + sessions.create(8L, role).token(); }
 

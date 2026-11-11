@@ -30,6 +30,7 @@ import com.council.tenderapp.ord.services.OrderStatusPublisher;
 import com.council.tenderapp.reg.entities.Profile;
 import com.council.tenderapp.reg.entities.Role;
 import com.council.tenderapp.reg.repositories.ProfileRepository;
+import com.council.tenderapp.technicalservices.payment.TenderCash;
 
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
@@ -42,6 +43,9 @@ class OrderServiceTest {
 
     @Mock
     private ProfileRepository profileRepository;
+
+    @Mock
+    private TenderCash tenderCash;
 
     @InjectMocks
     private OrderService orderService;
@@ -208,19 +212,33 @@ class OrderServiceTest {
     }
 
     @Test
-    void refundsReadyPickedUpOrDeliveredOrders() {
-        for (OrderStatus currentStatus : List.of(
-            OrderStatus.READY,
-            OrderStatus.PICKED_UP,
-            OrderStatus.DELIVERED
-        )) {
+    void onlyAssignedCourierCanConfirmPickedUpDelivery() {
+        Order order = order(42L, OrderStatus.PICKED_UP, new Date());
+        order.setId(19L);
+        order.setCourierId(6L);
+        when(orderRepository.findByIdForUpdate(19L)).thenReturn(Optional.of(order));
+        assertThatThrownBy(() -> orderService.confirmDelivery(7L, 19L))
+            .isInstanceOf(ResponseStatusException.class)
+            .hasMessageContaining("403");
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        assertThat(orderService.confirmDelivery(6L, 19L).getStatus()).isEqualTo(OrderStatus.DELIVERED);
+        assertThat(order.getDateDelivered()).isNotNull();
+    }
+
+    @Test
+    void refundsOnlyDeliveredOrders() {
+        for (OrderStatus currentStatus : List.of(OrderStatus.READY, OrderStatus.PICKED_UP)) {
             Order order = order(42L, currentStatus, new Date());
             order.setId(14L);
             when(orderRepository.findByIdForUpdate(14L)).thenReturn(Optional.of(order));
-            when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-            assertThat(orderService.refundOrder(42L, 14L).getStatus()).isEqualTo(OrderStatus.REFUNDED);
+            assertThatThrownBy(() -> orderService.refundOrder(42L, 14L))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
         }
+        Order delivered = order(42L, OrderStatus.DELIVERED, new Date());
+        delivered.setId(14L);
+        when(orderRepository.findByIdForUpdate(14L)).thenReturn(Optional.of(delivered));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        assertThat(orderService.refundOrder(42L, 14L).getStatus()).isEqualTo(OrderStatus.REFUNDED);
     }
 
     @Test
