@@ -58,7 +58,14 @@ public class SummaryService {
         return new SummaryDto(orderId, order.getStatus().name(), restaurantName,
                 toOffsetDateTime(order.getDateOrdered()), toOffsetDateTime(order.getAcceptedAt()),
                 toOffsetDateTime(order.getPickupDate()), toOffsetDateTime(order.getDateDelivered()),
-                cancelledAt, ledger.map(LedgerEntry::getTimestamp).orElse(null), orderLines, charges, totalCharge);
+                cancelledAt, isFinished(order.getStatus()) ? ledger.map(LedgerEntry::getTimestamp).orElse(null) : null,
+                orderLines, charges, totalCharge,
+                billRepository.findByOrderId(orderId).map(Bill::getAmount).orElse(null));
+    }
+
+    private static boolean isFinished(OrderStatus status) {
+        return status == OrderStatus.DELIVERED || status == OrderStatus.CANCELLED
+                || status == OrderStatus.REJECTED || status == OrderStatus.REFUNDED;
     }
 
     private static OffsetDateTime toOffsetDateTime(java.util.Date date) {

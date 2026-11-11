@@ -61,7 +61,7 @@ public class CustomerOrderHistoryService {
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             return new CustomerOrderDto(order.getId(), order.getRestaurantId(),
                     restaurantNames.getOrDefault(order.getRestaurantId(), "Restaurant"),
-                    order.getStatus().name().toLowerCase(), total,
+                    order.getStatus().name().toLowerCase(), order.getTotalPrice() == null ? total : order.getTotalPrice(),
                     order.getDateOrdered() == null ? null : order.getDateOrdered().toInstant(),
                     order.getRejectionReason(), lines);
         }).toList();

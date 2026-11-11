@@ -1,6 +1,7 @@
 package com.council.tenderapp.prc.service;
 
 import java.util.Optional;
+import java.util.Objects;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,7 +22,7 @@ public class OrderBelongingService
     @Transactional(readOnly = true)
     public boolean isCustomerOrder(Long orderId, Long customerId) {
         Optional<Order> order = orderRepository.findById(orderId);
-        if (order.isEmpty() || !order.get().getCustomerId().equals(customerId)) {
+        if (order.isEmpty() || !Objects.equals(order.get().getCustomerId(), customerId)) {
             return false;
         }
         return true;
@@ -30,7 +31,7 @@ public class OrderBelongingService
     @Transactional(readOnly = true)
     public boolean isCourierOrder(Long orderId, Long courierId) {
         Optional<Order> order = orderRepository.findById(orderId);
-        if (order.isEmpty() || !order.get().getCourierId().equals(courierId)) {
+        if (order.isEmpty() || !Objects.equals(order.get().getCourierId(), courierId)) {
             return false;
         }
         return true;
@@ -39,7 +40,7 @@ public class OrderBelongingService
     @Transactional(readOnly = true)
     public boolean isRestaurantOrder(Long orderId, Long restaurantId) {
         Optional<Order> order = orderRepository.findById(orderId);
-        if (order.isEmpty() || !order.get().getRestaurantId().equals(restaurantId)) {
+        if (order.isEmpty() || !Objects.equals(order.get().getRestaurantId(), restaurantId)) {
             return false;
         }
         return true;

@@ -19,6 +19,7 @@ export interface OrderSummary {
   }[];
   charges: { chargeType: string; amount: number }[];
   totalCharge: number | null;
+  itemSubtotal: number | null;
 }
 
 export function fetchCustomerOrderSummary(orderId: string, token: string): Promise<OrderSummary> {
