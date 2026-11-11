@@ -6,6 +6,8 @@ import AccountMenu from '@/components/AccountMenu';
 import CityMap from '@/components/dash/CityMap';
 import { useAuth } from '@/context/AuthContext';
 import { fetchCourierDuty, goOffDuty, goOnDuty, type CourierDuty } from '@/api/courierDuty';
+import { requestJson } from '@/api/client';
+import { fetchLedgerHistory, type LedgerHistoryEntry } from '@/api/orderHistory';
 import { canGoOffDuty, canGoOnDuty, isOnDuty, stateLabel } from '@/lib/courierDuty';
 
 // Orders can be assigned at any time, so the panel refreshes itself while open
@@ -18,6 +20,7 @@ export default function CourierDashboard() {
   const [loading, setLoading] = useState(true);
   const [switching, setSwitching] = useState(false);
   const [message, setMessage] = useState('');
+  const [history, setHistory] = useState<LedgerHistoryEntry[]>([]);
   // Going on or off duty puts the courier on or takes them off the map, so it reloads at once
   const [mapRefreshKey, setMapRefreshKey] = useState(0);
 
@@ -28,6 +31,8 @@ export default function CourierDashboard() {
       try {
         const loaded = await fetchCourierDuty(token);
         if (active) setDuty(loaded);
+        const previous = await fetchLedgerHistory(token);
+        if (active) setHistory(previous);
       } catch (error) { if (active) setMessage(error instanceof Error ? error.message : 'Could not load your status.'); }
       finally { if (active) setLoading(false); }
     };
@@ -42,6 +47,20 @@ export default function CourierDashboard() {
     try { setDuty(await (isOnDuty(duty.status) ? goOffDuty(token) : goOnDuty(token))); setMapRefreshKey((key) => key + 1); }
     catch (error) { setMessage(error instanceof Error ? error.message : 'Could not change your duty status.'); }
     finally { setSwitching(false); }
+  };
+
+  const confirmDelivery = async (orderId: number) => {
+    if (!token || switching) return;
+    setSwitching(true); setMessage('');
+    try {
+      await requestJson('POST', `/api/courier/orders/${orderId}/delivered`, undefined, token);
+      setDuty(await fetchCourierDuty(token));
+      setHistory(await fetchLedgerHistory(token));
+      setMapRefreshKey((key) => key + 1);
+      setMessage(`Order #${orderId} delivered.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Could not confirm delivery.');
+    } finally { setSwitching(false); }
   };
 
   if (!ready) return <SafeAreaView style={styles.page}><ActivityIndicator color="#D42F50" /></SafeAreaView>;
@@ -77,8 +96,18 @@ export default function CourierDashboard() {
           {!!order.restaurantAddress && <Text style={styles.orderMuted}>{order.restaurantAddress}</Text>}
           {!!order.deliveryAddress && <Text style={styles.orderLine}>Deliver to {order.deliveryAddress}</Text>}
           {order.totalPrice != null && <Text style={styles.orderMuted}>Order total {money(order.totalPrice)}</Text>}
+          {order.status === 'picked_up' && <Pressable accessibilityRole="button" disabled={switching} onPress={() => void confirmDelivery(order.orderId)} style={styles.toggleOn}>
+            <Text style={styles.toggleText}>{switching ? 'Confirming…' : 'Confirm delivery'}</Text>
+          </Pressable>}
         </View> : <Text style={styles.empty}>{onDuty ? 'No order yet. You will be assigned the next ready order nearby.' : 'Go on duty to start receiving orders.'}</Text>}
       </>}
+      <Text style={styles.sectionHeading}>Delivered orders</Text>
+      {history.length === 0 ? <Text style={styles.empty}>No completed deliveries yet.</Text> : history.map((entry) =>
+        <View key={entry.orderId} style={styles.orderCard}>
+          <Text style={styles.orderTitle}>Order #{entry.orderId}</Text>
+          <Text style={styles.orderMuted}>{entry.status.replaceAll('_', ' ').toLowerCase()} · {entry.deliveredAt ? new Date(entry.deliveredAt).toLocaleString() : 'Delivery time unavailable'}</Text>
+          <Text style={styles.orderLine}>Total charge {money(entry.totalCharge)}</Text>
+        </View>)}
       {!!message && <Text style={styles.message}>{message}</Text>}
       <View style={styles.map}><CityMap refreshKey={mapRefreshKey} /></View>
     </ScrollView>
