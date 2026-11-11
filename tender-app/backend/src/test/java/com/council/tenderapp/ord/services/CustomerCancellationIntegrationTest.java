@@ -50,6 +50,7 @@ class CustomerCancellationIntegrationTest {
     @Autowired private JdbcTemplate jdbc;
     @Autowired private PlatformTransactionManager transactionManager;
     @MockitoBean private OrderStatusPublisher publisher;
+    @MockitoBean private com.council.tenderapp.technicalservices.payment.TenderCash tenderCash;
 
     private Long orderId;
 

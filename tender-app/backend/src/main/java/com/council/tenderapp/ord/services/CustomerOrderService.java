@@ -9,6 +9,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,9 +30,11 @@ import com.council.tenderapp.ord.repositories.MenuItemRepository;
 import com.council.tenderapp.ord.repositories.OrderRepository;
 import com.council.tenderapp.reg.services.CustomerProfileService;
 import com.council.tenderapp.prc.service.PricingService;
+import com.council.tenderapp.prc.service.LedgerService;
 import com.council.tenderapp.technicalservices.payment.PaymentDeclinedException;
 import com.council.tenderapp.technicalservices.payment.PaymentGateway;
 import com.council.tenderapp.technicalservices.payment.PaymentResult;
+import com.council.tenderapp.technicalservices.payment.TenderCash;
 
 @Service
 public class CustomerOrderService {
@@ -45,12 +48,16 @@ public class CustomerOrderService {
     private final JdbcTemplate jdbc;
     private final CustomerProfileService customerProfileService;
     private final PricingService pricingService;
+    private final LedgerService ledgerService;
+    private final TenderCash tenderCash;
+    private final boolean allowMockPayments;
 
     public CustomerOrderService(BrowseService browseService, MenuItemRepository menuItemRepository,
             MenuItemOptionRepository menuItemOptionRepository, OrderRepository orderRepository,
             PaymentGateway paymentGateway, PreparationQueueService preparationQueueService, JdbcTemplate jdbc,
             CustomerProfileService customerProfileService, OrderCancellationService cancellations,
-            PricingService pricingService) {
+            PricingService pricingService, LedgerService ledgerService, TenderCash tenderCash,
+            @Value("${app.payments.allow-mock:false}") boolean allowMockPayments) {
         this.browseService = browseService;
         this.menuItemRepository = menuItemRepository;
         this.menuItemOptionRepository = menuItemOptionRepository;
@@ -61,30 +68,42 @@ public class CustomerOrderService {
         this.jdbc = jdbc;
         this.customerProfileService = customerProfileService;
         this.pricingService = pricingService;
+        this.ledgerService = ledgerService;
+        this.tenderCash = tenderCash;
+        this.allowMockPayments = allowMockPayments;
     }
 
     @Transactional
     public OrderResponseDto placeOrder(Long customerId, PlaceOrderRequestDto request) {
         PreparedOrder prepared = prepareOrder(customerId, request);
-        PaymentResult payment = paymentGateway.charge(customerId, prepared.quote().total());
+        tenderCash.lockCustomer(customerId);
+        BigDecimal paid = prepared.quote().total().subtract(request.tenderAmount() == 0 ? BigDecimal.ZERO
+                : tenderCash.discount(customerId, request.tenderAmount(), prepared.quote().total()));
+        if (paid.signum() > 0 && !allowMockPayments) {
+            throw new InvalidOrderException("Use PayPal checkout for the remaining payment");
+        }
+        PaymentResult payment = paid.signum() == 0 ? PaymentResult.approved("TENDER-CASH") : paymentGateway.charge(customerId, paid);
         if (!payment.approved()) {
             throw new PaymentDeclinedException("Payment declined: " + payment.message());
         }
-        return persistOrder(customerId, request, prepared, payment);
+        return persistOrder(customerId, request, prepared, payment, paid);
     }
 
     @Transactional
     public OrderResponseDto placePaidOrder(Long customerId, PlaceOrderRequestDto request,
             String paymentReference, BigDecimal approvedAmount) {
         PreparedOrder prepared = prepareOrder(customerId, request);
-        if (prepared.quote().total().compareTo(approvedAmount) != 0) {
+        tenderCash.lockCustomer(customerId);
+        BigDecimal paid = prepared.quote().total().subtract(request.tenderAmount() == 0 ? BigDecimal.ZERO
+                : tenderCash.discount(customerId, request.tenderAmount(), prepared.quote().total()));
+        if (paid.compareTo(approvedAmount) != 0) {
             throw new InvalidOrderException("Order price changed after PayPal approval");
         }
-        return persistOrder(customerId, request, prepared, PaymentResult.approved(paymentReference));
+        return persistOrder(customerId, request, prepared, PaymentResult.approved(paymentReference), paid);
     }
 
     private OrderResponseDto persistOrder(Long customerId, PlaceOrderRequestDto request,
-            PreparedOrder prepared, PaymentResult payment) {
+            PreparedOrder prepared, PaymentResult payment, BigDecimal paid) {
         Map<Long, MenuItem> menu = prepared.menu();
         Map<Long, MenuItemOption> options = prepared.options();
         PricingService.Quote quote = prepared.quote();
@@ -98,7 +117,9 @@ public class CustomerOrderService {
                     menu.get(item.menuItemId()).getPrice()));
         }
         order = orderRepository.save(order);
+        tenderCash.placed(order, request.tenderAmount(), paid);
         pricingService.saveBill(order, quote);
+        ledgerService.createLedgerEntry(order.getId(), OrderStatus.PLACED.name());
         // Lines keep the base price; each add-on's cost is snapshotted in order_line_options.
         orderRepository.flush();
         List<OrderLine> savedLines = order.getOrderLines();
