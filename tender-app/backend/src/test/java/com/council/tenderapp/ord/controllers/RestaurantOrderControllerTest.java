@@ -86,7 +86,7 @@ class RestaurantOrderControllerTest {
 
     @Test
     void operatorsCannotPrepareOrDeliverOrders() throws Exception {
-        for (String action : List.of("prepare", "ready", "picked-up", "delivered")) {
+        for (String action : List.of("prepare", "ready", "picked-up")) {
             mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
                     "/api/restaurants/1/orders/42/" + action)
                     .header(HttpHeaders.AUTHORIZATION, bearer(1L, Role.OPERATOR)))

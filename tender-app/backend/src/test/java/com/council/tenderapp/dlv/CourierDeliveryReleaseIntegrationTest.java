@@ -50,18 +50,22 @@ class CourierDeliveryReleaseIntegrationTest {
             orderService.markPickedUp(restaurantId, first);
             assertThat(statusOf(courierId)).isEqualTo(CourierStatus.CARRYING);
 
-            orderService.markDelivered(restaurantId, first);
+            orderService.confirmDelivery(courierId, first);
 
             // Freed by the delivery, then immediately handed the order that was waiting
             assertThat(orders.findById(second).orElseThrow().getCourierId()).isEqualTo(courierId);
             assertThat(statusOf(courierId)).isEqualTo(CourierStatus.ASSIGNED);
 
-            orderService.refundOrder(restaurantId, second);
+            orderService.markPickedUp(restaurantId, second);
+            orderService.confirmDelivery(courierId, second);
             assertThat(statusOf(courierId)).isEqualTo(CourierStatus.IDLE);
         } finally {
             // Leave no idle courier or waiting order behind for other tests' dispatch runs
-            orders.findById(second).filter(o -> o.getStatus() == OrderStatus.READY)
-                    .ifPresent(o -> orderService.refundOrder(restaurantId, second));
+            orders.findById(second).filter(o -> o.getStatus() == OrderStatus.READY && o.getCourierId() != null)
+                    .ifPresent(o -> {
+                        orderService.markPickedUp(restaurantId, second);
+                        orderService.confirmDelivery(courierId, second);
+                    });
             if (statusOf(courierId) == CourierStatus.IDLE) courierDutyService.goOffDuty(courierId);
         }
     }
