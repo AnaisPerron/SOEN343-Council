@@ -8,4 +8,5 @@ public record RestaurantSummary(
         Double latitude,
         Double longitude,
         String address,
-        String phone) {}
+        String phone,
+        long queueCount) {}
