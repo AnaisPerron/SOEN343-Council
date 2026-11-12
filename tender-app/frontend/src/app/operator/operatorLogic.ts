@@ -71,21 +71,17 @@ export function applyRestaurantStatus(
 }
 
 export type OrderStatus=OperatorOrder['status'];
+const REASSIGNABLE_STATUSES: OrderStatus[] = ['accepted', 'preparing', 'ready', 'picked_up'];
 
-const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-  placed: ['accepted', 'rejected'],
-  accepted: ['preparing', 'cancelled'],
-  preparing: ['ready', 'cancelled'],
-  ready: ['picked_up', 'cancelled'],
-  picked_up: ['delivered'],
-  delivered: ['refunded'], // R-PRC-05: refunded only from delivered, by operator command
-  rejected: [],
-  cancelled: [],
-  refunded: [],
-};
-
-export function availableOrderStatusChanges(current:OrderStatus):OrderStatus[]{
-  return ORDER_TRANSITIONS[current]??[];
+export function canRefundOrder(order: Pick<OperatorOrder, 'status'>): boolean {
+  return order.status === 'delivered';
+}
+export function canReassignOrder(order: {status: OrderStatus; courierId: number | null; courierOnline?: boolean | null | undefined; }): boolean {
+  return (
+    order.courierId != null &&
+    order.courierOnline === false &&
+    REASSIGNABLE_STATUSES.includes(order.status)
+  );
 }
 
 export type ProfileErrors = Partial<Record<'phone' | 'password' | 'form', string>>;
