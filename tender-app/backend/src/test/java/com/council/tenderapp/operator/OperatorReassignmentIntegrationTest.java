@@ -29,6 +29,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.council.tenderapp.dlv.services.DispatchService;
+import com.council.tenderapp.dlv.repositories.AssignmentRepository;
 import com.council.tenderapp.operator.services.OperatorReassignmentService;
 import com.council.tenderapp.operator.services.OperatorResetService;
 import com.council.tenderapp.ord.entities.Order;
@@ -49,6 +50,7 @@ class OperatorReassignmentIntegrationTest {
     @Autowired private OperatorReassignmentService service;
     @Autowired private OperatorResetService resets;
     @Autowired private OrderRepository orders;
+    @Autowired private AssignmentRepository assignments;
     @Autowired private RestaurantRepository restaurants;
     @Autowired private CourierProfileRepository couriers;
     @Autowired private OrderEventRepository events;
@@ -75,6 +77,7 @@ class OperatorReassignmentIntegrationTest {
     @AfterEach
     void cleanUp() {
         SecurityContextHolder.clearContext();
+        assignments.deleteAllInBatch();
         events.deleteAllInBatch();
         orders.deleteAllInBatch();
         couriers.deleteAllInBatch();

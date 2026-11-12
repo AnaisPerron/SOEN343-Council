@@ -13,6 +13,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.council.tenderapp.dlv.services.DispatchService;
+import com.council.tenderapp.dlv.services.AssignmentService;
+import com.council.tenderapp.dlv.repositories.AssignmentRepository;
 import com.council.tenderapp.ord.entities.Order;
 import com.council.tenderapp.ord.entities.OrderStatus;
 import com.council.tenderapp.ord.entities.Restaurant;
@@ -25,6 +27,7 @@ import com.council.tenderapp.reg.repositories.CourierProfileRepository;
 @ExtendWith(MockitoExtension.class)
 class DispatchServiceTest {
     @Mock private OrderRepository orders;
+    @Mock private AssignmentRepository assignments;
     @Mock private RestaurantRepository restaurants;
     @Mock private CourierProfileRepository couriers;
 
@@ -37,7 +40,9 @@ class DispatchServiceTest {
     }
 
     private static Order readyOrder(long restaurantId) {
-        return new Order(restaurantId, new Date(), OrderStatus.READY);
+        Order order = new Order(restaurantId, new Date(), OrderStatus.READY);
+        order.setId(100L + restaurantId);
+        return order;
     }
 
     @Test
@@ -45,11 +50,11 @@ class DispatchServiceTest {
         CourierProfile far = idleCourier(1, 45.60, -73.70);
         CourierProfile near = idleCourier(2, 45.501, -73.571);
         Order order = readyOrder(10);
-        when(couriers.findByStatusOrderByUserIdAsc(CourierStatus.IDLE)).thenReturn(List.of(far, near));
+        when(couriers.findAllByOrderByUserIdAsc()).thenReturn(List.of(far, near));
         when(orders.findByStatusAndCourierIdIsNullOrderByDateOrderedAscIdAsc(OrderStatus.READY)).thenReturn(List.of(order));
         when(restaurants.findById(10L)).thenReturn(Optional.of(new Restaurant("Cafe", "open", 45.50, -73.57)));
 
-        new DispatchService(orders, restaurants, couriers).retryQueue();
+        new DispatchService(orders, restaurants, new AssignmentService(assignments, couriers)).retryQueue();
 
         assertThat(order.getCourierId()).isEqualTo(2L);
         assertThat(near.getStatus()).isEqualTo(CourierStatus.ASSIGNED);
@@ -61,11 +66,11 @@ class DispatchServiceTest {
         CourierProfile only = idleCourier(1, null, null);
         Order oldest = readyOrder(10);
         Order newer = readyOrder(10);
-        when(couriers.findByStatusOrderByUserIdAsc(CourierStatus.IDLE)).thenReturn(List.of(only));
+        when(couriers.findAllByOrderByUserIdAsc()).thenReturn(List.of(only));
         when(orders.findByStatusAndCourierIdIsNullOrderByDateOrderedAscIdAsc(OrderStatus.READY)).thenReturn(List.of(oldest, newer));
         when(restaurants.findById(10L)).thenReturn(Optional.empty());
 
-        new DispatchService(orders, restaurants, couriers).retryQueue();
+        new DispatchService(orders, restaurants, new AssignmentService(assignments, couriers)).retryQueue();
 
         assertThat(oldest.getCourierId()).isEqualTo(1L);
         assertThat(newer.getCourierId()).isNull();

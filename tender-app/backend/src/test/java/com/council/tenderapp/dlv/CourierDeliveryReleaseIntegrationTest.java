@@ -3,6 +3,11 @@ package com.council.tenderapp.dlv;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Date;
+import java.time.Instant;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import com.council.tenderapp.dlv.repositories.AssignmentRepository;
+import com.council.tenderapp.dlv.services.AssignmentService;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,7 +27,7 @@ import com.council.tenderapp.reg.repositories.CourierProfileRepository;
 import com.council.tenderapp.reg.services.RegistrationService;
 
 // Not @Transactional: the courier is released after the order change commits, so each step must really commit.
-@SpringBootTest
+@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:courier-release;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE")
 class CourierDeliveryReleaseIntegrationTest {
     @Autowired private RegistrationService registrationService;
     @Autowired private CourierDutyService courierDutyService;
@@ -30,6 +35,8 @@ class CourierDeliveryReleaseIntegrationTest {
     @Autowired private CourierProfileRepository couriers;
     @Autowired private RestaurantRepository restaurants;
     @Autowired private OrderRepository orders;
+    @Autowired private AssignmentRepository assignments;
+    @Autowired private PlatformTransactionManager transactions;
 
     private CourierStatus statusOf(Long courierId) {
         return couriers.findById(courierId).orElseThrow().getStatus();
@@ -47,6 +54,8 @@ class CourierDeliveryReleaseIntegrationTest {
             assertThat(orders.findById(first).orElseThrow().getCourierId()).isEqualTo(courierId);
             assertThat(orders.findById(second).orElseThrow().getCourierId()).isNull();
 
+            new TransactionTemplate(transactions).executeWithoutResult(tx -> assignments
+                    .findByOrderIdAndStatusIn(first, AssignmentService.ACTIVE).orElseThrow().accept(Instant.now()));
             orderService.markPickedUp(restaurantId, first);
             assertThat(statusOf(courierId)).isEqualTo(CourierStatus.CARRYING);
 

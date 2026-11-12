@@ -19,6 +19,7 @@ import com.council.tenderapp.dlv.dtos.CourierDutyResponseDto;
 import com.council.tenderapp.dlv.exceptions.InvalidCourierStateException;
 import com.council.tenderapp.dlv.services.CourierDutyService;
 import com.council.tenderapp.dlv.services.DispatchService;
+import com.council.tenderapp.dlv.services.AssignmentService;
 import com.council.tenderapp.ord.repositories.OrderRepository;
 import com.council.tenderapp.ord.repositories.RestaurantRepository;
 import com.council.tenderapp.reg.entities.CourierProfile;
@@ -33,12 +34,13 @@ class CourierDutyServiceTest {
     @Mock private OrderRepository orders;
     @Mock private RestaurantRepository restaurants;
     @Mock private DispatchService dispatchService;
+    @Mock private AssignmentService assignments;
 
     private CourierDutyService service;
 
     @BeforeEach
     void setUp() {
-        service = new CourierDutyService(couriers, orders, restaurants, dispatchService);
+        service = new CourierDutyService(couriers, orders, restaurants, dispatchService, assignments);
     }
 
     private CourierProfile courierIn(CourierStatus status) {

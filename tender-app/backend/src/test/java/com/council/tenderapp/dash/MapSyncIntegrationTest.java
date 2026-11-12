@@ -2,6 +2,7 @@ package com.council.tenderapp.dash;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.Date;
@@ -32,7 +33,7 @@ import com.council.tenderapp.reg.services.RegistrationService;
 import com.jayway.jsonpath.JsonPath;
 
 // Not @Transactional: the courier is released after the order change commits, so each step must really commit.
-@SpringBootTest
+@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:map-sync;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE")
 @AutoConfigureMockMvc
 class MapSyncIntegrationTest {
     @Autowired private MockMvc mockMvc;
@@ -78,6 +79,9 @@ class MapSyncIntegrationTest {
             assertThat(mapStatusOf(courierId, token)).isEqualTo("assigned");
 
             // Pickup puts the order in the courier's hands
+            Long offerId = courierDutyService.getDutyStatus(courierId).assignedOrder().assignmentId();
+            mockMvc.perform(post("/api/courier/offers/" + offerId + "/accept")
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)).andExpect(status().isOk());
             orderService.markPickedUp(restaurantId, orderId);
             assertThat(mapStatusOf(courierId, token)).isEqualTo("carrying");
 

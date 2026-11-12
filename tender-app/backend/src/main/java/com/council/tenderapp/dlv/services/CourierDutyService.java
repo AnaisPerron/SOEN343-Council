@@ -31,13 +31,15 @@ public class CourierDutyService {
     private final OrderRepository orderRepository;
     private final RestaurantRepository restaurantRepository;
     private final DispatchService dispatchService;
+    private final AssignmentService assignments;
 
     public CourierDutyService(CourierProfileRepository courierProfileRepository, OrderRepository orderRepository,
-            RestaurantRepository restaurantRepository, DispatchService dispatchService) {
+            RestaurantRepository restaurantRepository, DispatchService dispatchService, AssignmentService assignments) {
         this.courierProfileRepository = courierProfileRepository;
         this.orderRepository = orderRepository;
         this.restaurantRepository = restaurantRepository;
         this.dispatchService = dispatchService;
+        this.assignments = assignments;
     }
 
     @Transactional
@@ -48,7 +50,13 @@ public class CourierDutyService {
     @Transactional
     public CourierDutyResponseDto goOnDuty(Long courierId) {
         CourierProfile courier = findCourier(courierId);
-        courier.setStatus(transition(() -> courier.getStatus().goOnDuty()));
+        var existing = orderRepository.findFirstByCourierIdAndStatusInOrderByDateOrderedAscIdAsc(courierId, ACTIVE_DELIVERY);
+        if (existing.isPresent() && (courier.getStatus() == CourierStatus.OFFLINE || courier.getStatus() == CourierStatus.IDLE)) {
+            assignments.current(existing.get());
+            courier.setStatus(existing.get().getStatus() == OrderStatus.PICKED_UP ? CourierStatus.CARRYING : CourierStatus.ASSIGNED);
+        } else {
+            courier.setStatus(transition(() -> courier.getStatus().goOnDuty()));
+        }
         courierProfileRepository.saveAndFlush(courier);
         // A newly idle courier may be able to take an order that has been waiting (R-DLV-04)
         dispatchService.retryQueue();
@@ -58,6 +66,10 @@ public class CourierDutyService {
     @Transactional
     public CourierDutyResponseDto goOffDuty(Long courierId) {
         CourierProfile courier = findCourier(courierId);
+        if (assignments.courierHasAssignment(courierId) || orderRepository
+                .findFirstByCourierIdAndStatusInOrderByDateOrderedAscIdAsc(courierId, ACTIVE_DELIVERY).isPresent()) {
+            throw new InvalidCourierStateException("Cannot go off duty with an active assignment");
+        }
         courier.setStatus(transition(() -> courier.getStatus().goOffDuty()));
         return toResponse(courierProfileRepository.saveAndFlush(courier));
     }
@@ -68,6 +80,7 @@ public class CourierDutyService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void startCarrying(Long orderId) {
+        assignments.lockCouriers();
         Long courierId = orderRepository.findById(orderId).map(Order::getCourierId).orElse(null);
         if (courierId == null) return;
         CourierProfile courier = courierProfileRepository.findWithLockByUserId(courierId).orElse(null);
@@ -84,6 +97,7 @@ public class CourierDutyService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void releaseCourier(Long orderId) {
+        assignments.lockCouriers();
         Long courierId = orderRepository.findById(orderId).map(Order::getCourierId).orElse(null);
         if (courierId == null) return;
         CourierProfile courier = courierProfileRepository.findWithLockByUserId(courierId).orElse(null);
@@ -100,13 +114,15 @@ public class CourierDutyService {
     private CourierDutyResponseDto toResponse(CourierProfile courier) {
         AssignedOrderDto assignedOrder = orderRepository
                 .findFirstByCourierIdAndStatusInOrderByDateOrderedAscIdAsc(courier.getUserId(), ACTIVE_DELIVERY)
-                .map(order -> new AssignedOrderDto(order, restaurantRepository.findById(order.getRestaurantId()).orElse(null)))
+                .flatMap(order -> assignments.current(order).map(assignment -> new AssignedOrderDto(order,
+                        restaurantRepository.findById(order.getRestaurantId()).orElse(null), assignment)))
                 .orElse(null);
         return new CourierDutyResponseDto(courier, assignedOrder);
     }
 
     // Locked so a dispatch running at the same time can't assign this courier mid-change
     private CourierProfile findCourier(Long courierId) {
+        assignments.lockCouriers();
         return courierProfileRepository.findWithLockByUserId(courierId)
                 .orElseGet(() -> courierProfileRepository.saveAndFlush(new CourierProfile(courierId)));
     }

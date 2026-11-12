@@ -19,6 +19,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.council.tenderapp.dlv.services.AssignmentService;
+import com.council.tenderapp.dlv.services.DispatchService;
 import com.council.tenderapp.ord.dto.response.OrderResponse;
 import com.council.tenderapp.ord.entities.MenuItem;
 import com.council.tenderapp.ord.entities.Order;
@@ -42,6 +44,9 @@ class OrderServiceTest {
 
     @Mock
     private ProfileRepository profileRepository;
+
+    @Mock private AssignmentService assignments;
+    @Mock private DispatchService dispatch;
 
     @InjectMocks
     private OrderService orderService;

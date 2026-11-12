@@ -12,6 +12,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.council.tenderapp.dlv.services.DispatchService;
+import com.council.tenderapp.dlv.services.AssignmentService;
 import com.council.tenderapp.ord.entities.OrderEvent;
 import com.council.tenderapp.ord.entities.OrderStatus;
 import com.council.tenderapp.ord.exceptions.InvalidOrderStateException;
@@ -31,18 +32,21 @@ public class OperatorReassignmentService {
     private final OrderEventRepository events;
     private final DispatchService dispatch;
     private final OrderStatusPublisher publisher;
+    private final AssignmentService assignments;
 
     public OperatorReassignmentService(OrderRepository orders, CourierProfileRepository couriers,
-            OrderEventRepository events, DispatchService dispatch, OrderStatusPublisher publisher) {
+            OrderEventRepository events, DispatchService dispatch, OrderStatusPublisher publisher, AssignmentService assignments) {
         this.orders = orders;
         this.couriers = couriers;
         this.events = events;
         this.dispatch = dispatch;
         this.publisher = publisher;
+        this.assignments = assignments;
     }
 
     @Transactional
     public void reassign(long orderId, long expectedCourierId) {
+        assignments.lockCouriers();
         var courier = couriers.findWithLockByUserId(expectedCourierId);
         var order = orders.findWithLockById(orderId)
                 .orElseThrow(() -> new OrderNotFoundException("Order not found with id: " + orderId));
@@ -57,6 +61,7 @@ public class OperatorReassignmentService {
                 List.of(OrderStatus.READY, OrderStatus.PICKED_UP))) {
             throw new InvalidOrderStateException("The courier has another active order that must be resolved first");
         }
+        assignments.end(order);
         courier.get().setStatus(CourierStatus.OFFLINE);
         order.setCourierId(null);
         events.saveAndFlush(new OrderEvent(orderId, "ready", "ready", "courier_reassigned", Instant.now()));
