@@ -65,4 +65,26 @@ class CourierDeliveryReleaseIntegrationTest {
             if (statusOf(courierId) == CourierStatus.IDLE) courierDutyService.goOffDuty(courierId);
         }
     }
+
+    @Test
+    void idleCourierIsAssignedWhenAnOrderBecomesReady() {
+        Long courierId = registrationService.register(new RegisterRequest(
+                "Ready Tester", "ready-courier@example.com", "secret123", "514-555-0181", Role.COURIER)).id();
+        Long restaurantId = restaurants.saveAndFlush(new Restaurant("Ready Cafe", "open", 45.50, -73.57)).getId();
+        Long orderId = orders.saveAndFlush(new Order(restaurantId, new Date(), OrderStatus.PREPARING)).getId();
+        try {
+            // Already idle with nothing waiting, so going on duty assigns nothing
+            courierDutyService.goOnDuty(courierId);
+            assertThat(statusOf(courierId)).isEqualTo(CourierStatus.IDLE);
+
+            orderService.markReady(restaurantId, orderId);
+
+            assertThat(orders.findById(orderId).orElseThrow().getCourierId()).isEqualTo(courierId);
+            assertThat(statusOf(courierId)).isEqualTo(CourierStatus.ASSIGNED);
+        } finally {
+            orders.findById(orderId).filter(o -> o.getStatus() == OrderStatus.READY)
+                    .ifPresent(o -> orderService.refundOrder(restaurantId, orderId));
+            if (statusOf(courierId) == CourierStatus.IDLE) courierDutyService.goOffDuty(courierId);
+        }
+    }
 }

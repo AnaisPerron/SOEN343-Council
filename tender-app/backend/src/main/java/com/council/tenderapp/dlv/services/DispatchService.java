@@ -5,6 +5,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.council.tenderapp.ord.entities.Order;
@@ -36,6 +37,19 @@ public class DispatchService {
 
     @Transactional
     public void retryQueue() {
+        assignWaitingOrders();
+    }
+
+    /**
+     * Runs the queue for an order that just became ready.
+     * Needs its own transaction because order status changes are published after they commit.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void retryQueueAfterOrderReady() {
+        assignWaitingOrders();
+    }
+
+    private void assignWaitingOrders() {
         List<CourierProfile> idle = new ArrayList<>(courierProfileRepository.findByStatusOrderByUserIdAsc(CourierStatus.IDLE));
         for (Order order : orderRepository.findByStatusAndCourierIdIsNullOrderByDateOrderedAscIdAsc(OrderStatus.READY)) {
             if (idle.isEmpty()) return;
