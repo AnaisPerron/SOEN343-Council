@@ -16,6 +16,8 @@ export type RestaurantOrderLine = {
 export type RestaurantOrder = {
   id: number;
   restaurantId: number;
+  courierId?: number | null;
+  courierName?: string | null;
   status: RestaurantOrderStatus;
   createdAt: string;
   acceptedAt: string | null;
@@ -24,6 +26,10 @@ export type RestaurantOrder = {
   customer: { name: string; address: string; phone: string };
   lines: RestaurantOrderLine[];
 };
+
+export function isWaitingForCourier(order: RestaurantOrder): boolean {
+  return order.status === 'ready' && order.courierId == null;
+}
 
 const STATUS_PRIORITY: Record<RestaurantOrderStatus, number> = {
   placed: 0, accepted: 1, preparing: 2, ready: 3, picked_up: 4,

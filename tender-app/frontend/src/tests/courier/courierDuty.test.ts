@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { afterEach, describe, it, mock } from 'node:test';
 
 import { API_URL } from '../../api/client.ts';
-import { fetchCourierDuty, goOffDuty, goOnDuty } from '../../api/courierDuty.ts';
+import { acceptOrder, declineOrder, fetchCourierDuty, goOffDuty, goOnDuty, markOrderDelivered, markOrderPickedUp } from '../../api/courierDuty.ts';
 import { canGoOffDuty, canGoOnDuty, isOnDuty } from '../../lib/courierDuty.ts';
 
 describe('courier duty toggle', () => {
@@ -34,12 +34,20 @@ describe('courier duty API', () => {
     assert.deepEqual(await fetchCourierDuty('session-token'), duty);
     await goOnDuty('session-token');
     await goOffDuty('session-token');
+    await acceptOrder('session-token', 41);
+    await declineOrder('session-token', 42);
+    await markOrderPickedUp('session-token', 43);
+    await markOrderDelivered('session-token', 41);
 
     const calls = fetchMock.mock.calls.map((call) => call.arguments as [string, RequestInit]);
     assert.deepEqual(calls.map(([url, request]) => [request.method, url]), [
       ['GET', `${API_URL}/api/courier/duty`],
       ['POST', `${API_URL}/api/courier/duty/on`],
       ['POST', `${API_URL}/api/courier/duty/off`],
+      ['POST', `${API_URL}/api/courier/duty/orders/41/accept`],
+      ['POST', `${API_URL}/api/courier/duty/orders/42/decline`],
+      ['POST', `${API_URL}/api/courier/duty/orders/43/picked-up`],
+      ['POST', `${API_URL}/api/courier/duty/orders/41/delivered`],
     ]);
     for (const [, request] of calls) assert.equal((request.headers as Record<string, string>).Authorization, 'Bearer session-token');
   });

@@ -72,17 +72,19 @@ class MapSyncIntegrationTest {
             // Off duty: not on the map
             assertThat(mapStatusOf(courierId, token)).isNull();
 
-            // Going on duty takes the ready order waiting in the dispatch queue
+            // Going on duty receives the ready order as an offer
             orderId = orders.saveAndFlush(new Order(restaurantId, new Date(), OrderStatus.READY)).getId();
             courierDutyService.goOnDuty(courierId);
+            assertThat(mapStatusOf(courierId, token)).isEqualTo("idle");
+            courierDutyService.acceptOffer(courierId, orderId);
             assertThat(mapStatusOf(courierId, token)).isEqualTo("assigned");
 
             // Pickup puts the order in the courier's hands
-            orderService.markPickedUp(restaurantId, orderId);
+            orderService.markPickedUpByCourier(courierId, orderId);
             assertThat(mapStatusOf(courierId, token)).isEqualTo("carrying");
 
             // Delivering frees the courier
-            orderService.markDelivered(restaurantId, orderId);
+            orderService.markDeliveredByCourier(courierId, orderId);
             assertThat(mapStatusOf(courierId, token)).isEqualTo("idle");
 
             courierDutyService.goOffDuty(courierId);

@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AccountMenu from '@/components/AccountMenu';
 import CityMap from '@/components/dash/CityMap';
 import { useAuth } from '@/context/AuthContext';
-import { fetchCourierDuty, goOffDuty, goOnDuty, type CourierDuty } from '@/api/courierDuty';
+import { acceptOrder, declineOrder, fetchCourierDuty, goOffDuty, goOnDuty, markOrderDelivered, markOrderPickedUp, type CourierDuty } from '@/api/courierDuty';
 import { canGoOffDuty, canGoOnDuty, isOnDuty, stateLabel } from '@/lib/courierDuty';
 
 // Orders can be assigned at any time, so the panel refreshes itself while open
@@ -16,10 +16,11 @@ export default function CourierDashboard() {
   const { user, token, ready } = useAuth();
   const [duty, setDuty] = useState<CourierDuty | null>(null);
   const [loading, setLoading] = useState(true);
-  const [switching, setSwitching] = useState(false);
+  const [updating, setUpdating] = useState(false);
   const [message, setMessage] = useState('');
-  // Going on or off duty puts the courier on or takes them off the map, so it reloads at once
+  // Going on or off duty changes the courier's map presence, so refresh it immediately.
   const [mapRefreshKey, setMapRefreshKey] = useState(0);
+  const order = duty?.assignedOrder;
 
   useEffect(() => {
     if (!token || user?.role !== 'courier') return;
@@ -37,11 +38,25 @@ export default function CourierDashboard() {
   }, [token, user?.role]);
 
   const toggle = async () => {
-    if (!token || !duty || switching) return;
-    setSwitching(true); setMessage('');
+    if (!token || !duty || updating) return;
+    setUpdating(true); setMessage('');
     try { setDuty(await (isOnDuty(duty.status) ? goOffDuty(token) : goOnDuty(token))); setMapRefreshKey((key) => key + 1); }
     catch (error) { setMessage(error instanceof Error ? error.message : 'Could not change your duty status.'); }
-    finally { setSwitching(false); }
+    finally { setUpdating(false); }
+  };
+
+  const performOrderAction = async (action: (token: string, orderId: number) => Promise<CourierDuty>, failure: string) => {
+    if (!token || !order || updating) return;
+    setUpdating(true);
+    setMessage('');
+    try {
+      setDuty(await action(token, order.orderId));
+      setMapRefreshKey((key) => key + 1);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : failure);
+    } finally {
+      setUpdating(false);
+    }
   };
 
   if (!ready) return <SafeAreaView style={styles.page}><ActivityIndicator color="#D42F50" /></SafeAreaView>;
@@ -49,8 +64,7 @@ export default function CourierDashboard() {
   if (user.role !== 'courier') return <Redirect href="/account" />;
 
   const onDuty = duty != null && isOnDuty(duty.status);
-  const toggleEnabled = duty != null && !switching && (onDuty ? canGoOffDuty(duty.status) : canGoOnDuty(duty.status));
-  const order = duty?.assignedOrder;
+  const toggleEnabled = duty != null && !updating && (onDuty ? canGoOffDuty(duty.status) : canGoOnDuty(duty.status));
 
   return <SafeAreaView style={styles.page}>
     <View style={styles.header}><Text style={styles.brand}>Tender</Text><AccountMenu /></View>
@@ -61,23 +75,49 @@ export default function CourierDashboard() {
       {loading ? <ActivityIndicator color="#D42F50" /> : duty && <>
         <View style={[styles.stateCard, onDuty && styles.stateCardOn]}>
           <Text style={[styles.stateEyebrow, onDuty && styles.onText]}>CURRENT STATE</Text>
-          <Text style={[styles.stateValue, onDuty && styles.onText]}>{stateLabel(duty.status)}</Text>
+          <Text style={[styles.stateValue, onDuty && styles.onText]}>
+            {duty.status === 'idle' && order?.status === 'ready' ? 'On duty · order offered' : stateLabel(duty.status)}
+          </Text>
         </View>
 
         <Pressable accessibilityRole="button" accessibilityState={{ disabled: !toggleEnabled }} disabled={!toggleEnabled} onPress={toggle}
           style={[styles.toggle, onDuty ? styles.toggleOff : styles.toggleOn, !toggleEnabled && styles.toggleDisabled]}>
-          <Text style={[styles.toggleText, onDuty && styles.toggleOffText]}>{switching ? 'Updating…' : onDuty ? 'Go off duty' : 'Go on duty'}</Text>
+          <Text style={[styles.toggleText, onDuty && styles.toggleOffText]}>{updating ? 'Updating…' : onDuty ? 'Go off duty' : 'Go on duty'}</Text>
         </Pressable>
         {onDuty && !canGoOffDuty(duty.status) && <Text style={styles.hint}>You can go off duty once your current delivery is done.</Text>}
 
-        <Text style={styles.sectionHeading}>Assigned order</Text>
+        <Text style={styles.sectionHeading}>{duty.status === 'idle' && order?.status === 'ready' ? 'Delivery offer' : 'Current delivery'}</Text>
         {order ? <View style={styles.orderCard}>
           <View style={styles.orderRow}><Text style={styles.orderTitle}>Order #{order.orderId}</Text><Text style={styles.orderStatus}>{order.status.replace('_', ' ')}</Text></View>
           {!!order.restaurantName && <Text style={styles.orderLine}>Pick up at {order.restaurantName}</Text>}
           {!!order.restaurantAddress && <Text style={styles.orderMuted}>{order.restaurantAddress}</Text>}
           {!!order.deliveryAddress && <Text style={styles.orderLine}>Deliver to {order.deliveryAddress}</Text>}
           {order.totalPrice != null && <Text style={styles.orderMuted}>Order total {money(order.totalPrice)}</Text>}
-        </View> : <Text style={styles.empty}>{onDuty ? 'No order yet. You will be assigned the next ready order nearby.' : 'Go on duty to start receiving orders.'}</Text>}
+          {duty.status === 'idle' && order.status === 'ready' && <View style={styles.offerActions}>
+            <Pressable accessibilityRole="button" disabled={updating} onPress={() => void performOrderAction(acceptOrder, 'Could not accept this order.')} style={[styles.deliveredButton, updating && styles.toggleDisabled]}>
+              <Text style={styles.deliveredButtonText}>{updating ? 'Updating…' : 'Accept order'}</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" disabled={updating} onPress={() => void performOrderAction(declineOrder, 'Could not decline this order.')} style={[styles.declineButton, updating && styles.toggleDisabled]}>
+              <Text style={styles.declineButtonText}>Decline and go off duty</Text>
+            </Pressable>
+          </View>}
+          {duty.status === 'assigned' && order.status === 'ready' && <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ disabled: updating }}
+            disabled={updating}
+            onPress={() => void performOrderAction(markOrderPickedUp, 'Could not confirm pickup.')}
+            style={[styles.deliveredButton, updating && styles.toggleDisabled]}>
+            <Text style={styles.deliveredButtonText}>{updating ? 'Updating…' : 'Confirm pickup'}</Text>
+          </Pressable>}
+          {duty.status === 'carrying' && order.status === 'picked_up' && <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ disabled: updating }}
+            disabled={updating}
+            onPress={() => void performOrderAction(markOrderDelivered, 'Could not mark the order delivered.')}
+            style={[styles.deliveredButton, updating && styles.toggleDisabled]}>
+            <Text style={styles.deliveredButtonText}>{updating ? 'Updating…' : 'Mark delivered'}</Text>
+          </Pressable>}
+        </View> : <Text style={styles.empty}>{onDuty ? 'No order is currently offered. You will receive the oldest ready order nearby.' : 'Go on duty to receive delivery offers.'}</Text>}
       </>}
       {!!message && <Text style={styles.message}>{message}</Text>}
       <View style={styles.map}><CityMap refreshKey={mapRefreshKey} /></View>
@@ -106,6 +146,11 @@ const styles = StyleSheet.create({
   hint: { color: '#887B7E', fontSize: 12, marginTop: 8, textAlign: 'center' },
   sectionHeading: { color: '#302629', fontSize: 18, fontWeight: '800', marginTop: 32, marginBottom: 12 },
   orderCard: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#EDE6E6', borderRadius: 18, padding: 20 },
+  deliveredButton: { backgroundColor: '#D42F50', borderRadius: 14, alignItems: 'center', padding: 16, marginTop: 16 },
+  deliveredButtonText: { color: '#FFF', fontWeight: '800' },
+  offerActions: { gap: 8 },
+  declineButton: { borderWidth: 1, borderColor: '#887B7E', borderRadius: 14, alignItems: 'center', padding: 14, marginTop: 8 },
+  declineButtonText: { color: '#62585A', fontWeight: '800' },
   orderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   orderTitle: { color: '#302629', fontSize: 18, fontWeight: '800' },
   orderStatus: { color: '#D42F50', fontWeight: '800', textTransform: 'capitalize' },

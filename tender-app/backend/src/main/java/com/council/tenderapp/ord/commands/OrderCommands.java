@@ -43,20 +43,6 @@ public final class OrderCommands {
         }
     }
 
-    public record MarkPickedUp(Long restaurantId, Long orderId) implements OrderCommand {
-        @Override
-        public OrderResponse execute(OrderService receiver) {
-            return receiver.markPickedUp(restaurantId, orderId);
-        }
-    }
-
-    public record MarkDelivered(Long restaurantId, Long orderId) implements OrderCommand {
-        @Override
-        public OrderResponse execute(OrderService receiver) {
-            return receiver.markDelivered(restaurantId, orderId);
-        }
-    }
-
     public record Refund(Long restaurantId, Long orderId) implements OrderCommand {
         @Override
         public OrderResponse execute(OrderService receiver) {

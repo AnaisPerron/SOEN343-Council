@@ -5,7 +5,6 @@ import java.util.Comparator;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.council.tenderapp.ord.entities.Order;
@@ -16,10 +15,11 @@ import com.council.tenderapp.ord.repositories.RestaurantRepository;
 import com.council.tenderapp.reg.entities.CourierProfile;
 import com.council.tenderapp.reg.entities.CourierStatus;
 import com.council.tenderapp.reg.repositories.CourierProfileRepository;
+import com.council.tenderapp.technicalservices.logging.AppLogService;
 
 /**
  * The dispatch queue is every ready order that has no courier yet, oldest first.
- * Retrying it hands each waiting order to the nearest idle courier until couriers run out (R-DLV-04).
+ * Retrying it offers each waiting order to the nearest idle courier without an outstanding offer (R-DLV-04).
  */
 @Service
 public class DispatchService {
@@ -27,37 +27,32 @@ public class DispatchService {
     private final OrderRepository orderRepository;
     private final RestaurantRepository restaurantRepository;
     private final CourierProfileRepository courierProfileRepository;
+    private final AppLogService logService;
 
     public DispatchService(OrderRepository orderRepository, RestaurantRepository restaurantRepository,
-            CourierProfileRepository courierProfileRepository) {
+            CourierProfileRepository courierProfileRepository, AppLogService logService) {
         this.orderRepository = orderRepository;
         this.restaurantRepository = restaurantRepository;
         this.courierProfileRepository = courierProfileRepository;
+        this.logService = logService;
     }
 
     @Transactional
     public void retryQueue() {
-        assignWaitingOrders();
-    }
-
-    /**
-     * Runs the queue for an order that just became ready.
-     * Needs its own transaction because order status changes are published after they commit.
-     */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void retryQueueAfterOrderReady() {
-        assignWaitingOrders();
-    }
-
-    private void assignWaitingOrders() {
         List<CourierProfile> idle = new ArrayList<>(courierProfileRepository.findByStatusOrderByUserIdAsc(CourierStatus.IDLE));
-        for (Order order : orderRepository.findByStatusAndCourierIdIsNullOrderByDateOrderedAscIdAsc(OrderStatus.READY)) {
-            if (idle.isEmpty()) return;
+        idle.removeIf(courier -> orderRepository
+                .findFirstByCourierIdAndStatusInOrderByDateOrderedAscIdAsc(courier.getUserId(), List.of(OrderStatus.READY))
+                .isPresent());
+        for (Order order : orderRepository.findWaitingReadyOrdersForDispatch()) {
+            if (idle.isEmpty()) {
+                logService.info("Dispatch queue: order #" + order.getId() + " is waiting for a courier");
+                continue;
+            }
             Restaurant restaurant = restaurantRepository.findById(order.getRestaurantId()).orElse(null);
             CourierProfile courier = idle.stream().min(byDistanceTo(restaurant)).orElseThrow();
             idle.remove(courier);
             order.setCourierId(courier.getUserId());
-            courier.setStatus(CourierStatus.ASSIGNED);
+            logService.info("Dispatch queue: order #" + order.getId() + " offered to courier #" + courier.getUserId());
         }
     }
 
