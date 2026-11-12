@@ -60,7 +60,7 @@ public class OperatorDashboardRepository {
         List<RestaurantSummary> items = jdbc.query("""
                 SELECT r.id, r.name, r.status, r.latitude, r.longitude, r.address, r.phone,
                     (SELECT COUNT(*) FROM orders o WHERE o.restaurant_id = r.id
-                        AND UPPER(o.status) IN ('ACCEPTED', 'PREPARING')) AS queue_count
+                        AND UPPER(o.status) IN ('PLACED', 'ACCEPTED', 'PREPARING')) AS queue_count
                 FROM restaurants r
                 """ + where + " ORDER BY LOWER(r.name), r.id LIMIT ? OFFSET ?", (rs, row) -> new RestaurantSummary(rs.getLong("id"), rs.getString("name"),
                         lower(rs.getString("status")), number(rs, "latitude"), number(rs, "longitude"),
