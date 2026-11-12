@@ -59,6 +59,11 @@ export const styles = StyleSheet.create({
     color: '#7A6268',
     marginTop: 3,
   },
+  queueBand: { alignSelf: 'flex-start', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7, marginTop: 9 },
+  queueshort: { backgroundColor: '#DDF4E2' },
+  queuebuilding: { backgroundColor: '#FFF0C2' },
+  queuelong: { backgroundColor: '#FCE1E1' },
+  queueText: { color: '#38252A', fontSize: 12, fontWeight: '800' },
 
   chip: {
     paddingVertical: 4,

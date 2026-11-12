@@ -1,6 +1,7 @@
 import { Text, TextStyle, TouchableOpacity, View, ViewStyle } from 'react-native';
 import type { OperatorRestaurant as Restaurant, RestaurantStatus } from '../../../types/operator';
 import { styles } from './restaurants.styles';
+import { queueBand } from '../operatorLogic';
 
 interface RestaurantListProps {
   restaurants: Restaurant[];
@@ -37,7 +38,7 @@ export default function RestaurantList({ restaurants, changingId, disabled, onSt
         {openCount} of {restaurants.length} loaded restaurants open
       </Text>
 
-      {restaurants.map(({ id, name, status, latitude, longitude }) => (
+      {restaurants.map(({ id, name, status, queueCount, latitude, longitude }) => (
         <View key={id} style={styles.card}>
           <View style={styles.cardTop}>
             <Text style={styles.name}>{name}</Text>
@@ -50,6 +51,11 @@ export default function RestaurantList({ restaurants, changingId, disabled, onSt
           </View>
 
           <Text style={styles.detail}>Restaurant ID: {id}</Text>
+          <View style={[styles.queueBand, styles[`queue${queueBand(queueCount, status)}`]]}>
+            <Text style={styles.queueText}>
+              {queueBand(queueCount, status) === 'long' ? 'Long' : queueBand(queueCount, status) === 'building' ? 'Building' : 'Short'} queue · {queueCount} {queueCount === 1 ? 'order' : 'orders'}{status === 'paused' ? ' · Paused' : ''}
+            </Text>
+          </View>
           <TouchableOpacity style={styles.action} disabled={disabled} accessibilityRole="button"
             accessibilityLabel={`${status === 'open' ? 'Pause' : 'Reopen'} ${name}`}
             onPress={() => void onStatusChange(id, status === 'open' ? 'paused' : 'open')}>
