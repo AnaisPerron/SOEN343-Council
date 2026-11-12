@@ -24,11 +24,15 @@ import com.council.tenderapp.ord.entities.MenuItem;
 import com.council.tenderapp.ord.entities.Order;
 import com.council.tenderapp.ord.entities.OrderLine;
 import com.council.tenderapp.ord.entities.OrderStatus;
+import com.council.tenderapp.ord.repositories.OrderEventRepository;
 import com.council.tenderapp.ord.repositories.OrderRepository;
 import com.council.tenderapp.ord.services.OrderService;
 import com.council.tenderapp.ord.services.OrderStatusPublisher;
 import com.council.tenderapp.reg.entities.Profile;
+import com.council.tenderapp.reg.entities.CourierProfile;
+import com.council.tenderapp.reg.entities.CourierStatus;
 import com.council.tenderapp.reg.entities.Role;
+import com.council.tenderapp.reg.repositories.CourierProfileRepository;
 import com.council.tenderapp.reg.repositories.ProfileRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -41,7 +45,13 @@ class OrderServiceTest {
     private OrderStatusPublisher orderStatusPublisher;
 
     @Mock
+    private OrderEventRepository orderEventRepository;
+
+    @Mock
     private ProfileRepository profileRepository;
+
+    @Mock
+    private CourierProfileRepository courierProfileRepository;
 
     @InjectMocks
     private OrderService orderService;
@@ -88,6 +98,27 @@ class OrderServiceTest {
         assertThat(result.get(0).getCustomerPhone()).isEqualTo("514-555-0101");
         // Seeded orders without a customer have no name to show.
         assertThat(result.get(1).getCustomerName()).isNull();
+    }
+
+    @Test
+    void restaurantOrdersShowCourierNameOnlyAfterOfferAcceptance() {
+        Long restaurantId = 42L;
+        Long courierId = 77L;
+        Order ready = order(restaurantId, OrderStatus.READY, new Date());
+        ready.setId(7L);
+        ready.setCourierId(courierId);
+        Profile courierProfile = new Profile(Role.COURIER, "Jordan Courier", "jordan@example.test", "hash", "514-555-0101");
+        ReflectionTestUtils.setField(courierProfile, "id", courierId);
+        CourierProfile duty = new CourierProfile(courierId);
+        duty.setStatus(CourierStatus.IDLE);
+        when(orderRepository.findByRestaurantIdOrderByDateOrderedAscIdAsc(restaurantId)).thenReturn(List.of(ready));
+        when(profileRepository.findAllById(List.of(courierId))).thenReturn(List.of(courierProfile));
+        when(courierProfileRepository.findAllById(List.of(courierId))).thenReturn(List.of(duty));
+
+        assertThat(orderService.getAllOrders(restaurantId).get(0).getCourierName()).isNull();
+
+        duty.setStatus(CourierStatus.ASSIGNED);
+        assertThat(orderService.getAllOrders(restaurantId).get(0).getCourierName()).isEqualTo("Jordan Courier");
     }
 
     @Test
@@ -195,16 +226,17 @@ class OrderServiceTest {
     }
 
     @Test
-    void advancesReadyOrderToPickedUpAndDelivered() {
+    void courierAdvancesAssignedOrderFromReadyThroughDelivery() {
         Order ready = order(42L, OrderStatus.READY, new Date());
         ready.setId(13L);
+        ready.setCourierId(77L);
         when(orderRepository.findByIdForUpdate(13L)).thenReturn(Optional.of(ready));
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        assertThat(orderService.markPickedUp(42L, 13L).getStatus()).isEqualTo(OrderStatus.PICKED_UP);
+        assertThat(orderService.markPickedUpByCourier(77L, 13L).getStatus()).isEqualTo(OrderStatus.PICKED_UP);
 
         when(orderRepository.findByIdForUpdate(13L)).thenReturn(Optional.of(ready));
-        assertThat(orderService.markDelivered(42L, 13L).getStatus()).isEqualTo(OrderStatus.DELIVERED);
+        assertThat(orderService.markDeliveredByCourier(77L, 13L).getStatus()).isEqualTo(OrderStatus.DELIVERED);
     }
 
     @Test

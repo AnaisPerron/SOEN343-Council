@@ -93,16 +93,6 @@ public class RestaurantOrderController {
         return commandInvoker.execute(new OrderCommands.MarkReady(restaurantId, orderId));
     }
 
-    @PostMapping("/{orderId}/picked-up")
-    public OrderResponse markPickedUp(@PathVariable Long restaurantId, @PathVariable Long orderId) {
-        return commandInvoker.execute(new OrderCommands.MarkPickedUp(restaurantId, orderId));
-    }
-
-    @PostMapping("/{orderId}/delivered")
-    public OrderResponse markDelivered(@PathVariable Long restaurantId, @PathVariable Long orderId) {
-        return commandInvoker.execute(new OrderCommands.MarkDelivered(restaurantId, orderId));
-    }
-
     @PostMapping("/{orderId}/refund")
     public OrderResponse refundOrder(@PathVariable Long restaurantId, @PathVariable Long orderId) {
         return commandInvoker.execute(new OrderCommands.Refund(restaurantId, orderId));
