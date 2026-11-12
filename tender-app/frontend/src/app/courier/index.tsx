@@ -65,6 +65,10 @@ export default function CourierDashboard() {
 
   const onDuty = duty != null && isOnDuty(duty.status);
   const toggleEnabled = duty != null && !updating && (onDuty ? canGoOffDuty(duty.status) : canGoOnDuty(duty.status));
+  const pickupEnabled = duty?.status === 'assigned' && order?.status === 'ready';
+  const deliveryEnabled = duty?.status === 'carrying' && order?.status === 'picked_up';
+  const pickupHint = pickupEnabled ? undefined : !order ? 'Available when you have a ready order offer.' : order.status !== 'ready' ? 'Pickup is available after the restaurant marks the order ready.' : 'Accept the delivery offer before confirming pickup.';
+  const deliveryHint = deliveryEnabled ? undefined : order?.status === 'picked_up' ? 'Delivery confirmation is available once you are carrying the picked-up order.' : 'Delivery confirmation is available after pickup.';
 
   return <SafeAreaView style={styles.page}>
     <View style={styles.header}><Text style={styles.brand}>Tender</Text><AccountMenu /></View>
@@ -101,24 +105,20 @@ export default function CourierDashboard() {
               <Text style={styles.declineButtonText}>Decline and go off duty</Text>
             </Pressable>
           </View>}
-          {duty.status === 'assigned' && order.status === 'ready' && <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ disabled: updating }}
-            disabled={updating}
-            onPress={() => void performOrderAction(markOrderPickedUp, 'Could not confirm pickup.')}
-            style={[styles.deliveredButton, updating && styles.toggleDisabled]}>
-            <Text style={styles.deliveredButtonText}>{updating ? 'Updating…' : 'Confirm pickup'}</Text>
-          </Pressable>}
-          {duty.status === 'carrying' && order.status === 'picked_up' && <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ disabled: updating }}
-            disabled={updating}
-            onPress={() => void performOrderAction(markOrderDelivered, 'Could not mark the order delivered.')}
-            style={[styles.deliveredButton, updating && styles.toggleDisabled]}>
-            <Text style={styles.deliveredButtonText}>{updating ? 'Updating…' : 'Mark delivered'}</Text>
-          </Pressable>}
         </View> : <Text style={styles.empty}>{onDuty ? 'No order is currently offered. You will receive the oldest ready order nearby.' : 'Go on duty to receive delivery offers.'}</Text>}
       </>}
+      <Pressable accessibilityRole="button" accessibilityHint={pickupHint} accessibilityState={{ disabled: updating || !pickupEnabled }} disabled={updating || !pickupEnabled}
+        onPress={() => void performOrderAction(markOrderPickedUp, 'Could not confirm pickup.')}
+        style={[styles.deliveredButton, (updating || !pickupEnabled) && styles.toggleDisabled]}>
+        <Text style={styles.deliveredButtonText}>{updating ? 'Updating…' : 'Confirm pickup'}</Text>
+      </Pressable>
+      {!pickupEnabled && <Text style={styles.hint}>{pickupHint}</Text>}
+      <Pressable accessibilityRole="button" accessibilityHint={deliveryHint} accessibilityState={{ disabled: updating || !deliveryEnabled }} disabled={updating || !deliveryEnabled}
+        onPress={() => void performOrderAction(markOrderDelivered, 'Could not confirm delivery.')}
+        style={[styles.deliveredButton, (updating || !deliveryEnabled) && styles.toggleDisabled]}>
+        <Text style={styles.deliveredButtonText}>{updating ? 'Updating…' : 'Confirm delivery'}</Text>
+      </Pressable>
+      {!deliveryEnabled && <Text style={styles.hint}>{deliveryHint}</Text>}
       {!!message && <Text style={styles.message}>{message}</Text>}
       <View style={styles.map}><CityMap refreshKey={mapRefreshKey} /></View>
     </ScrollView>

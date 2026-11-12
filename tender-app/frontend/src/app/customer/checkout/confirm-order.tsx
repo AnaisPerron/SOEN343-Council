@@ -27,6 +27,10 @@ export default function ConfirmOrderScreen() {
   const sending = useRef(false);
   const groups = groupCartLinesByRestaurant(lines);
   const total = groups.reduce((sum, group) => sum + group.total, 0);
+  const currentRestriction = getCartOrderRestriction(groups.map((group) => group.restaurantId), restaurants);
+  const everySelectedItemSoldOut = lines.length > 0 && lines.every((line) => findItem(line.itemId)?.available === false);
+  const placeOrderDisabled = phase === 'submitting' || lines.length === 0 || currentRestriction !== null || everySelectedItemSoldOut;
+  const placeOrderHint = currentRestriction?.message ?? (everySelectedItemSoldOut ? 'All items in your cart are sold out.' : lines.length === 0 ? 'Add a menu item before placing an order.' : undefined);
   const placedOrders = orders.filter((order) => placedIds.includes(order.id));
 
   useEffect(() => () => {
@@ -159,9 +163,12 @@ export default function ConfirmOrderScreen() {
         {phase === 'success' ? (
           <TouchableOpacity style={styles.sendButton} accessibilityRole="button" onPress={() => router.replace('/customer/home/home')}><Text style={styles.sendButtonText}>Browse restaurants</Text></TouchableOpacity>
         ) : (
-          <TouchableOpacity style={[styles.sendButton, (phase === 'submitting' || lines.length === 0) && styles.sendButtonDisabled]} accessibilityRole="button" accessibilityLabel="Send orders" accessibilityState={{ disabled: phase === 'submitting' || lines.length === 0, busy: phase === 'submitting' }} disabled={phase === 'submitting' || lines.length === 0} onPress={sendOrders}>
+          <>
+          <TouchableOpacity style={[styles.sendButton, placeOrderDisabled && styles.sendButtonDisabled]} accessibilityRole="button" accessibilityLabel="Send orders" accessibilityHint={placeOrderHint} accessibilityState={{ disabled: placeOrderDisabled, busy: phase === 'submitting' }} disabled={placeOrderDisabled} onPress={sendOrders}>
             {phase === 'submitting' ? <><ActivityIndicator color="#FFFFFF" size="small" /><Text style={styles.sendButtonText}>Placing orders...</Text></> : <Text style={styles.sendButtonText}>Send orders</Text>}
           </TouchableOpacity>
+          {placeOrderHint && <Text style={styles.restrictionText}>{placeOrderHint}</Text>}
+          </>
         )}
       </View>
     </SafeAreaView>

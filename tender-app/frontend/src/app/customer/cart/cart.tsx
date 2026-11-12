@@ -19,6 +19,10 @@ export default function CartScreen() {
   const count = lines.reduce((total, line) => total + line.quantity, 0);
   const groups = groupCartLinesByRestaurant(lines);
   const grandTotal = groups.reduce((total, group) => total + group.total, 0);
+  const placeRestriction = getCartOrderRestriction(groups.map((group) => group.restaurantId), restaurants);
+  const everySelectedItemSoldOut = lines.length > 0 && lines.every((line) => findItem(line.itemId)?.available === false);
+  const placeOrderDisabled = lines.length === 0 || placeRestriction !== null || everySelectedItemSoldOut;
+  const placeOrderHint = placeRestriction?.message ?? (everySelectedItemSoldOut ? 'All items in your cart are sold out.' : lines.length === 0 ? 'Add a menu item before placing an order.' : undefined);
   const goBack = () => router.canGoBack() ? router.back() : router.replace('/customer/home/home');
 
   useEffect(() => () => {
@@ -107,9 +111,10 @@ export default function CartScreen() {
         </>}
       </ScrollView>
       <View style={styles.footer}>
-        <TouchableOpacity style={[styles.makeOrderButton, lines.length === 0 && styles.makeOrderButtonDisabled]} accessibilityRole="button" accessibilityState={{ disabled: lines.length === 0 }} disabled={lines.length === 0} onPress={makeOrder}>
+        <TouchableOpacity style={[styles.makeOrderButton, placeOrderDisabled && styles.makeOrderButtonDisabled]} accessibilityRole="button" accessibilityHint={placeOrderHint} accessibilityState={{ disabled: placeOrderDisabled }} disabled={placeOrderDisabled} onPress={makeOrder}>
           <Text style={styles.makeOrderText}>Make my order</Text>
         </TouchableOpacity>
+        {placeOrderHint && <Text style={styles.orderBlockedHint}>{placeOrderHint}</Text>}
       </View>
       {orderError && <View style={styles.orderErrorOverlay} pointerEvents="none">
         <Animated.View style={[styles.orderErrorToast, { opacity: toastOpacity }]} accessibilityRole="alert" accessibilityLiveRegion="assertive">
