@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -33,6 +33,8 @@ export default function RestaurantOrders() {
   const [toast, setToast] = useState('');
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  // Bumped before and after each status change so a refresh that overlapped it cannot put the old status back.
+  const statusWriteVersion = useRef(0);
   const columns = width >= 1050 ? 2 : 1;
 
   useEffect(() => {
@@ -50,9 +52,11 @@ export default function RestaurantOrders() {
     let active = true;
     // Refresh from the server so incoming and terminal orders reflect database state.
     const refresh = async () => {
+      const version = statusWriteVersion.current;
       try {
         const data = await requestJson<{ id: number; status: string; dateOrdered: string; acceptedAt: string | null; rejectionReason: string | null; customerName: string | null; customerPhone: string | null; deliveryAddress: string | null; orderLines: { itemName: string; quantity: number; unitPrice: number }[] }[]>('GET', `/api/restaurants/${restaurantId}/orders`, undefined, token);
-        if (!active) return;
+        // Drop this snapshot if a status change started or finished while it was loading; it may predate that change.
+        if (!active || version !== statusWriteVersion.current) return;
         console.info('Restaurant orders loaded', { restaurantId, count: data.length });
         setOrders(data.map((order) => ({ id: order.id, restaurantId, status: order.status.toLowerCase() as RestaurantOrderStatus, createdAt: order.dateOrdered, updatedAt: null, acceptedAt: order.acceptedAt, rejectionReason: order.rejectionReason, customer: { name: order.customerName ?? 'Unavailable', address: order.deliveryAddress ?? 'Unavailable', phone: order.customerPhone ?? 'Unavailable' }, lines: order.orderLines.map((line) => ({ name: line.itemName, quantity: line.quantity, unitPrice: line.unitPrice, toppings: [] })) })));
         setMessage('');
@@ -77,6 +81,7 @@ export default function RestaurantOrders() {
     // Ignore repeat taps: a second request for the same change is an invalid transition once the first lands
     if (!target || !restaurantId || !token || updatingId != null) return;
     setUpdatingId(target.id);
+    statusWriteVersion.current += 1;
     try {
       // Update the database first; never report a local-only status change as successful.
       const actions: Partial<Record<RestaurantOrderStatus, string>> = { accepted: 'accept', rejected: 'reject', preparing: 'prepare', ready: 'ready', picked_up: 'picked-up', delivered: 'delivered' };
@@ -94,6 +99,7 @@ export default function RestaurantOrders() {
       // The order may have changed elsewhere since the last refresh; show its real status
       setReloadKey((key) => key + 1);
     } finally {
+      statusWriteVersion.current += 1;
       setUpdatingId(null);
     }
   };
