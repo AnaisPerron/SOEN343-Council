@@ -1,6 +1,7 @@
 package com.council.tenderapp.prc.service;
 
 import java.time.OffsetDateTime;
+import java.util.Locale;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,7 +47,7 @@ public class LedgerService
                     .orElseGet(LedgerEntry::new);
         ledgerEntry.setBillId(billId);
         ledgerEntry.setTransactionType(transaction_type);
-        ledgerEntry.setFinalOrderStatus(orderStatus);
+        ledgerEntry.setFinalOrderStatus(orderStatus.toLowerCase(Locale.ROOT));
         ledgerEntry.setTotalCharge(totalCharge);
         ledgerEntry.setTimestamp(OffsetDateTime.now());
 
