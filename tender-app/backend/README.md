@@ -100,7 +100,7 @@ your configured database.
 
 The `demo` Spring profile automatically loads `src/main/resources/demo/seed.sql` into PostgreSQL at startup.
 
-**Warning:** Every demo startup clears and reseeds the 16 tables listed in the seed. Use a dedicated demo database/branch. Normal startup preserves existing data.
+**Warning:** Every demo startup clears and reseeds the 17 tables listed in the seed. Use a dedicated demo database/branch. Normal startup preserves existing data.
 
 ### Setup
 
@@ -173,3 +173,9 @@ restaurant statuses and generated IDs can differ from the frontend mock state.
   `classpath:demo/seed.sql`; override it with `app.operator.reset-seed`.
 - A successful reset invalidates all sessions.
 - Tests use isolated fixtures; the real demo seed has not been verified.
+
+## Courier offers
+
+Apply [docs/assignments.sql](docs/assignments.sql) before using courier offers.
+Ready orders are dispatched automatically. Couriers accept offers from their
+dashboard through `POST /api/courier/offers/{assignmentId}/accept`.
