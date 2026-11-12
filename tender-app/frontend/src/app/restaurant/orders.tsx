@@ -7,7 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import AccountMenu from '@/components/AccountMenu';
 import { requestJson } from '@/api/client';
 import {
-  filterAndSortOrders, ORDER_STATUSES, orderTotal,
+  filterAndSortOrders, nextOrderToPrepare, ORDER_STATUSES, orderTotal,
   type OrderFilter, type RestaurantOrder, type RestaurantOrderStatus,
 } from '@/services/restaurant/orderQueue';
 
@@ -69,6 +69,7 @@ export default function RestaurantOrders() {
 
   const shown = useMemo(() => filterAndSortOrders(orders, filter), [orders, filter]);
   const detail = orders.find((order) => order.id === detailId) ?? null;
+  const nextToPrepare = useMemo(() => nextOrderToPrepare(orders), [orders]);
   const allShownSelected = shown.length > 0 && shown.every((order) => selected.has(order.id));
 
   const toggleSelected = (id: number) => setSelected((current) => {
@@ -168,7 +169,9 @@ export default function RestaurantOrders() {
             </View>
           </Pressable>
           {order.status === 'placed' && <View style={styles.inlineActions}><Pressable accessibilityRole="button" style={styles.acceptButton} disabled={updatingId != null} onPress={() => changeStatus('accepted', undefined, order)}><Text style={styles.actionText}>Accept</Text></Pressable><Pressable accessibilityRole="button" style={styles.rejectButton} onPress={() => { setDetailId(order.id); setRejecting(true); }}><Text style={styles.rejectText}>Reject</Text></Pressable></View>}
-          {order.status === 'accepted' && <Pressable accessibilityRole="button" style={styles.acceptButton} disabled={updatingId != null} onPress={() => changeStatus('preparing', undefined, order)}><Text style={styles.actionText}>Start preparing</Text></Pressable>}
+          {order.status === 'accepted' && (nextToPrepare?.id === order.id
+            ? <Pressable accessibilityRole="button" style={styles.acceptButton} disabled={updatingId != null} onPress={() => changeStatus('preparing', undefined, order)}><Text style={styles.actionText}>Start preparing</Text></Pressable>
+            : <View accessibilityState={{ disabled: true }} style={[styles.acceptButton, styles.waitingButton]}><Text style={styles.actionText}>Prepare #{nextToPrepare?.id} first</Text></View>)}
           {order.status === 'preparing' && <Pressable accessibilityRole="button" style={styles.acceptButton} disabled={updatingId != null} onPress={() => changeStatus('ready', undefined, order)}><Text style={styles.actionText}>Mark ready</Text></Pressable>}
           {order.status === 'ready' && <Pressable accessibilityRole="button" style={styles.acceptButton} disabled={updatingId != null} onPress={() => changeStatus('picked_up', undefined, order)}><Text style={styles.actionText}>Mark picked up</Text></Pressable>}
           {order.status === 'picked_up' && <Pressable accessibilityRole="button" style={styles.acceptButton} disabled={updatingId != null} onPress={() => changeStatus('delivered', undefined, order)}><Text style={styles.actionText}>Mark delivered</Text></Pressable>}
@@ -200,7 +203,9 @@ export default function RestaurantOrders() {
             <Pressable accessibilityRole="button" style={styles.primaryAction} disabled={updatingId != null} onPress={() => changeStatus('accepted')}><Text style={styles.primaryActionText}>Accept order</Text></Pressable>
             <Pressable accessibilityRole="button" style={styles.secondaryAction} onPress={() => setRejecting(true)}><Text style={styles.secondaryActionText}>Reject order</Text></Pressable>
           </View>}
-          {detail.status === 'accepted' && <Pressable accessibilityRole="button" style={styles.primaryAction} disabled={updatingId != null} onPress={() => changeStatus('preparing')}><Text style={styles.primaryActionText}>Start preparing</Text></Pressable>}
+          {detail.status === 'accepted' && (nextToPrepare?.id === detail.id
+            ? <Pressable accessibilityRole="button" style={styles.primaryAction} disabled={updatingId != null} onPress={() => changeStatus('preparing')}><Text style={styles.primaryActionText}>Start preparing</Text></Pressable>
+            : <View accessibilityState={{ disabled: true }} style={[styles.primaryAction, styles.waitingButton]}><Text style={styles.primaryActionText}>Prepare order #{nextToPrepare?.id} first</Text></View>)}
           {detail.status === 'preparing' && <Pressable accessibilityRole="button" style={styles.primaryAction} disabled={updatingId != null} onPress={() => changeStatus('ready')}><Text style={styles.primaryActionText}>Mark ready for pickup</Text></Pressable>}
         </ScrollView>}
       </View></View>
@@ -290,6 +295,8 @@ const styles = StyleSheet.create({
   inlineActions: { alignItems: 'flex-end', paddingHorizontal: 14, paddingBottom: 14, gap: 7 },
   acceptButton: { backgroundColor: '#2E8B49', paddingHorizontal: 12, paddingVertical: 10, borderRadius: 6, alignItems: 'center', alignSelf: 'flex-end', minWidth: 105, marginHorizontal: 14, marginBottom: 10 },
   rejectButton: { backgroundColor: '#B63E48', paddingHorizontal: 12, paddingVertical: 10, borderRadius: 6, alignItems: 'center', width: 105, marginRight: 14 },
+  // Shown on accepted orders that must wait for an older one to start preparing
+  waitingButton: { opacity: 0.45 },
   actionText: { color: '#FFF', fontWeight: '800', fontSize: 12 },
   rejectText: { color: '#FFF', fontWeight: '800', fontSize: 12 },
   orderLines: { marginBottom: 12 },
