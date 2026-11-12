@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
   rejectButton: { backgroundColor: '#B63E48', paddingHorizontal: 12, paddingVertical: 10, borderRadius: 6, alignItems: 'center', width: 105, marginRight: 14 },
   actionText: { color: '#FFF', fontWeight: '800', fontSize: 12 },
   rejectText: { color: '#FFF', fontWeight: '800', fontSize: 12 },
-  orderLines: { flex: 1 },
+  orderLines: { marginBottom: 12 },
   additionalLine: { marginTop: 8 },
   itemName: { color: '#273039', fontSize: 15, fontWeight: '800' },
   toppings: { color: '#68737C', fontSize: 12, marginTop: 3 },
