@@ -13,7 +13,9 @@ import CourrierList from './components/courriersList';
 import OperatorProfile from './components/operatorProfile';
 import CityMap from '@/components/dash/CityMap';
 import { getOperatorDisplayName, toOperatorUser } from './operatorLogic';
-import { changeRestaurantStatus } from './operatorApi';
+import { changeRestaurantStatus, resetSystem, reassignOrder } from './operatorApi';
+import ResetSystemDialog from './components/ResetSystemDialog';
+import ReassignOrderDialog from './components/ReassignOrderDialog';
 
 const tabs: { kind: OperatorSectionName; label: string; count: keyof OperatorSummary }[] = [
   { kind: 'restaurants', label: 'Restaurants', count: 'restaurantCount' },
@@ -33,12 +35,21 @@ export default function OperatorHome() {
   const [error, setError] = useState<string | null>(null);
   const [changingId, setChangingId] = useState<number | null>(null);
   const [mapRefreshKey, setMapRefreshKey] = useState(0);
+  const [showReset, setShowReset] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [resetComplete, setResetComplete] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [reassignTarget, setReassignTarget] = useState<{ id: number; courierId: number } | null>(null);
+  const [reassigning, setReassigning] = useState(false);
+  const [reassignError, setReassignError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const resettingRef = useRef(false);
   const requestId = useRef(0);
   const changing = useRef(false);
   const operator = toOperatorUser(user);
 
   const loadPage = useCallback(async (page = 0) => {
-    if (!token || changing.current) return;
+    if (!token || changing.current || resettingRef.current || resetComplete) return;
     const version = ++requestId.current;
     setLoading(true);
     setError(null);
@@ -65,7 +76,7 @@ export default function OperatorHome() {
     } finally {
       if (version === requestId.current) setLoading(false);
     }
-  }, [activeFilter, token, signOut]);
+  }, [activeFilter, token, signOut, resetComplete]);
 
   useEffect(() => {
     void loadPage();
@@ -73,7 +84,7 @@ export default function OperatorHome() {
   }, [loadPage]);
 
   const updateStatus = async (id: number, status: RestaurantStatus) => {
-    if (!token || changing.current || loading) return;
+    if (!token || changing.current || loading || resettingRef.current || resetComplete) return;
     changing.current = true;
     const version = ++requestId.current;
     setChangingId(id);
@@ -95,22 +106,86 @@ export default function OperatorHome() {
     }
   };
 
+  const confirmReassignment = async () => {
+    if (!token || user?.role !== 'Operator' || !reassignTarget || changing.current || resettingRef.current || resetComplete) return;
+    const target = reassignTarget;
+    changing.current = true;
+    setReassigning(true);
+    setReassignError(null);
+    setNotice(null);
+    const version = ++requestId.current;
+    try {
+      await reassignOrder(target.id, target.courierId, token);
+      if (version !== requestId.current) return;
+      changing.current = false;
+      setReassigning(false);
+      setReassignTarget(null);
+      setMapRefreshKey((key) => key + 1);
+      setNotice(`Order #${target.id} returned to dispatch. The refreshed list shows its current courier or queued state.`);
+      await loadPage();
+    } catch (cause) {
+      if (version !== requestId.current) return;
+      if (cause instanceof ApiError && cause.status === 401) signOut();
+      else if (cause instanceof ApiError && (cause.status === 409 || cause.status === 404)) {
+        changing.current = false;
+        setReassigning(false);
+        setReassignTarget(null);
+        await loadPage();
+        setError(`${cause.message}. Orders have been refreshed; check the current assignment before retrying.`);
+      } else setReassignError(cause instanceof Error ? cause.message : 'Unable to reassign the order');
+    } finally {
+      changing.current = false;
+      if (version === requestId.current) setReassigning(false);
+    }
+  };
+
+  const confirmReset = async () => {
+    if (!token || user?.role !== 'Operator' || resettingRef.current || changing.current || resetComplete) return;
+    resettingRef.current = true;
+    setResetting(true);
+    setResetError(null);
+    const version = ++requestId.current;
+    try {
+      await resetSystem(token);
+      if (version !== requestId.current) return;
+      setSection(null);
+      setSummary(null);
+      setError(null);
+      setNotice(null);
+      setReassignTarget(null);
+      setChangingId(null);
+      setShowProfileMenu(false);
+      setActiveFilter('restaurants');
+      setMapRefreshKey((key) => key + 1);
+      setResetComplete(true);
+    } catch (cause) {
+      if (version !== requestId.current) return;
+      if (cause instanceof ApiError && cause.status === 401) signOut();
+      else setResetError(cause instanceof ApiError && cause.status === 0
+        ? 'Connection lost. The reset may have completed. Sign out and sign in again before retrying.'
+        : cause instanceof Error ? cause.message : 'Unable to reset the system');
+    } finally {
+      resettingRef.current = false;
+      if (version === requestId.current) setResetting(false);
+    }
+  };
+
   const visible = section?.kind === activeFilter ? section : null;
-  const busy = loading || changingId !== null;
+  const busy = loading || changingId !== null || resetting || showReset || reassigning || reassignTarget !== null;
 
   return (
     <SafeAreaView style={styles.page} edges={['top']}>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingHorizontal: width < 600 ? 20 : 48 }]}>
+      {!resetComplete && <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingHorizontal: width < 600 ? 20 : 48 }]}>
         <View style={styles.topbar}>
-          <TouchableOpacity style={styles.profile} onPress={() => setShowProfileMenu(true)} accessibilityRole="button">
+          <TouchableOpacity disabled={busy} style={styles.profile} onPress={() => setShowProfileMenu(true)} accessibilityRole="button">
             <Text style={styles.profileText}>{getOperatorDisplayName(operator)}</Text>
           </TouchableOpacity>
         </View>
         <View style={styles.statsContainer}>
           {tabs.map((tab) => (
             <TouchableOpacity key={tab.kind} style={[styles.statCard, activeFilter === tab.kind && styles.statCardSelected]}
-              onPress={() => { if (!changing.current) setActiveFilter(tab.kind); }} disabled={changingId !== null} accessibilityRole="button"
-              accessibilityState={{ selected: activeFilter === tab.kind, disabled: changingId !== null }}>
+              onPress={() => { if (!changing.current) setActiveFilter(tab.kind); }} disabled={busy} accessibilityRole="button"
+              accessibilityState={{ selected: activeFilter === tab.kind, disabled: busy }}>
               <Text style={styles.statLabel}>{tab.label}</Text>
               <Text style={styles.statValue}>{summary?.[tab.count] ?? '—'}</Text>
               {tab.kind === 'couriers' && <Text style={styles.statLabel}>{summary ? `${summary.availableCourierCount} available` : 'Availability unknown'}</Text>}
@@ -120,11 +195,22 @@ export default function OperatorHome() {
         <TouchableOpacity onPress={() => { setMapRefreshKey((key) => key + 1); void loadPage(); }} disabled={busy} accessibilityRole="button" style={styles.action}>
           <Text style={styles.profileText}>Refresh</Text>
         </TouchableOpacity>
-        <CityMap refreshKey={mapRefreshKey} />
+        {user?.role === 'Operator' && <TouchableOpacity accessibilityRole="button"
+          disabled={busy} accessibilityState={{ disabled: busy }} style={styles.action}
+          onPress={() => { setResetError(null); setShowReset(true); }}>
+          <Text style={styles.profileText}>Reset system</Text>
+        </TouchableOpacity>}
+        {!resetting && <CityMap refreshKey={mapRefreshKey} />}
+        {notice && <Text accessibilityLiveRegion="polite" style={styles.notice}>{notice}</Text>}
         {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
         {loading && <ActivityIndicator accessibilityLabel="Loading dashboard" color="#D42F50" />}
         {visible?.kind === 'restaurants' && <RestaurantList restaurants={visible.data.items} onStatusChange={updateStatus} changingId={changingId} disabled={busy} />}
-        {visible?.kind === 'orders' && <OrdersList orders={visible.data.items} />}
+        {visible?.kind === 'orders' && <OrdersList orders={visible.data.items} disabled={busy}
+          onReassign={user?.role === 'Operator' ? (order) => {
+            if (busy || changing.current) return;
+            setReassignError(null);
+            setReassignTarget(order);
+          } : undefined} />}
         {visible?.kind === 'customers' && <CustomerList customers={visible.data.items} />}
         {visible?.kind === 'couriers' && <CourrierList couriers={visible.data.items} />}
         {visible && <Text style={styles.statLabel}>Showing {visible.data.items.length} of {visible.data.total} {activeFilter}</Text>}
@@ -134,7 +220,13 @@ export default function OperatorHome() {
             <Text style={styles.profileText}>Load more</Text>
           </TouchableOpacity>
         )}
-      </ScrollView>
+      </ScrollView>}
+      <ReassignOrderDialog order={reassignTarget} submitting={reassigning} error={reassignError}
+        onCancel={() => { if (!changing.current) { setReassignTarget(null); setReassignError(null); } }}
+        onConfirm={() => void confirmReassignment()} />
+      <ResetSystemDialog visible={showReset} resetting={resetting} completed={resetComplete} error={resetError}
+        onCancel={() => { if (!resettingRef.current) { setShowReset(false); setResetError(null); } }}
+        onConfirm={() => void confirmReset()} onSignIn={signOut} />
       <OperatorProfile visible={showProfileMenu} operatorUser={operator} onClose={() => setShowProfileMenu(false)}
         onLogout={() => { setShowProfileMenu(false); signOut(); }} />
     </SafeAreaView>

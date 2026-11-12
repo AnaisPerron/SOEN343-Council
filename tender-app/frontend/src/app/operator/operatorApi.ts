@@ -12,6 +12,8 @@ export type ProfileResponse = RegisterResponse;
 export const operatorPaths = {
   restaurantStatus: (restaurantId: number) => `/api/operator/restaurants/${restaurantId}/status`,
   profile: '/api/profile',
+  reset: '/api/operator/reset',
+  reassignOrder: (orderId: number) => `/api/operator/orders/${orderId}/reassign`,
 };
 
 export async function changeRestaurantStatus(restaurantId: number, status: RestaurantStatus, token: string): Promise<void> {
@@ -20,4 +22,12 @@ export async function changeRestaurantStatus(restaurantId: number, status: Resta
 
 export function updateOperatorProfile(request: ProfileUpdateRequest, token: string): Promise<ProfileResponse> {
   return updateProfile(token, request.name, request.phone);
+}
+
+export async function resetSystem(token: string): Promise<void> {
+  await requestJson<void>('POST', operatorPaths.reset, { confirmation: 'RESET' }, token);
+}
+
+export async function reassignOrder(orderId: number, expectedCourierId: number, token: string): Promise<void> {
+  await requestJson<void>('POST', operatorPaths.reassignOrder(orderId), { expectedCourierId }, token);
 }

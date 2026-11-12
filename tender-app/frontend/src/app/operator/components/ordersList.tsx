@@ -1,9 +1,11 @@
-import { Text, TextStyle, View, ViewStyle } from 'react-native';
+import { Pressable, Text, TextStyle, View, ViewStyle } from 'react-native';
 import type { OperatorOrder as Order } from '../../../types/operator';
 import { styles } from './orders.styles';
 
 interface OrderListProps {
   orders: Order[];
+  disabled: boolean;
+  onReassign?: (order: { id: number; courierId: number }) => void;
 }
 
 const CHIP_STYLES: Record<Order['status'], ViewStyle> = {
@@ -42,7 +44,7 @@ const STATUS_LABEL: Record<Order['status'], string> = {
   refunded: 'Refunded',
 };
 
-export default function OrderList({ orders }: OrderListProps) {
+export default function OrderList({ orders, disabled, onReassign }: OrderListProps) {
   const activeCount = orders.filter((o) => 
     ['placed', 'accepted', 'preparing', 'ready', 'picked_up'].includes(o.status)
   ).length;
@@ -82,6 +84,14 @@ export default function OrderList({ orders }: OrderListProps) {
             <Text style={styles.totalLabel}>Total Amount:</Text>
             <Text style={styles.totalValue}>${totalPrice.toFixed(2)}</Text>
           </View>
+
+          {onReassign && status === 'ready' && courierId !== null && (
+            <Pressable accessibilityRole="button" accessibilityLabel={`Reassign order ${id}`}
+              disabled={disabled} accessibilityState={{ disabled }} style={[styles.reassign, disabled && styles.disabled]}
+              onPress={() => onReassign({ id, courierId })}>
+              <Text style={styles.reassignText}>Reassign courier</Text>
+            </Pressable>
+          )}
 
           {rejectionReason && (
             <Text style={styles.rejectionText}>Reason: {rejectionReason}</Text>

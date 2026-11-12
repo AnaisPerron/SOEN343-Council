@@ -4,6 +4,9 @@ import { StyleSheet } from 'react-native';
 const roundedFont = 'Gotham Rounded';
 
 export const styles = StyleSheet.create({
+  reassign: { alignSelf: 'flex-start', padding: 12, marginTop: 12, borderRadius: 8, backgroundColor: '#fef2f2' },
+  reassignText: { color: '#D42F50', fontWeight: '700' },
+  disabled: { opacity: 0.5 },
   wrapper: {
     width: '100%',
     paddingVertical: 8,
