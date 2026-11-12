@@ -19,7 +19,10 @@ import com.council.tenderapp.operator.dto.DashboardPage;
 import com.council.tenderapp.operator.dto.DashboardSummary;
 import com.council.tenderapp.operator.dto.OrderSummary;
 import com.council.tenderapp.operator.dto.RestaurantSummary;
+import com.council.tenderapp.operator.repositories.OperatorDashboardRepository.RestaurantOption;
 import com.council.tenderapp.operator.services.OperatorDashboardService;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/operator")

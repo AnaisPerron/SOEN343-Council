@@ -18,6 +18,10 @@ export async function changeRestaurantStatus(restaurantId: number, status: Resta
   await requestJson<void>('PUT', operatorPaths.restaurantStatus(restaurantId), { status }, token);
 }
 
+export async function resetDemoSeed(token: string): Promise<void> {
+  await requestJson<void>('POST', '/api/operator/reset-seed', undefined, token);
+}
+
 export function updateOperatorProfile(request: ProfileUpdateRequest, token: string): Promise<ProfileResponse> {
   return updateProfile(token, request.name, request.phone);
 }

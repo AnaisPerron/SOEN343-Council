@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/AuthContext';
 import { ApiError } from '@/api/client';
 import { appendOperatorSection, fetchOperatorSection, fetchOperatorSummary, fetchRestaurantOptions } from '@/lib/operatorDashboard';
-import type { OperatorOrderFilters, OperatorOrderStatus, OperatorSection, OperatorSectionName, OperatorSummary, RestaurantStatus } from '@/types/operator';
+import type { OperatorOrder, OperatorOrderFilters, OperatorOrderStatus, OperatorSection, OperatorSectionName, OperatorSummary, RestaurantStatus } from '@/types/operator';
+import type { MapRestaurant } from '@/types/dash';
 import { styles } from './dashboard.styles';
 import RestaurantList from './components/resraurantList';
 import OrdersList from './components/ordersList';
@@ -12,8 +13,8 @@ import CustomerList from './components/customersList';
 import CourrierList from './components/courriersList';
 import OperatorProfile from './components/operatorProfile';
 import CityMap from '@/components/dash/CityMap';
-import { getOperatorDisplayName, markOperatorOrderRefunded, toOperatorUser } from './operatorLogic';
-import { changeRestaurantStatus, refundOperatorOrder } from './operatorApi';
+import { getOperatorDisplayName, toOperatorUser } from './operatorLogic';
+import { changeRestaurantStatus, resetDemoSeed } from './operatorApi';
 
 const tabs: { kind: OperatorSectionName; label: string; count: keyof OperatorSummary }[] = [
   { kind: 'restaurants', label: 'Restaurants', count: 'restaurantCount' },
@@ -30,6 +31,7 @@ const orderStatuses: { value: OperatorOrderStatus; label: string }[] = [
   { value: 'refunded', label: 'Refunded' },
 ];
 const emptyFilters: OperatorOrderFilters = { statuses: [], restaurantIds: [], from: '', to: '' };
+const demoSeedResetEnabled = process.env.EXPO_PUBLIC_DEMO_SEED_RESET_ENABLED === 'true';
 const validDate = (date: string) => /^\d{4}-\d{2}-\d{2}$/.test(date) && !Number.isNaN(Date.parse(`${date}T00:00:00Z`))
   && new Date(`${date}T00:00:00Z`).toISOString().slice(0, 10) === date;
 
@@ -48,7 +50,10 @@ export default function OperatorHome() {
   const [restaurantOptions, setRestaurantOptions] = useState<{ id: number; name: string }[]>([]);
   const [fromDraft, setFromDraft] = useState('');
   const [toDraft, setToDraft] = useState('');
-  const [notice, setNotice] = useState<string | null>(null);
+  const [mapRestaurant, setMapRestaurant] = useState<MapRestaurant | null>(null);
+  const [mapQueue, setMapQueue] = useState<OperatorOrder[]>([]);
+  const [mapQueueLoading, setMapQueueLoading] = useState(false);
+  const mapQueueRequest = useRef(0);
   const requestId = useRef(0);
   const changing = useRef(false);
   const loadingRef = useRef(false);
@@ -119,6 +124,27 @@ export default function OperatorHome() {
     setFilters((current) => ({ ...current, from, to }));
   };
 
+  const resetSeed = async () => {
+    if (!token || changing.current) return;
+    changing.current = true;
+    setChangingId(-1);
+    setError(null);
+    try {
+      await resetDemoSeed(token);
+      setMapQueue([]);
+      setMapRestaurant(null);
+      mapQueueRequest.current += 1;
+      setMapRefreshKey((key) => key + 1);
+      Alert.alert('Demo seed restored', 'Sign in again with the demo operator account to continue.');
+      signOut();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Unable to reset the demo seed');
+    } finally {
+      changing.current = false;
+      setChangingId(null);
+    }
+  };
+
   const updateStatus = async (id: number, status: RestaurantStatus) => {
     if (!token || changing.current || loading) return;
     changing.current = true;
@@ -127,6 +153,7 @@ export default function OperatorHome() {
     setError(null);
     try {
       await changeRestaurantStatus(id, status, token);
+      setMapRestaurant((current) => current?.id === id ? { ...current, status } : current);
       setMapRefreshKey((key) => key + 1);
       if (version !== requestId.current) return;
       changing.current = false;
@@ -142,21 +169,21 @@ export default function OperatorHome() {
     }
   };
 
-  const refundOrder = async (orderId: number) => {
-    if (!token || changing.current) return;
-    changing.current = true;
-    setChangingId(orderId);
-    setError(null);
-    setNotice(null);
+  const openMapRestaurant = async (id: number, restaurant: MapRestaurant) => {
+    setMapRestaurant(restaurant);
+    setMapQueue([]);
+    if (!token) return;
+    const request = ++mapQueueRequest.current;
+    setMapQueueLoading(true);
     try {
-      await refundOperatorOrder(orderId, token);
-      setSection((current) => markOperatorOrderRefunded(current, orderId, filters.statuses));
-      setNotice(`Order #${orderId} refunded as Tender Cash.`);
+      const result = await fetchOperatorSection('orders', 0, token, {
+        statuses: ['accepted', 'preparing'], restaurantIds: [id], from: '', to: '',
+      });
+      if (request === mapQueueRequest.current && result.kind === 'orders') setMapQueue(result.data.items);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Unable to refund order');
+      if (request === mapQueueRequest.current) setError(cause instanceof Error ? cause.message : 'Unable to load restaurant queue');
     } finally {
-      changing.current = false;
-      setChangingId(null);
+      if (request === mapQueueRequest.current) setMapQueueLoading(false);
     }
   };
 
@@ -185,9 +212,36 @@ export default function OperatorHome() {
         <TouchableOpacity onPress={() => { setMapRefreshKey((key) => key + 1); void loadPage(); }} disabled={busy} accessibilityRole="button" style={styles.action}>
           <Text style={styles.profileText}>Refresh</Text>
         </TouchableOpacity>
-        <CityMap refreshKey={mapRefreshKey} />
+        {demoSeedResetEnabled && <TouchableOpacity accessibilityRole="button" disabled={busy} onPress={() => Alert.alert(
+          'Reset demo seed?',
+          'This restores the demo database to its initial state and removes demo activity since the seed was loaded.',
+          [{ text: 'Cancel', style: 'cancel' }, { text: 'Reset seed', style: 'destructive', onPress: () => void resetSeed() }],
+        )} style={styles.action}>
+          <Text style={styles.profileText}>Reset demo seed</Text>
+        </TouchableOpacity>}
+        <CityMap refreshKey={mapRefreshKey} onRestaurantPress={openMapRestaurant} />
+        {mapRestaurant && <View style={styles.mapDetails}>
+          <View style={styles.mapDetailsHeader}>
+            <View>
+              <Text style={styles.filterTitle}>{mapRestaurant.name} · {mapRestaurant.queueCount} queued</Text>
+              <Text style={styles.filterHint}>Preparation queue · {mapRestaurant.status}</Text>
+            </View>
+            <TouchableOpacity accessibilityRole="button" onPress={() => { setMapRestaurant(null); setMapQueue([]); mapQueueRequest.current += 1; }} style={styles.action}>
+              <Text style={styles.profileText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.mapQuickActions}>
+            <TouchableOpacity accessibilityRole="button" disabled={busy} onPress={() => void updateStatus(mapRestaurant.id, mapRestaurant.status === 'open' ? 'paused' : 'open')} style={styles.action}>
+              <Text style={styles.profileText}>{mapRestaurant.status === 'open' ? 'Pause restaurant' : 'Reopen restaurant'}</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.filterTitle}>Orders being prepared</Text>
+          {mapQueueLoading ? <ActivityIndicator accessibilityLabel="Loading restaurant queue" /> : mapQueue.length === 0
+            ? <Text style={styles.filterHint}>No accepted or preparing orders.</Text>
+            : mapQueue.map((order) => <Text key={order.id} style={styles.mapQueueItem}>Order #{order.id} · {order.status}</Text>)}
+          <Text style={styles.filterHint}>Queue size {mapRestaurant.queueCount} · {mapQueue.length} orders shown</Text>
+        </View>}
         {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
-        {notice && <Text accessibilityRole="alert" style={styles.notice}>{notice}</Text>}
         {(activeFilter === 'orders' || activeFilter === 'restaurants') && <View style={styles.filterPanel}>
           <Text style={styles.filterTitle}>Restaurants</Text>
           <Text style={styles.filterHint}>Choose restaurants to show. All are shown when none are selected.</Text>
@@ -222,7 +276,7 @@ export default function OperatorHome() {
         </View>}
         {loading && <ActivityIndicator accessibilityLabel="Loading dashboard" color="#D42F50" />}
         {visible?.kind === 'restaurants' && <RestaurantList restaurants={visible.data.items} onStatusChange={updateStatus} changingId={changingId} disabled={busy} />}
-        {visible?.kind === 'orders' && <OrdersList orders={visible.data.items} onRefund={(orderId) => void refundOrder(orderId)} changingId={changingId} />}
+        {visible?.kind === 'orders' && <OrdersList orders={visible.data.items} />}
         {visible?.kind === 'customers' && <CustomerList customers={visible.data.items} />}
         {visible?.kind === 'couriers' && <CourrierList couriers={visible.data.items} />}
         {visible && <Text style={styles.statLabel}>Showing {visible.data.items.length} of {visible.data.total} {activeFilter}</Text>}

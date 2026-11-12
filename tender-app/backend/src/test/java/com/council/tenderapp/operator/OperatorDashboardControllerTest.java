@@ -3,15 +3,12 @@ package com.council.tenderapp.operator;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.mock;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Optional;
 import java.time.LocalDate;
 import java.time.ZoneId;
 
@@ -93,20 +90,6 @@ class OperatorDashboardControllerTest {
                 LocalDate.parse("2026-11-01"), LocalDate.parse("2026-11-11"), ZoneId.of("America/Toronto"));
         mvc.perform(get("/api/operator/orders?from=2026-11-12&to=2026-11-11")
                 .header(HttpHeaders.AUTHORIZATION, bearer(Role.OPERATOR))).andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void refundButtonEndpointInvokesOrderRefundOnlyForOperator() throws Exception {
-        Order order = mock(Order.class);
-        when(order.getRestaurantId()).thenReturn(10L);
-        when(orderRepository.findById(20L)).thenReturn(Optional.of(order));
-        when(orderService.refundOrder(10L, 20L)).thenReturn(new OrderResponse(20L, 10L,
-                OrderStatus.REFUNDED, null, null, null, new BigDecimal("12.50"), null, null, null, List.of()));
-        mvc.perform(post("/api/operator/orders/20/refund").header(HttpHeaders.AUTHORIZATION, bearer(Role.CUSTOMER)))
-                .andExpect(status().isForbidden());
-        mvc.perform(post("/api/operator/orders/20/refund").header(HttpHeaders.AUTHORIZATION, bearer(Role.OPERATOR)))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("REFUNDED"));
-        verify(orderService).refundOrder(10L, 20L);
     }
 
     @Test
