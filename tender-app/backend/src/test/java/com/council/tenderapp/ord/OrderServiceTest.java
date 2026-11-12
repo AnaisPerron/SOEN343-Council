@@ -19,7 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.council.tenderapp.ord.dto.response.OrderResponse;
+import com.council.tenderapp.ord.dtos.OrderResponse;
 import com.council.tenderapp.ord.entities.MenuItem;
 import com.council.tenderapp.ord.entities.Order;
 import com.council.tenderapp.ord.entities.OrderLine;
