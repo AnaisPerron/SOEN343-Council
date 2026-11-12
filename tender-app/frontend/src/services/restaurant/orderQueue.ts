@@ -47,6 +47,11 @@ export function filterAndSortOrders(orders: RestaurantOrder[], filter: OrderFilt
     });
 }
 
+// Accepted orders are prepared in the order they were placed; only the oldest one may start.
+export function nextOrderToPrepare(orders: RestaurantOrder[]): RestaurantOrder | null {
+  return filterAndSortOrders(orders, 'accepted')[0] ?? null;
+}
+
 export function transitionOrder(order: RestaurantOrder, next: RestaurantOrderStatus, timestamp: string, reason?: string): RestaurantOrder {
   const allowed = (order.status === 'placed' && (next === 'accepted' || next === 'rejected'))
     || (order.status === 'accepted' && next === 'preparing')
