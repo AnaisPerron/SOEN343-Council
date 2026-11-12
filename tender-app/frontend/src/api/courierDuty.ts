@@ -12,3 +12,12 @@ export const goOffDuty = (token: string) => requestJson<CourierDuty>('POST', `${
 
 export const acceptCourierOffer = (assignmentId: number, token: string) =>
   requestJson<AssignedOrder>('POST', `/api/courier/offers/${assignmentId}/accept`, undefined, token);
+
+export const acceptOrder = (token: string, orderId: number) =>
+  requestJson<CourierDuty>('POST', `${BASE}/orders/${orderId}/accept`, undefined, token);
+export const declineOrder = (token: string, orderId: number) =>
+  requestJson<CourierDuty>('POST', `${BASE}/orders/${orderId}/decline`, undefined, token);
+export const markOrderPickedUp = (token: string, orderId: number) =>
+  requestJson<CourierDuty>('POST', `${BASE}/orders/${orderId}/picked-up`, undefined, token);
+export const markOrderDelivered = (token: string, orderId: number) =>
+  requestJson<CourierDuty>('POST', `${BASE}/orders/${orderId}/delivered`, undefined, token);

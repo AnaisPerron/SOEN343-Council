@@ -70,6 +70,7 @@ class AssignmentFlowIntegrationTest {
     @Autowired private RegistrationService registration;
     @Autowired private ProfileRepository profiles;
     @Autowired private MockMvc mvc;
+    @Autowired private org.springframework.jdbc.core.JdbcTemplate jdbc;
     @MockitoSpyBean private AssignmentRepository assignments;
     private Restaurant restaurant;
     private Order order;
@@ -157,7 +158,7 @@ class AssignmentFlowIntegrationTest {
     @Test
     void acceptanceIsOwnedIdempotentAndRequiredBeforePickup() {
         long id = readyOffer();
-        assertThatThrownBy(() -> orderService.markPickedUp(restaurant.getId(), order.getId()))
+        assertThatThrownBy(() -> orderService.markPickedUpByCourier(11L, order.getId()))
                 .isInstanceOf(InvalidOrderStateException.class);
         authenticate(12, "COURIER");
         assertThatThrownBy(() -> offers.accept(12, id)).isInstanceOf(ResponseStatusException.class)
@@ -167,9 +168,9 @@ class AssignmentFlowIntegrationTest {
         assertThat(accepted.acceptedAt()).isNotNull();
         assertThat(offers.accept(11, id).acceptedAt()).isEqualTo(accepted.acceptedAt());
         assertThat(assignments.count()).isEqualTo(1);
-        orderService.markPickedUp(restaurant.getId(), order.getId());
+        orderService.markPickedUpByCourier(11L, order.getId());
         assertThat(couriers.findById(11L).orElseThrow().getStatus()).isEqualTo(CourierStatus.CARRYING);
-        orderService.markDelivered(restaurant.getId(), order.getId());
+        orderService.markDeliveredByCourier(11L, order.getId());
         assertThat(assignments.findById(id).orElseThrow().getStatus()).isEqualTo(AssignmentStatus.COMPLETED);
         assertThat(couriers.findById(11L).orElseThrow().getStatus()).isEqualTo(CourierStatus.IDLE);
         assertThat(duty.goOffDuty(11L).status()).isEqualTo("offline");
@@ -185,6 +186,41 @@ class AssignmentFlowIntegrationTest {
         assertThat(assignments.count()).isEqualTo(2);
         authenticate(11, "COURIER");
         assertThatThrownBy(() -> offers.accept(11, old)).isInstanceOf(InvalidOrderStateException.class);
+    }
+
+    @Test
+    void decliningAnOfferEndsItsAssignmentAndRedispatches() {
+        long id = readyOffer();
+        assertThat(duty.declineOffer(11L, order.getId()).status()).isEqualTo("offline");
+        assertThat(assignments.findById(id).orElseThrow().getStatus()).isEqualTo(AssignmentStatus.ENDED);
+        assertThat(active(order.getId()).getCourierId()).isEqualTo(12L);
+    }
+
+    @Test
+    void acceptedOffersCannotBeDeclinedOrWithdrawnByGoingOffDuty() {
+        long id = readyOffer();
+        authenticate(11, "COURIER");
+        offers.accept(11, id);
+        assertThatThrownBy(() -> duty.declineOffer(11L, order.getId()))
+                .isInstanceOf(com.council.tenderapp.dlv.exceptions.InvalidCourierStateException.class);
+        assertThatThrownBy(() -> duty.goOffDuty(11L))
+                .isInstanceOf(com.council.tenderapp.dlv.exceptions.InvalidCourierStateException.class);
+        assertThat(active(order.getId()).getStatus()).isEqualTo(AssignmentStatus.ACCEPTED);
+    }
+
+    @Test
+    void replacementCourierNameStaysHiddenUntilTheReplacementAccepts() {
+        jdbc.update("INSERT INTO users (id,role,name,email,password_hash,phone) VALUES (11,'courier','Near Courier','near@test.test','hash','5551111111'),(12,'courier','Far Courier','far@test.test','hash','5552222222')");
+        long id = readyOffer();
+        authenticate(11, "COURIER");
+        offers.accept(11, id);
+        assertThat(orderService.getAllOrders(restaurant.getId()).stream().filter(o -> o.getId().equals(order.getId())).findFirst().orElseThrow().getCourierName()).isEqualTo("Near Courier");
+        authenticate(8, "OPERATOR");
+        reassignments.reassign(order.getId(), 11);
+        assertThat(orderService.getAllOrders(restaurant.getId()).stream().filter(o -> o.getId().equals(order.getId())).findFirst().orElseThrow().getCourierName()).isNull();
+        authenticate(12, "COURIER");
+        offers.accept(12, active(order.getId()).getId());
+        assertThat(orderService.getAllOrders(restaurant.getId()).stream().filter(o -> o.getId().equals(order.getId())).findFirst().orElseThrow().getCourierName()).isEqualTo("Far Courier");
     }
 
     @Test

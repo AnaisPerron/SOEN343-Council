@@ -3,6 +3,7 @@ package com.council.tenderapp.ord.services;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -16,12 +17,20 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.council.tenderapp.dlv.services.AssignmentService;
 import com.council.tenderapp.dlv.services.DispatchService;
+import com.council.tenderapp.dlv.entities.Assignment;
+import com.council.tenderapp.dlv.repositories.AssignmentRepository;
+import com.council.tenderapp.ord.entities.OrderEvent;
+import java.time.Instant;
 import com.council.tenderapp.ord.dto.response.OrderLineResponse;
 import com.council.tenderapp.ord.dto.response.OrderResponse;
 import com.council.tenderapp.ord.entities.Order;
 import com.council.tenderapp.ord.entities.OrderStatus;
+import com.council.tenderapp.ord.repositories.OrderEventRepository;
 import com.council.tenderapp.ord.repositories.OrderRepository;
 import com.council.tenderapp.reg.entities.Profile;
+import com.council.tenderapp.reg.entities.CourierProfile;
+import com.council.tenderapp.reg.entities.CourierStatus;
+import com.council.tenderapp.reg.repositories.CourierProfileRepository;
 import com.council.tenderapp.reg.repositories.ProfileRepository;
 
 @Service
@@ -33,20 +42,29 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final OrderStatusPublisher orderStatusPublisher;
+    private final OrderEventRepository orderEventRepository;
     private final ProfileRepository profileRepository;
+    private final CourierProfileRepository courierProfileRepository;
     private final AssignmentService assignments;
     private final DispatchService dispatch;
+    private final AssignmentRepository assignmentHistory;
 
     public OrderService(
         OrderRepository orderRepository,
         OrderStatusPublisher orderStatusPublisher,
-        ProfileRepository profileRepository, AssignmentService assignments, DispatchService dispatch
+        OrderEventRepository orderEventRepository,
+        ProfileRepository profileRepository,
+        CourierProfileRepository courierProfileRepository, AssignmentService assignments,
+        DispatchService dispatch, AssignmentRepository assignmentHistory
     ) {
         this.orderRepository = orderRepository;
         this.orderStatusPublisher = orderStatusPublisher;
+        this.orderEventRepository = orderEventRepository;
         this.profileRepository = profileRepository;
+        this.courierProfileRepository = courierProfileRepository;
         this.assignments = assignments;
         this.dispatch = dispatch;
+        this.assignmentHistory = assignmentHistory;
     }
 
     @Transactional(readOnly = true)
@@ -133,6 +151,8 @@ public class OrderService {
         OrderStatus previousStatus = order.getStatus();
         transitionOrder(order, OrderStatus.READY, "mark ready");
         Order savedOrder = orderRepository.save(order);
+        orderEventRepository.saveAndFlush(new OrderEvent(orderId, previousStatus.name().toLowerCase(java.util.Locale.ROOT),
+                "ready", "order_ready", Instant.now()));
         orderRepository.flush();
         dispatch.retryQueue();
         publishStatusChange(savedOrder, previousStatus, "marked ready", null);
@@ -140,21 +160,31 @@ public class OrderService {
     }
 
     @Transactional
-    public OrderResponse markPickedUp(Long restaurantId, Long orderId) {
+    public OrderResponse markPickedUpByCourier(Long courierId, Long orderId) {
         assignments.lockCouriers();
-        Order order = getOwnedOrderForUpdate(restaurantId, orderId);
+        Order order = orderRepository.findByIdForUpdate(orderId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+        if (!Objects.equals(order.getCourierId(), courierId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Order is not assigned to this courier");
+        }
+
         OrderStatus previousStatus = order.getStatus();
         assignments.pickUp(order);
         transitionOrder(order, OrderStatus.PICKED_UP, "mark picked up");
         Order savedOrder = orderRepository.save(order);
-        publishStatusChange(savedOrder, previousStatus, "marked picked up", null);
+        publishStatusChange(savedOrder, previousStatus, "marked picked up by courier", null);
         return toResponse(savedOrder);
     }
 
     @Transactional
-    public OrderResponse markDelivered(Long restaurantId, Long orderId) {
+    public OrderResponse markDeliveredByCourier(Long courierId, Long orderId) {
         assignments.lockCouriers();
-        Order order = getOwnedOrderForUpdate(restaurantId, orderId);
+        Order order = orderRepository.findByIdForUpdate(orderId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+        if (!Objects.equals(order.getCourierId(), courierId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Order is not assigned to this courier");
+        }
+
         OrderStatus previousStatus = order.getStatus();
         assignments.current(order);
         transitionOrder(order, OrderStatus.DELIVERED, "mark delivered");
@@ -233,29 +263,82 @@ public class OrderService {
         Profile customer = order.getCustomerId() == null
             ? null
             : profileRepository.findById(order.getCustomerId()).orElse(null);
-        return toResponse(order, customer);
+        Profile courier = order.getCourierId() == null
+            ? null
+            : profileRepository.findById(order.getCourierId()).orElse(null);
+        CourierProfile courierProfile = order.getCourierId() == null
+            ? null
+            : courierProfileRepository.findById(order.getCourierId()).orElse(null);
+        boolean acceptedEvent = order.getId() != null
+            && orderEventRepository.existsByOrderIdAndEventType(order.getId(), "courier_accepted");
+        Assignment latest = order.getId() == null || order.getCourierId() == null ? null : assignmentHistory
+                .findFirstByOrderIdAndCourierIdOrderByAssignedAtDescIdDesc(order.getId(), order.getCourierId()).orElse(null);
+        return toResponse(order, customer, courierName(order, courier, courierProfile, acceptedEvent, latest));
     }
 
-    // Load all customers for a list in one query instead of one per order.
+    // Load customer and courier profiles in batches so the restaurant history stays efficient.
     private List<OrderResponse> toResponses(List<Order> orders) {
         List<Long> customerIds = orders.stream()
             .map(Order::getCustomerId)
             .filter(Objects::nonNull)
             .distinct()
             .toList();
-        Map<Long, Profile> customers = customerIds.isEmpty()
+        List<Long> courierIds = orders.stream()
+            .map(Order::getCourierId)
+            .filter(Objects::nonNull)
+            .distinct()
+            .toList();
+        List<Long> profileIds = java.util.stream.Stream.concat(customerIds.stream(), courierIds.stream())
+            .distinct()
+            .toList();
+        Map<Long, Profile> profiles = profileIds.isEmpty()
             ? Map.of()
-            : profileRepository.findAllById(customerIds).stream()
+            : profileRepository.findAllById(profileIds).stream()
                 .collect(Collectors.toMap(Profile::getId, Function.identity()));
+        Map<Long, CourierProfile> courierProfiles = courierIds.isEmpty()
+            ? Map.of()
+            : courierProfileRepository.findAllById(courierIds).stream()
+                .collect(Collectors.toMap(CourierProfile::getUserId, Function.identity()));
+        Set<Long> acceptedOrderIds = orders.isEmpty()
+            ? Set.of()
+            : orderEventRepository.findByOrderIdInAndEventType(
+                orders.stream().map(Order::getId).toList(), "courier_accepted"
+            ).stream().map(event -> event.getOrderId())
+                .collect(Collectors.toSet());
+        Map<AssignmentKey, Assignment> latestAssignments = new java.util.HashMap<>();
+        if (!orders.isEmpty()) {
+            assignmentHistory.findByOrderIdInOrderByAssignedAtDescIdDesc(orders.stream().map(Order::getId).toList())
+                    .forEach(a -> latestAssignments.putIfAbsent(new AssignmentKey(a.getOrderId(), a.getCourierId()), a));
+        }
         return orders.stream()
             .map(order -> toResponse(
                 order,
-                order.getCustomerId() == null ? null : customers.get(order.getCustomerId())
+                order.getCustomerId() == null ? null : profiles.get(order.getCustomerId()),
+                courierName(
+                    order,
+                    order.getCourierId() == null ? null : profiles.get(order.getCourierId()),
+                    order.getCourierId() == null ? null : courierProfiles.get(order.getCourierId()),
+                    acceptedOrderIds.contains(order.getId()),
+                    latestAssignments.get(new AssignmentKey(order.getId(), order.getCourierId()))
+                )
             ))
             .toList();
     }
 
-    private OrderResponse toResponse(Order order, Profile customer) {
+    private record AssignmentKey(Long orderId, Long courierId) {}
+
+    private static String courierName(Order order, Profile courier, CourierProfile courierProfile, boolean acceptedEvent, Assignment latest) {
+        if (courier == null || courierProfile == null) return null;
+        if (latest != null) return latest.getAcceptedAt() == null ? null : courier.getName();
+        boolean accepted = acceptedEvent
+            || courierProfile.getStatus() == CourierStatus.CARRYING
+            || order.getStatus() == OrderStatus.PICKED_UP
+            || order.getStatus() == OrderStatus.DELIVERED
+            || order.getStatus() == OrderStatus.REFUNDED;
+        return accepted ? courier.getName() : null;
+    }
+
+    private OrderResponse toResponse(Order order, Profile customer, String courierName) {
         List<OrderLineResponse> orderLines = order.getOrderLines().stream()
             .map(line ->
                 new OrderLineResponse(line.getMenuItem().getName(), line.getQuantity(), line.getUnitPrice())
@@ -264,6 +347,8 @@ public class OrderService {
         return new OrderResponse(
             order.getId(),
             order.getRestaurantId(),
+            order.getCourierId(),
+            courierName,
             order.getStatus(),
             order.getDateOrdered(),
             order.getAcceptedAt(),

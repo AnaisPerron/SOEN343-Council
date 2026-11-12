@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.council.tenderapp.dlv.dtos.AssignedOrderDto;
+import com.council.tenderapp.dlv.entities.AssignmentStatus;
 import com.council.tenderapp.dlv.dtos.CourierDutyResponseDto;
 import com.council.tenderapp.dlv.exceptions.InvalidCourierStateException;
 import com.council.tenderapp.ord.entities.OrderStatus;
@@ -66,12 +67,60 @@ public class CourierDutyService {
     @Transactional
     public CourierDutyResponseDto goOffDuty(Long courierId) {
         CourierProfile courier = findCourier(courierId);
-        if (assignments.courierHasAssignment(courierId) || orderRepository
-                .findFirstByCourierIdAndStatusInOrderByDateOrderedAscIdAsc(courierId, ACTIVE_DELIVERY).isPresent()) {
+        var current = orderRepository.findFirstByCourierIdAndStatusInOrderByDateOrderedAscIdAsc(courierId, ACTIVE_DELIVERY);
+        if (current.isPresent()) {
+            var order = orderRepository.findWithLockById(current.get().getId()).orElseThrow();
+            var assignment = assignments.current(order).orElseThrow();
+            if (assignment.getStatus() == AssignmentStatus.OFFERED && order.getStatus() == OrderStatus.READY
+                    && courier.getStatus() != CourierStatus.CARRYING) {
+                withdraw(courier, order);
+                return toResponse(courier);
+            }
+            throw new InvalidCourierStateException("Cannot go off duty with an active assignment");
+        }
+        if (assignments.courierHasAssignment(courierId)) {
             throw new InvalidCourierStateException("Cannot go off duty with an active assignment");
         }
         courier.setStatus(transition(() -> courier.getStatus().goOffDuty()));
         return toResponse(courierProfileRepository.saveAndFlush(courier));
+    }
+
+    @Transactional
+    public CourierDutyResponseDto acceptOffer(Long courierId, Long orderId) {
+        CourierProfile courier = findCourier(courierId);
+        Order order = offeredOrder(courierId, orderId);
+        var assignment = assignments.current(order)
+                .orElseThrow(() -> new InvalidCourierStateException("Offer is no longer available"));
+        assignments.accept(courierId, assignment.getId());
+        return toResponse(courier);
+    }
+
+    @Transactional
+    public CourierDutyResponseDto declineOffer(Long courierId, Long orderId) {
+        CourierProfile courier = findCourier(courierId);
+        Order order = offeredOrder(courierId, orderId);
+        var assignment = assignments.current(order).orElseThrow();
+        if (assignment.getStatus() != AssignmentStatus.OFFERED || courier.getStatus() == CourierStatus.CARRYING) {
+            throw new InvalidCourierStateException("Accepted offers cannot be declined");
+        }
+        withdraw(courier, order);
+        return toResponse(courier);
+    }
+
+    private Order offeredOrder(Long courierId, Long orderId) {
+        return orderRepository.findWithLockById(orderId)
+                .filter(order -> order.getStatus() == OrderStatus.READY && courierId.equals(order.getCourierId()))
+                .orElseThrow(() -> new InvalidCourierStateException("Offer is no longer available"));
+    }
+
+    private void withdraw(CourierProfile courier, Order order) {
+        assignments.end(order);
+        order.setCourierId(null);
+        courier.setStatus(CourierStatus.OFFLINE);
+        courierProfileRepository.saveAndFlush(courier);
+        orderRepository.flush();
+        logger.info("Courier_{} declined order #{} and went off duty", courier.getUserId(), order.getId());
+        dispatchService.retryQueue();
     }
 
     /**

@@ -4,6 +4,11 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+import com.council.tenderapp.ord.entities.OrderEvent;
+import com.council.tenderapp.ord.repositories.OrderEventRepository;
+import com.council.tenderapp.ord.repositories.OrderRepository;
 import org.springframework.transaction.annotation.Transactional;
 import com.council.tenderapp.dlv.entities.Assignment;
 import com.council.tenderapp.dlv.entities.AssignmentStatus;
@@ -21,10 +26,14 @@ public class AssignmentService {
     public static final List<AssignmentStatus> ACTIVE = List.of(AssignmentStatus.OFFERED, AssignmentStatus.ACCEPTED);
     private final AssignmentRepository assignments;
     private final CourierProfileRepository couriers;
+    private final OrderRepository orders;
+    private final OrderEventRepository events;
 
-    public AssignmentService(AssignmentRepository assignments, CourierProfileRepository couriers) {
+    public AssignmentService(AssignmentRepository assignments, CourierProfileRepository couriers, OrderRepository orders, OrderEventRepository events) {
         this.assignments = assignments;
         this.couriers = couriers;
+        this.orders = orders;
+        this.events = events;
     }
 
     public List<CourierProfile> lockCouriers() { return couriers.findAllByOrderByUserIdAsc(); }
@@ -35,6 +44,7 @@ public class AssignmentService {
             if (!active.get().getCourierId().equals(order.getCourierId())) {
                 throw new InvalidOrderStateException("Order and assignment courier do not match");
             }
+            synchronizeReservation(order);
             return active;
         }
         if (order.getCourierId() == null || (order.getStatus() != OrderStatus.READY && order.getStatus() != OrderStatus.PICKED_UP)) {
@@ -45,8 +55,42 @@ public class AssignmentService {
         }
         Instant now = Instant.now();
         Assignment adopted = new Assignment(order.getId(), order.getCourierId(), now);
-        if (order.getStatus() == OrderStatus.PICKED_UP) adopted.accept(now);
+        var courier = couriers.findWithLockByUserId(order.getCourierId()).orElseThrow();
+        boolean alreadyAccepted = courier.getStatus() == CourierStatus.ASSIGNED
+                && events.existsByOrderIdAndEventType(order.getId(), "courier_accepted");
+        if (order.getStatus() == OrderStatus.PICKED_UP || alreadyAccepted) adopted.accept(now);
+        synchronizeReservation(order);
         return Optional.of(assignments.saveAndFlush(adopted));
+    }
+
+    private void synchronizeReservation(Order order) {
+        couriers.findWithLockByUserId(order.getCourierId()).ifPresent(courier -> {
+            if (courier.getStatus() == CourierStatus.IDLE) {
+                courier.setStatus(order.getStatus() == OrderStatus.PICKED_UP ? CourierStatus.CARRYING : CourierStatus.ASSIGNED);
+            }
+        });
+    }
+
+    public Assignment accept(long courierId, long assignmentId) {
+        var locked = lockCouriers();
+        var assignment = assignments.findWithLockById(assignmentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Offer not found"));
+        if (!Long.valueOf(courierId).equals(assignment.getCourierId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This offer belongs to another courier");
+        }
+        var order = orders.findWithLockById(assignment.getOrderId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+        var courier = locked.stream().filter(c -> c.getUserId() == courierId).findFirst()
+                .orElseThrow(() -> new InvalidOrderStateException("Courier is unavailable"));
+        if (!assignment.getStatus().isActive() || order.getStatus() != OrderStatus.READY
+                || !Long.valueOf(courierId).equals(order.getCourierId()) || courier.getStatus() != CourierStatus.ASSIGNED) {
+            throw new InvalidOrderStateException("Offer is no longer available");
+        }
+        if (assignment.getStatus() == AssignmentStatus.OFFERED) {
+            assignment.accept(Instant.now());
+            events.save(new OrderEvent(order.getId(), "ready", "ready", "courier_accepted", assignment.getAcceptedAt()));
+        }
+        return assignment;
     }
 
     public boolean courierHasAssignment(long courierId) { return assignments.existsByCourierIdAndStatusIn(courierId, ACTIVE); }
@@ -73,6 +117,7 @@ public class AssignmentService {
     }
 
     public void finish(Order order, boolean delivered) {
+        Long courierId = order.getCourierId();
         var active = assignments.findByOrderIdAndStatusIn(order.getId(), ACTIVE);
         if (active.isPresent()) {
             if (!active.get().getCourierId().equals(order.getCourierId())) {
@@ -81,12 +126,14 @@ public class AssignmentService {
             if (delivered && active.get().getStatus() != AssignmentStatus.ACCEPTED) {
                 throw new InvalidOrderStateException("Courier must accept the offer before delivery completion");
             }
+            boolean unaccepted = active.get().getStatus() == AssignmentStatus.OFFERED;
             if (delivered) active.get().complete();
             else active.get().end();
+            if (unaccepted) order.setCourierId(null);
             assignments.flush();
         }
-        if (order.getCourierId() != null) {
-            couriers.findWithLockByUserId(order.getCourierId()).ifPresent(courier -> {
+        if (courierId != null) {
+            couriers.findWithLockByUserId(courierId).ifPresent(courier -> {
                 if (!courierHasAssignment(courier.getUserId()) && (courier.getStatus() == CourierStatus.ASSIGNED
                         || courier.getStatus() == CourierStatus.CARRYING)) courier.setStatus(CourierStatus.IDLE);
             });

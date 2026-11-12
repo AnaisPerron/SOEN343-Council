@@ -6,7 +6,7 @@ import AccountMenu from '@/components/AccountMenu';
 import CityMap from '@/components/dash/CityMap';
 import { useAuth } from '@/context/AuthContext';
 import { ApiError } from '@/api/client';
-import { acceptCourierOffer, fetchCourierDuty, goOffDuty, goOnDuty, type CourierDuty } from '@/api/courierDuty';
+import { acceptCourierOffer, declineOrder, markOrderPickedUp, markOrderDelivered, fetchCourierDuty, goOffDuty, goOnDuty, type CourierDuty } from '@/api/courierDuty';
 import { canGoOffDuty, canGoOnDuty, isOnDuty, stateLabel } from '@/lib/courierDuty';
 
 // Orders can be assigned at any time, so the panel refreshes itself while open
@@ -19,6 +19,7 @@ export default function CourierDashboard() {
   const [switching, setSwitching] = useState(false);
   const [message, setMessage] = useState('');
   const [accepting, setAccepting] = useState(false);
+  const [updatingOrder, setUpdatingOrder] = useState(false);
   const mutating = useRef(false);
   const requestId = useRef(0);
   // Going on or off duty puts the courier on or takes them off the map, so it reloads at once
@@ -91,13 +92,43 @@ export default function CourierDashboard() {
     } finally { mutating.current = false; if (version === requestId.current) setAccepting(false); }
   };
 
+  const performOrderAction = async (action: (token: string, orderId: number) => Promise<CourierDuty>) => {
+    const current = duty?.assignedOrder;
+    if (!token || !current || mutating.current) return;
+    mutating.current = true;
+    const version = ++requestId.current;
+    setUpdatingOrder(true); setMessage('');
+    try {
+      const next = await action(token, current.orderId);
+      if (version !== requestId.current) return;
+      setDuty(next); setMapRefreshKey((key) => key + 1);
+    } catch (error) {
+      if (version !== requestId.current) return;
+      if (error instanceof ApiError && error.status === 401) signOut();
+      else {
+        if (error instanceof ApiError && (error.status === 404 || error.status === 409)) {
+          try {
+            const next = await fetchCourierDuty(token);
+            if (version !== requestId.current) return;
+            setDuty(next);
+          } catch (refreshError) {
+            if (refreshError instanceof ApiError && refreshError.status === 401) signOut();
+          }
+        }
+        setMessage(error instanceof Error ? error.message : 'Could not update your delivery.');
+      }
+    } finally { mutating.current = false; if (version === requestId.current) setUpdatingOrder(false); }
+  };
+
   if (!ready) return <SafeAreaView style={styles.page}><ActivityIndicator color="#D42F50" /></SafeAreaView>;
   if (!user) return <Redirect href="/auth/login" />;
   if (user.role !== 'courier') return <Redirect href="/account" />;
 
   const onDuty = duty != null && isOnDuty(duty.status);
-  const toggleEnabled = duty != null && !switching && !accepting && (onDuty ? canGoOffDuty(duty.status) : canGoOnDuty(duty.status));
   const order = duty?.assignedOrder;
+  const busy = switching || accepting || updatingOrder;
+  const offered = duty?.status === 'assigned' && order?.assignmentStatus === 'offered' && order.status === 'ready';
+  const toggleEnabled = duty != null && !busy && (onDuty ? canGoOffDuty(duty.status) || offered : canGoOnDuty(duty.status));
 
   return <SafeAreaView style={styles.page}>
     <View style={styles.header}><Text style={styles.brand}>Tender</Text><AccountMenu /></View>
@@ -115,7 +146,7 @@ export default function CourierDashboard() {
           style={[styles.toggle, onDuty ? styles.toggleOff : styles.toggleOn, !toggleEnabled && styles.toggleDisabled]}>
           <Text style={[styles.toggleText, onDuty && styles.toggleOffText]}>{switching ? 'Updating…' : onDuty ? 'Go off duty' : 'Go on duty'}</Text>
         </Pressable>
-        {onDuty && !canGoOffDuty(duty.status) && <Text style={styles.hint}>You can go off duty once your current delivery is done.</Text>}
+        {onDuty && !canGoOffDuty(duty.status) && !offered && <Text style={styles.hint}>You can go off duty once your current delivery is done.</Text>}
 
         <Text style={styles.sectionHeading}>{order?.assignmentStatus === 'offered' ? 'Delivery offer' : 'Assigned order'}</Text>
         {order ? <View style={styles.orderCard}>
@@ -125,10 +156,26 @@ export default function CourierDashboard() {
           <Text style={styles.orderLine}>Deliver to {order.deliveryAddress || 'address unavailable'}</Text>
           <Text style={styles.orderMuted}>{order.assignmentStatus === 'offered' ? 'Waiting for your acceptance' : 'Offer accepted'}</Text>
           {order.assignmentStatus === 'offered' && duty.status === 'assigned' && order.status === 'ready' && (
-            <Pressable accessibilityRole="button" accessibilityState={{ disabled: accepting || switching }}
-              disabled={accepting || switching} onPress={() => void acceptOffer()}
-              style={[styles.toggle, styles.toggleOn, (accepting || switching) && styles.toggleDisabled]}>
+            <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy }}
+              disabled={busy} onPress={() => void acceptOffer()}
+              style={[styles.toggle, styles.toggleOn, busy && styles.toggleDisabled]}>
               <Text style={styles.toggleText}>{accepting ? 'Accepting…' : 'Accept offer'}</Text>
+            </Pressable>
+          )}
+          {offered && <Pressable accessibilityRole="button" disabled={busy} accessibilityState={{ disabled: busy }}
+            onPress={() => void performOrderAction(declineOrder)} style={[styles.toggle, styles.toggleOff, busy && styles.toggleDisabled]}>
+            <Text style={styles.toggleOffText}>Decline and go off duty</Text>
+          </Pressable>}
+          {duty.status === 'assigned' && order.assignmentStatus === 'accepted' && order.status === 'ready' && (
+            <Pressable accessibilityRole="button" disabled={busy} accessibilityState={{ disabled: busy }}
+              onPress={() => void performOrderAction(markOrderPickedUp)} style={[styles.toggle, styles.toggleOn, busy && styles.toggleDisabled]}>
+              <Text style={styles.toggleText}>{updatingOrder ? 'Updating…' : 'Confirm pickup'}</Text>
+            </Pressable>
+          )}
+          {duty.status === 'carrying' && order.status === 'picked_up' && (
+            <Pressable accessibilityRole="button" disabled={busy} accessibilityState={{ disabled: busy }}
+              onPress={() => void performOrderAction(markOrderDelivered)} style={[styles.toggle, styles.toggleOn, busy && styles.toggleDisabled]}>
+              <Text style={styles.toggleText}>{updatingOrder ? 'Updating…' : 'Mark delivered'}</Text>
             </Pressable>
           )}
         </View> : <Text style={styles.empty}>{onDuty ? 'No order yet. You will be assigned the next ready order nearby.' : 'Go on duty to start receiving orders.'}</Text>}
