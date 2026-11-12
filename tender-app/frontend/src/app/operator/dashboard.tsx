@@ -13,7 +13,7 @@ import CourrierList from './components/courriersList';
 import OperatorProfile from './components/operatorProfile';
 import CityMap from '@/components/dash/CityMap';
 import { getOperatorDisplayName, toOperatorUser } from './operatorLogic';
-import { changeRestaurantStatus } from './operatorApi';
+import { changeRestaurantStatus, refundOrder, reassignOrder } from './operatorApi';
 
 const tabs: { kind: OperatorSectionName; label: string; count: keyof OperatorSummary }[] = [
   { kind: 'restaurants', label: 'Restaurants', count: 'restaurantCount' },
@@ -95,6 +95,33 @@ export default function OperatorHome() {
     }
   };
 
+   const runOrderAction = async (
+    id: number,
+    action: (id: number, token: string) => Promise<unknown>,
+    fallback: string,
+  ) => {
+    if (!token || changing.current || loading) return;
+    changing.current = true;
+    const version = ++requestId.current;
+    setChangingId(id);
+    setError(null);
+    try {
+      await action(id, token);
+      setMapRefreshKey((key) => key + 1);
+      if (version !== requestId.current) return;
+      changing.current = false;
+      setChangingId(null);
+      await loadPage();
+    } catch (cause) {
+      if (version !== requestId.current) return;
+      if (cause instanceof ApiError && cause.status === 401) signOut();
+      else setError(cause instanceof Error ? cause.message : fallback);
+    } finally {
+      changing.current = false;
+      if (version === requestId.current) setChangingId(null);
+    }
+  };
+
   const visible = section?.kind === activeFilter ? section : null;
   const busy = loading || changingId !== null;
 
@@ -124,7 +151,15 @@ export default function OperatorHome() {
         {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
         {loading && <ActivityIndicator accessibilityLabel="Loading dashboard" color="#D42F50" />}
         {visible?.kind === 'restaurants' && <RestaurantList restaurants={visible.data.items} onStatusChange={updateStatus} changingId={changingId} disabled={busy} />}
-        {visible?.kind === 'orders' && <OrdersList orders={visible.data.items} />}
+        {visible?.kind === 'orders' && (
+          <OrdersList
+            orders={visible.data.items}
+            onRefund={(id) => void runOrderAction(id, refundOrder, 'Unable to refund order')}
+            onReassign={(id) => void runOrderAction(id, reassignOrder, 'Unable to reassign courier')}
+            changingId={changingId}
+            disabled={busy}
+          />
+        )}
         {visible?.kind === 'customers' && <CustomerList customers={visible.data.items} />}
         {visible?.kind === 'couriers' && <CourrierList couriers={visible.data.items} />}
         {visible && <Text style={styles.statLabel}>Showing {visible.data.items.length} of {visible.data.total} {activeFilter}</Text>}
