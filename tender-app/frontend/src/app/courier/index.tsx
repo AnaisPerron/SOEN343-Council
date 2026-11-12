@@ -1,23 +1,26 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Redirect } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AccountMenu from '@/components/AccountMenu';
 import CityMap from '@/components/dash/CityMap';
 import { useAuth } from '@/context/AuthContext';
-import { fetchCourierDuty, goOffDuty, goOnDuty, type CourierDuty } from '@/api/courierDuty';
+import { ApiError } from '@/api/client';
+import { acceptCourierOffer, fetchCourierDuty, goOffDuty, goOnDuty, type CourierDuty } from '@/api/courierDuty';
 import { canGoOffDuty, canGoOnDuty, isOnDuty, stateLabel } from '@/lib/courierDuty';
 
 // Orders can be assigned at any time, so the panel refreshes itself while open
 const REFRESH_MS = 15000;
-const money = (value: number | null) => value == null ? '' : `$${Number(value).toFixed(2)}`;
 
 export default function CourierDashboard() {
-  const { user, token, ready } = useAuth();
+  const { user, token, ready, signOut } = useAuth();
   const [duty, setDuty] = useState<CourierDuty | null>(null);
   const [loading, setLoading] = useState(true);
   const [switching, setSwitching] = useState(false);
   const [message, setMessage] = useState('');
+  const [accepting, setAccepting] = useState(false);
+  const mutating = useRef(false);
+  const requestId = useRef(0);
   // Going on or off duty puts the courier on or takes them off the map, so it reloads at once
   const [mapRefreshKey, setMapRefreshKey] = useState(0);
 
@@ -25,23 +28,67 @@ export default function CourierDashboard() {
     if (!token || user?.role !== 'courier') return;
     let active = true;
     const refresh = async () => {
+      if (mutating.current) return;
+      const version = ++requestId.current;
       try {
         const loaded = await fetchCourierDuty(token);
-        if (active) setDuty(loaded);
-      } catch (error) { if (active) setMessage(error instanceof Error ? error.message : 'Could not load your status.'); }
-      finally { if (active) setLoading(false); }
+        if (active && version === requestId.current) { setDuty(loaded); setMessage(''); }
+      } catch (error) {
+        if (active && version === requestId.current) {
+          if (error instanceof ApiError && error.status === 401) signOut();
+          else setMessage(error instanceof Error ? error.message : 'Could not load your status.');
+        }
+      }
+      finally { if (active && version === requestId.current) setLoading(false); }
     };
     void refresh();
     const timer = setInterval(refresh, REFRESH_MS);
-    return () => { active = false; clearInterval(timer); };
-  }, [token, user?.role]);
+    return () => { active = false; requestId.current += 1; clearInterval(timer); };
+  }, [token, user?.role, signOut]);
 
   const toggle = async () => {
-    if (!token || !duty || switching) return;
+    if (!token || !duty || mutating.current) return;
+    mutating.current = true;
+    const version = ++requestId.current;
     setSwitching(true); setMessage('');
-    try { setDuty(await (isOnDuty(duty.status) ? goOffDuty(token) : goOnDuty(token))); setMapRefreshKey((key) => key + 1); }
-    catch (error) { setMessage(error instanceof Error ? error.message : 'Could not change your duty status.'); }
-    finally { setSwitching(false); }
+    try {
+      const next = await (isOnDuty(duty.status) ? goOffDuty(token) : goOnDuty(token));
+      if (version !== requestId.current) return;
+      setDuty(next); setMapRefreshKey((key) => key + 1);
+    } catch (error) {
+      if (version !== requestId.current) return;
+      if (error instanceof ApiError && error.status === 401) signOut();
+      else setMessage(error instanceof Error ? error.message : 'Could not change your duty status.');
+    } finally { mutating.current = false; if (version === requestId.current) setSwitching(false); }
+  };
+
+  const acceptOffer = async () => {
+    const offer = duty?.assignedOrder;
+    if (!token || !offer || offer.assignmentStatus !== 'offered' || mutating.current) return;
+    mutating.current = true;
+    const version = ++requestId.current;
+    setAccepting(true); setMessage('');
+    try {
+      const accepted = await acceptCourierOffer(offer.assignmentId, token);
+      if (version !== requestId.current) return;
+      setDuty((current) => current ? { ...current, assignedOrder: accepted } : current);
+      setMapRefreshKey((key) => key + 1);
+    } catch (error) {
+      if (version !== requestId.current) return;
+      if (error instanceof ApiError && error.status === 401) signOut();
+      else {
+        if (error instanceof ApiError && (error.status === 409 || error.status === 404)) {
+          try {
+            const refreshed = await fetchCourierDuty(token);
+            if (version !== requestId.current) return;
+            setDuty(refreshed);
+          } catch (refreshError) {
+            if (refreshError instanceof ApiError && refreshError.status === 401) signOut();
+          }
+        }
+        setMessage(error instanceof Error ? error.message : 'Could not accept the offer.');
+      }
+    } finally { mutating.current = false; if (version === requestId.current) setAccepting(false); }
   };
 
   if (!ready) return <SafeAreaView style={styles.page}><ActivityIndicator color="#D42F50" /></SafeAreaView>;
@@ -49,7 +96,7 @@ export default function CourierDashboard() {
   if (user.role !== 'courier') return <Redirect href="/account" />;
 
   const onDuty = duty != null && isOnDuty(duty.status);
-  const toggleEnabled = duty != null && !switching && (onDuty ? canGoOffDuty(duty.status) : canGoOnDuty(duty.status));
+  const toggleEnabled = duty != null && !switching && !accepting && (onDuty ? canGoOffDuty(duty.status) : canGoOnDuty(duty.status));
   const order = duty?.assignedOrder;
 
   return <SafeAreaView style={styles.page}>
@@ -70,16 +117,23 @@ export default function CourierDashboard() {
         </Pressable>
         {onDuty && !canGoOffDuty(duty.status) && <Text style={styles.hint}>You can go off duty once your current delivery is done.</Text>}
 
-        <Text style={styles.sectionHeading}>Assigned order</Text>
+        <Text style={styles.sectionHeading}>{order?.assignmentStatus === 'offered' ? 'Delivery offer' : 'Assigned order'}</Text>
         {order ? <View style={styles.orderCard}>
           <View style={styles.orderRow}><Text style={styles.orderTitle}>Order #{order.orderId}</Text><Text style={styles.orderStatus}>{order.status.replace('_', ' ')}</Text></View>
           {!!order.restaurantName && <Text style={styles.orderLine}>Pick up at {order.restaurantName}</Text>}
-          {!!order.restaurantAddress && <Text style={styles.orderMuted}>{order.restaurantAddress}</Text>}
-          {!!order.deliveryAddress && <Text style={styles.orderLine}>Deliver to {order.deliveryAddress}</Text>}
-          {order.totalPrice != null && <Text style={styles.orderMuted}>Order total {money(order.totalPrice)}</Text>}
+          <Text style={styles.orderMuted}>{order.restaurantAddress || 'Pickup address unavailable'}</Text>
+          <Text style={styles.orderLine}>Deliver to {order.deliveryAddress || 'address unavailable'}</Text>
+          <Text style={styles.orderMuted}>{order.assignmentStatus === 'offered' ? 'Waiting for your acceptance' : 'Offer accepted'}</Text>
+          {order.assignmentStatus === 'offered' && duty.status === 'assigned' && order.status === 'ready' && (
+            <Pressable accessibilityRole="button" accessibilityState={{ disabled: accepting || switching }}
+              disabled={accepting || switching} onPress={() => void acceptOffer()}
+              style={[styles.toggle, styles.toggleOn, (accepting || switching) && styles.toggleDisabled]}>
+              <Text style={styles.toggleText}>{accepting ? 'Accepting…' : 'Accept offer'}</Text>
+            </Pressable>
+          )}
         </View> : <Text style={styles.empty}>{onDuty ? 'No order yet. You will be assigned the next ready order nearby.' : 'Go on duty to start receiving orders.'}</Text>}
       </>}
-      {!!message && <Text style={styles.message}>{message}</Text>}
+      {!!message && <Text accessibilityRole="alert" style={styles.message}>{message}</Text>}
       <View style={styles.map}><CityMap refreshKey={mapRefreshKey} /></View>
     </ScrollView>
   </SafeAreaView>;
