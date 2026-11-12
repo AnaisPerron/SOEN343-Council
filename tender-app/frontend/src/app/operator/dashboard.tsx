@@ -37,23 +37,17 @@ export default function OperatorHome() {
   const changing = useRef(false);
   const operator = toOperatorUser(user);
 
-  const loadPage = useCallback(async (page = 0) => {
-    if (!token || changing.current) return;
+  // State is only set in the request's callbacks, so the effect below can call this directly.
+  const fetchPage = useCallback((page = 0): Promise<void> => {
+    if (!token || changing.current) return Promise.resolve();
     const version = ++requestId.current;
-    setLoading(true);
-    setError(null);
-    if (page === 0) {
-      setSection(null);
-      setSummary(null);
-    }
-    try {
-      const [counts, next] = await Promise.all([
-        fetchOperatorSummary(token), fetchOperatorSection(activeFilter, page, token),
-      ]);
+    return Promise.all([
+      fetchOperatorSummary(token), fetchOperatorSection(activeFilter, page, token),
+    ]).then(([counts, next]) => {
       if (version !== requestId.current) return;
       setSummary(counts);
       setSection((current) => page === 0 ? next : appendOperatorSection(current, next));
-    } catch (cause) {
+    }, (cause: unknown) => {
       if (version !== requestId.current) return;
       if (cause instanceof ApiError && cause.status === 401) {
         setSection(null);
@@ -62,15 +56,32 @@ export default function OperatorHome() {
       } else {
         setError(cause instanceof Error ? cause.message : 'Unable to load dashboard');
       }
-    } finally {
+    }).finally(() => {
       if (version === requestId.current) setLoading(false);
-    }
+    });
   }, [activeFilter, token, signOut]);
 
+  // Show the spinner and drop stale results before a reload the user asked for.
+  const resetForLoad = (page = 0) => {
+    setLoading(true);
+    setError(null);
+    if (page === 0) {
+      setSection(null);
+      setSummary(null);
+    }
+  };
+
+  const loadPage = async (page = 0) => {
+    if (!token || changing.current) return;
+    resetForLoad(page);
+    await fetchPage(page);
+  };
+
+  // Runs on mount (state already starts loading) and after a tab switch (its handler resets state first).
   useEffect(() => {
-    void loadPage();
+    void fetchPage();
     return () => { requestId.current += 1; };
-  }, [loadPage]);
+  }, [fetchPage]);
 
   const updateStatus = async (id: number, status: RestaurantStatus) => {
     if (!token || changing.current || loading) return;
@@ -109,7 +120,7 @@ export default function OperatorHome() {
         <View style={styles.statsContainer}>
           {tabs.map((tab) => (
             <TouchableOpacity key={tab.kind} style={[styles.statCard, activeFilter === tab.kind && styles.statCardSelected]}
-              onPress={() => { if (!changing.current) setActiveFilter(tab.kind); }} disabled={changingId !== null} accessibilityRole="button"
+              onPress={() => { if (changing.current || tab.kind === activeFilter) return; resetForLoad(); setActiveFilter(tab.kind); }} disabled={changingId !== null} accessibilityRole="button"
               accessibilityState={{ selected: activeFilter === tab.kind, disabled: changingId !== null }}>
               <Text style={styles.statLabel}>{tab.label}</Text>
               <Text style={styles.statValue}>{summary?.[tab.count] ?? '—'}</Text>
