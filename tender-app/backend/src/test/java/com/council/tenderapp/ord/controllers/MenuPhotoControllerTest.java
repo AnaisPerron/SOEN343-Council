@@ -33,7 +33,7 @@ class MenuPhotoControllerTest {
 
     private String staffToken() {
         registrationService.register(new RegisterRequest("Photo Bistro", "photo-bistro@example.com", "secret123",
-                "514-555-0198", Role.STAFF, "123 Main St, Montreal, Canada"));
+                "514-555-0198", Role.STAFF, "123 Main St, Montreal, Canada", 45.5, -73.6));
         return loginService.login(new LoginRequest("photo-bistro@example.com", "secret123")).token();
     }
 

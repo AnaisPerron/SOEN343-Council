@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -7,7 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import AccountMenu from '@/components/AccountMenu';
 import { requestJson } from '@/api/client';
 import {
-  filterAndSortOrders, isWaitingForCourier, ORDER_STATUSES, orderTotal,
+  filterAndSortOrders, isWaitingForCourier, nextOrderToPrepare, ORDER_STATUSES, orderTotal,
   type OrderFilter, type RestaurantOrder, type RestaurantOrderStatus,
 } from '@/services/restaurant/orderQueue';
 
@@ -33,6 +33,8 @@ export default function RestaurantOrders() {
   const [toast, setToast] = useState('');
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  // Bumped before and after each status change so a refresh that overlapped it cannot put the old status back.
+  const statusWriteVersion = useRef(0);
   const columns = width >= 1050 ? 2 : 1;
 
   useEffect(() => {
@@ -50,11 +52,13 @@ export default function RestaurantOrders() {
     let active = true;
     // Refresh from the server so incoming and terminal orders reflect database state.
     const refresh = async () => {
+      const version = statusWriteVersion.current;
       try {
-        const data = await requestJson<{ id: number; courierId: number | null; courierName: string | null; status: string; dateOrdered: string; acceptedAt: string | null; rejectionReason: string | null; customerName: string | null; customerPhone: string | null; orderLines: { itemName: string; quantity: number; unitPrice: number }[] }[]>('GET', `/api/restaurants/${restaurantId}/orders`, undefined, token);
-        if (!active) return;
+        const data = await requestJson<{ id: number; courierId: number | null; courierName: string | null; status: string; dateOrdered: string; acceptedAt: string | null; rejectionReason: string | null; customerName: string | null; customerPhone: string | null; deliveryAddress: string | null; orderLines: { itemName: string; quantity: number; unitPrice: number }[] }[]>('GET', `/api/restaurants/${restaurantId}/orders`, undefined, token);
+        // Drop this snapshot if a status change started or finished while it was loading; it may predate that change.
+        if (!active || version !== statusWriteVersion.current) return;
         console.info('Restaurant orders loaded', { restaurantId, count: data.length });
-        setOrders(data.map((order) => ({ id: order.id, restaurantId, courierId: order.courierId, courierName: order.courierName, status: order.status.toLowerCase() as RestaurantOrderStatus, createdAt: order.dateOrdered, updatedAt: null, acceptedAt: order.acceptedAt, rejectionReason: order.rejectionReason, customer: { name: order.customerName ?? 'Unavailable', address: 'Unavailable', phone: order.customerPhone ?? 'Unavailable' }, lines: order.orderLines.map((line) => ({ name: line.itemName, quantity: line.quantity, unitPrice: line.unitPrice, toppings: [] })) })));
+        setOrders(data.map((order) => ({ id: order.id, restaurantId, courierId: order.courierId, courierName: order.courierName, status: order.status.toLowerCase() as RestaurantOrderStatus, createdAt: order.dateOrdered, updatedAt: null, acceptedAt: order.acceptedAt, rejectionReason: order.rejectionReason, customer: { name: order.customerName ?? 'Unavailable', address: order.deliveryAddress ?? 'Unavailable', phone: order.customerPhone ?? 'Unavailable' }, lines: order.orderLines.map((line) => ({ name: line.itemName, quantity: line.quantity, unitPrice: line.unitPrice, toppings: [] })) })));
         setMessage('');
       } catch (error) { if (active) { console.error('Unable to load restaurant orders', error); setMessage(error instanceof Error ? error.message : 'Unable to load orders'); } }
     };
@@ -65,6 +69,7 @@ export default function RestaurantOrders() {
 
   const shown = useMemo(() => filterAndSortOrders(orders, filter), [orders, filter]);
   const detail = orders.find((order) => order.id === detailId) ?? null;
+  const nextToPrepare = useMemo(() => nextOrderToPrepare(orders), [orders]);
   const allShownSelected = shown.length > 0 && shown.every((order) => selected.has(order.id));
 
   const toggleSelected = (id: number) => setSelected((current) => {
@@ -77,6 +82,7 @@ export default function RestaurantOrders() {
     // Ignore repeat taps: a second request for the same change is an invalid transition once the first lands
     if (!target || !restaurantId || !token || updatingId != null) return;
     setUpdatingId(target.id);
+    statusWriteVersion.current += 1;
     try {
       // Update the database first; never report a local-only status change as successful.
       const actions: Partial<Record<RestaurantOrderStatus, string>> = { accepted: 'accept', rejected: 'reject', preparing: 'prepare', ready: 'ready' };
@@ -95,6 +101,7 @@ export default function RestaurantOrders() {
       // The order may have changed elsewhere since the last refresh; show its real status
       setReloadKey((key) => key + 1);
     } finally {
+      statusWriteVersion.current += 1;
       setUpdatingId(null);
     }
   };
@@ -109,7 +116,7 @@ export default function RestaurantOrders() {
 
   return <SafeAreaView style={styles.page}>
     <ScrollView contentContainerStyle={styles.content}>
-      <View style={styles.header}><Pressable accessibilityRole="button" onPress={() => router.back()}><Text style={styles.back}>‹  Restaurant dashboard</Text></Pressable><AccountMenu /></View>
+      <View style={styles.header}><Pressable accessibilityRole="button" onPress={() => router.canGoBack() ? router.back() : router.replace('/restaurant')}><Text style={styles.back}>‹  Restaurant dashboard</Text></Pressable><AccountMenu /></View>
       <Text style={styles.restaurantName}>{user.name}</Text>
       <Text style={styles.title}>Orders queue</Text>
       {!!toast && <View style={styles.toast}><Text style={styles.toastText}>{toast}</Text><Pressable accessibilityRole="button" accessibilityLabel="Dismiss notification" onPress={() => setToast('')}><Text style={styles.toastClose}>×</Text></Pressable></View>}
@@ -170,7 +177,9 @@ export default function RestaurantOrders() {
             </View>
           </Pressable>
           {order.status === 'placed' && <View style={styles.inlineActions}><Pressable accessibilityRole="button" style={styles.acceptButton} disabled={updatingId != null} onPress={() => changeStatus('accepted', undefined, order)}><Text style={styles.actionText}>Accept</Text></Pressable><Pressable accessibilityRole="button" style={styles.rejectButton} onPress={() => { setDetailId(order.id); setRejecting(true); }}><Text style={styles.rejectText}>Reject</Text></Pressable></View>}
-          {order.status === 'accepted' && <Pressable accessibilityRole="button" style={styles.acceptButton} disabled={updatingId != null} onPress={() => changeStatus('preparing', undefined, order)}><Text style={styles.actionText}>Start preparing</Text></Pressable>}
+          {order.status === 'accepted' && (nextToPrepare?.id === order.id
+            ? <Pressable accessibilityRole="button" style={styles.acceptButton} disabled={updatingId != null} onPress={() => changeStatus('preparing', undefined, order)}><Text style={styles.actionText}>Start preparing</Text></Pressable>
+            : <View accessibilityState={{ disabled: true }} style={[styles.acceptButton, styles.waitingButton]}><Text style={styles.actionText}>Prepare #{nextToPrepare?.id} first</Text></View>)}
           {order.status === 'preparing' && <Pressable accessibilityRole="button" style={styles.acceptButton} disabled={updatingId != null} onPress={() => changeStatus('ready', undefined, order)}><Text style={styles.actionText}>Mark ready</Text></Pressable>}
           </View>
         </View>)}</View>}
@@ -207,7 +216,9 @@ export default function RestaurantOrders() {
             <Pressable accessibilityRole="button" style={styles.primaryAction} disabled={updatingId != null} onPress={() => changeStatus('accepted')}><Text style={styles.primaryActionText}>Accept order</Text></Pressable>
             <Pressable accessibilityRole="button" style={styles.secondaryAction} onPress={() => setRejecting(true)}><Text style={styles.secondaryActionText}>Reject order</Text></Pressable>
           </View>}
-          {detail.status === 'accepted' && <Pressable accessibilityRole="button" style={styles.primaryAction} disabled={updatingId != null} onPress={() => changeStatus('preparing')}><Text style={styles.primaryActionText}>Start preparing</Text></Pressable>}
+          {detail.status === 'accepted' && (nextToPrepare?.id === detail.id
+            ? <Pressable accessibilityRole="button" style={styles.primaryAction} disabled={updatingId != null} onPress={() => changeStatus('preparing')}><Text style={styles.primaryActionText}>Start preparing</Text></Pressable>
+            : <View accessibilityState={{ disabled: true }} style={[styles.primaryAction, styles.waitingButton]}><Text style={styles.primaryActionText}>Prepare order #{nextToPrepare?.id} first</Text></View>)}
           {detail.status === 'preparing' && <Pressable accessibilityRole="button" style={styles.primaryAction} disabled={updatingId != null} onPress={() => changeStatus('ready')}><Text style={styles.primaryActionText}>Mark ready for pickup</Text></Pressable>}
         </ScrollView>}
       </View></View>
@@ -297,9 +308,11 @@ const styles = StyleSheet.create({
   inlineActions: { alignItems: 'flex-end', paddingHorizontal: 14, paddingBottom: 14, gap: 7 },
   acceptButton: { backgroundColor: '#2E8B49', paddingHorizontal: 12, paddingVertical: 10, borderRadius: 6, alignItems: 'center', alignSelf: 'flex-end', minWidth: 105, marginHorizontal: 14, marginBottom: 10 },
   rejectButton: { backgroundColor: '#B63E48', paddingHorizontal: 12, paddingVertical: 10, borderRadius: 6, alignItems: 'center', width: 105, marginRight: 14 },
+  // Shown on accepted orders that must wait for an older one to start preparing
+  waitingButton: { opacity: 0.45 },
   actionText: { color: '#FFF', fontWeight: '800', fontSize: 12 },
   rejectText: { color: '#FFF', fontWeight: '800', fontSize: 12 },
-  orderLines: { flex: 1 },
+  orderLines: { marginBottom: 12 },
   additionalLine: { marginTop: 8 },
   itemName: { color: '#273039', fontSize: 15, fontWeight: '800' },
   toppings: { color: '#68737C', fontSize: 12, marginTop: 3 },
