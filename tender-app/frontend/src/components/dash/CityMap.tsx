@@ -4,7 +4,8 @@ import { useAuth, type Role } from '@/context/AuthContext';
 import { ApiError } from '@/api/client';
 import { watchMapData } from '@/api/dashMap';
 import { createProjection, fitMapSize, isMapEmpty, mapTiles, markerStateLabel, toMarkers, type MapMarker } from '@/lib/cityMap';
-import type { MapData } from '@/types/dash';
+import type { MapData, MapRestaurant } from '@/types/dash';
+import { queueBandColor } from '@/lib/queueBands';
 import { MARKER_SIZE, stateColors, styles } from './CityMap.styles';
 import GoogleCityMap, { googleMapsAvailable } from './GoogleCityMap';
 
@@ -29,18 +30,20 @@ const roleViews: Record<Role, RoleView> = {
   // Manages every restaurant and courier, so their states are the point
   Operator: {
     legend: [
-      { label: 'Restaurant', style: square('#6b7280') },
-      { label: 'Courier', style: circle('#6b7280') },
-      { label: 'Open / Idle', style: square(stateColors.open) },
-      { label: 'Paused / Assigned', style: square(stateColors.paused) },
-      { label: 'Closed', style: square(stateColors.closed) },
-      { label: 'Carrying', style: square(stateColors.carrying) },
+      { label: 'Short queue (0–2)', style: square(queueBandColor.short) },
+      { label: 'Building queue (3–5)', style: square(queueBandColor.building) },
+      { label: 'Long queue (6+ or paused)', style: square(queueBandColor.long) },
+      { label: 'Idle courier', style: circle(stateColors.idle) },
+      { label: 'Assigned courier', style: circle(stateColors.assigned) },
+      { label: 'Carrying courier', style: circle(stateColors.carrying) },
     ],
   },
   // Only open restaurants and the courier bringing their order
   customer: {
     legend: [
-      { label: 'Restaurant', style: square(stateColors.open) },
+      { label: 'Short queue (0–2)', style: square(queueBandColor.short) },
+      { label: 'Building queue (3–5)', style: square(queueBandColor.building) },
+      { label: 'Long queue (6+ or paused)', style: square(queueBandColor.long) },
       { label: 'Courier', style: circle(stateColors.assigned) },
       { label: 'You', style: diamond(stateColors.customer) },
     ],
@@ -49,7 +52,9 @@ const roleViews: Record<Role, RoleView> = {
   // Their own position, where to pick up and where to drop off; their state is on the dashboard
   courier: {
     legend: [
-      { label: 'Pickup restaurant', style: square(stateColors.open) },
+      { label: 'Short queue (0–2)', style: square(queueBandColor.short) },
+      { label: 'Building queue (3–5)', style: square(queueBandColor.building) },
+      { label: 'Long queue (6+ or paused)', style: square(queueBandColor.long) },
       { label: 'You', style: circle(stateColors.assigned) },
       { label: 'Drop-off customer', style: diamond(stateColors.customer) },
     ],
@@ -58,7 +63,9 @@ const roleViews: Record<Role, RoleView> = {
   // Their own restaurant, and whether each courier is still coming or has left with the order
   restaurant: {
     legend: [
-      { label: 'Your restaurant', style: square(stateColors.open) },
+      { label: 'Short queue (0–2)', style: square(queueBandColor.short) },
+      { label: 'Building queue (3–5)', style: square(queueBandColor.building) },
+      { label: 'Long queue (6+ or paused)', style: square(queueBandColor.long) },
       { label: 'Courier on the way', style: circle(stateColors.assigned) },
       { label: 'Courier delivering', style: circle(stateColors.carrying) },
     ],
@@ -82,7 +89,7 @@ interface CityMapProps {
   /** Shows a Full screen / Exit full screen button; the page decides what full screen means. */
   onToggleFullScreen?: () => void;
   /** When set, pressing a restaurant marker calls this instead of pinning its tooltip, e.g. to open the restaurant. */
-  onRestaurantPress?: (restaurantId: number) => void;
+  onRestaurantPress?: (restaurantId: number, restaurant: MapRestaurant) => void;
 }
 
 /** Shared city map (DASH): the locations the logged-in role may see, scaled to the dataset bounds and kept up to date. */
@@ -126,7 +133,7 @@ export default function CityMap({ refreshKey = 0, fill = false, onToggleFullScre
     const all = data ? toMarkers(data, fillAspect) : [];
     const { colorOf } = view;
     // Colour each marker the way the role's legend explains it
-    return colorOf ? all.map((m) => ({ ...m, color: colorOf(m) })) : all;
+    return colorOf ? all.map((m) => ({ ...m, color: colorOf(m) ?? m.color })) : all;
   }, [data, fillAspect, view]);
   const size = !data || width <= 0 ? null
     : fill ? (fillAspect ? { width, height } : null)
@@ -140,7 +147,10 @@ export default function CityMap({ refreshKey = 0, fill = false, onToggleFullScre
   const active = markers.find((m) => m.key === (hovered ?? selected));
   const pressMarker = (key: string) => {
     const marker = markers.find((m) => m.key === key);
-    if (marker?.kind === 'restaurant' && onRestaurantPress) onRestaurantPress(marker.id);
+    if (marker?.kind === 'restaurant' && onRestaurantPress) {
+      const restaurant = data?.restaurants.find((item) => item.id === marker.id);
+      if (restaurant) onRestaurantPress(marker.id, restaurant);
+    }
     else setSelected((current) => (current === key ? null : key));
   };
 
@@ -202,7 +212,9 @@ export default function CityMap({ refreshKey = 0, fill = false, onToggleFullScre
                     onHoverIn={() => setHovered(marker.key)}
                     onHoverOut={() => setHovered((current) => (current === marker.key ? null : current))}
                     accessibilityRole="button"
-                    accessibilityLabel={`${marker.name}, ${markerStateLabel(marker)}`}
+                    accessibilityLabel={marker.kind === 'restaurant'
+                      ? `${marker.name} · ${marker.queueCount ?? 0} queued, ${markerStateLabel(marker)}`
+                      : `${marker.name}, ${markerStateLabel(marker)}`}
                     hitSlop={6}
                     style={[
                       styles.marker,
@@ -253,7 +265,7 @@ function MarkerTooltip({ marker }: { marker: MapMarker }) {
     : { top: `${marker.y * 100}%` as const, marginTop: gap };
   return (
     <View pointerEvents="none" style={[styles.tooltip, horizontal, vertical]}>
-      <Text style={styles.tooltipName}>{marker.name}</Text>
+      <Text style={styles.tooltipName}>{marker.kind === 'restaurant' ? `${marker.name} · ${marker.queueCount ?? 0} queued` : marker.name}</Text>
       <Text style={styles.tooltipState}>{markerStateLabel(marker)}</Text>
     </View>
   );

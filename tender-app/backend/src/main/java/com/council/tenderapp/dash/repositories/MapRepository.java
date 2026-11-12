@@ -70,12 +70,14 @@ public class MapRepository {
 
     private List<MapRestaurantDto> restaurants(String filter, Object... args) {
         return jdbc.query("""
-                SELECT r.id, r.name, r.status, r.latitude, r.longitude
+                SELECT r.id, r.name, r.status, r.latitude, r.longitude,
+                    (SELECT COUNT(*) FROM orders o WHERE o.restaurant_id = r.id
+                        AND LOWER(o.status) IN ('accepted', 'preparing')) AS queue_count
                 FROM restaurants r
                 WHERE r.latitude IS NOT NULL AND r.longitude IS NOT NULL AND (%s)
                 ORDER BY r.id
                 """.formatted(filter), (rs, row) -> new MapRestaurantDto(rs.getLong("id"), rs.getString("name"),
-                        lower(rs.getString("status")), rs.getDouble("latitude"), rs.getDouble("longitude")), args);
+                        lower(rs.getString("status")), rs.getDouble("latitude"), rs.getDouble("longitude"), rs.getLong("queue_count")), args);
     }
 
     private List<MapCourierDto> couriers(String filter, Object... args) {

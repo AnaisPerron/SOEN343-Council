@@ -3,6 +3,7 @@ import type { Restaurant, RestaurantStatus } from '../../types/restaurant';
 import type { ProfileResponse, ProfileUpdateRequest } from './operatorApi';
 import type { AuthUser } from '../../types/auth';
 import type { CustomerProfile, User } from '../../types/users';
+export { queueBand } from '../../lib/queueBands.ts';
 
 export const ACTIVE_ORDER_STATUSES: Order['status'][] = [
   'placed',

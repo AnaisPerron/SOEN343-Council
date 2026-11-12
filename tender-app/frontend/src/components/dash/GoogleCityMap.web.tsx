@@ -56,7 +56,9 @@ export default function GoogleCityMap({ bounds, markers, activeKey, fitKey, onHo
           <AdvancedMarker
             key={marker.key}
             position={{ lat: marker.latitude, lng: marker.longitude }}
-            title={`${marker.name}, ${markerStateLabel(marker)}`}
+            title={marker.kind === 'restaurant'
+              ? `${marker.name} · ${marker.queueCount ?? 0} queued, ${markerStateLabel(marker)}`
+              : `${marker.name}, ${markerStateLabel(marker)}`}
             anchorLeft="-50%"
             anchorTop="-50%"
             zIndex={marker.key === activeKey ? 2 : marker.kind === 'courier' ? 1 : 0}
@@ -111,7 +113,7 @@ function MarkerIcon({ marker, active }: { marker: MapMarker; active: boolean }) 
             pointerEvents: 'none',
           }}
         >
-          <div style={{ color: '#fff', fontWeight: 700, fontSize: 14 }}>{marker.name}</div>
+          <div style={{ color: '#fff', fontWeight: 700, fontSize: 14 }}>{marker.kind === 'restaurant' ? `${marker.name} · ${marker.queueCount ?? 0} queued` : marker.name}</div>
           <div style={{ color: '#d1d5db', fontSize: 12 }}>{markerStateLabel(marker)}</div>
         </div>
       )}
