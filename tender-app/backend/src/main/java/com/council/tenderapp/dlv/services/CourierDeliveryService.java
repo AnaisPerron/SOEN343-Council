@@ -48,7 +48,21 @@ public class CourierDeliveryService {
 
         return new AssignedOrderDto(order, restaurantRepository.findById(order.getRestaurantId()).orElse(null));
     }
+    
+        @Transactional
     public AssignedOrderDto confirmDelivery(Long courierId, Long orderId) {
-        throw new UnsupportedOperationException("confirmDelivery not implemented yet");
-    }//placeholder
+        Order order = orderRepository.findByIdForUpdate(orderId)
+                .orElseThrow(() -> new OrderNotFoundException("Order not found with id: " + orderId));
+
+        if (!courierId.equals(order.getCourierId())) {
+            throw new OrderAccessDeniedException("Order " + orderId + " is not assigned to this courier");
+        }
+        if (order.getStatus() != OrderStatus.PICKED_UP) {
+            throw new InvalidOrderStateException("Order " + orderId + " cannot be delivered because it is "
+                    + order.getStatus().name().toLowerCase(Locale.ROOT));
+        }
+        orderService.markDeliveredByCourier(courierId, orderId);
+
+        return new AssignedOrderDto(order, restaurantRepository.findById(order.getRestaurantId()).orElse(null));
+    }
 }
