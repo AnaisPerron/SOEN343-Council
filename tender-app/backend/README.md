@@ -120,6 +120,7 @@ console.
 Courier acceptance is recorded as a `courier_accepted` row in `order_events`;
 the restaurant order response uses that record to show the courier name even
 after the courier's current duty status changes.
+
 `POST /api/courier/orders/{orderId}/pickup` lets the assigned courier confirm pickup
 (Task 72, US.14). It requires the `COURIER` role and moves the order from `READY` to
 `PICKED_UP`, which moves the courier from `ASSIGNED` to `CARRYING`. The call is refused
@@ -132,6 +133,20 @@ transition reuses `OrderService.markPickedUpByCourier`, which also sets the orde
 `picked_up`) in the same transaction. The older
 `POST /api/courier/duty/orders/{orderId}/picked-up` route shares that method, so it
 records the same event.
+
+`POST /api/courier/orders/{orderId}/delivery` lets the assigned courier confirm delivery
+(Task 73, US.14). It requires the `COURIER` role and moves the order from `PICKED_UP` to
+`DELIVERED`. The call is refused with `404` if the order does not exist, `403` if the
+authenticated courier is not the order's assigned courier or the caller is not a courier,
+`409` if the order is not `PICKED_UP`, and `401` without a session. On success it returns
+`{"orderId": 12, "orderStatus": "delivered", "courierStatus": "idle"}`. The transition
+reuses `OrderService.markDeliveredByCourier`, which also sets the order's `date_delivered`
+and records an `order_delivered` row in `order_events` (`picked_up` to `delivered`) in the
+same transaction. After the change commits, `CourierReleaseObserver` returns the courier
+from `CARRYING` to `IDLE` and retries the dispatch queue, so the courier is immediately
+offered the oldest waiting order. The older
+`POST /api/courier/duty/orders/{orderId}/delivered` route shares that method, so it
+records the same event. The order summary and ledger entry are separate tasks (PRC).
 
 The current project has no authentication/authorization integration. The local
 restaurant profile is a demo context, not an authenticated account. Actions

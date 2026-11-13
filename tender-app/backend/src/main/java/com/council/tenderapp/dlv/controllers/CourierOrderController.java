@@ -12,9 +12,11 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.council.tenderapp.dlv.dtos.AssignedOrderDto;
 import com.council.tenderapp.dlv.dtos.CourierDutyResponseDto;
+import com.council.tenderapp.dlv.dtos.DeliveryConfirmationDto;
 import com.council.tenderapp.dlv.dtos.PickupConfirmationDto;
 import com.council.tenderapp.dlv.services.CourierDeliveryService;
 import com.council.tenderapp.dlv.services.CourierDutyService;
+import com.council.tenderapp.dlv.dtos.DeliveryConfirmationDto;
 
 
 @RestController
@@ -45,5 +47,15 @@ public class CourierOrderController {
         CourierDutyResponseDto duty = courierDutyService.getDutyStatus(courierId);
 
         return ResponseEntity.ok(new PickupConfirmationDto(order.orderId(), order.status(), duty.status()));
+    }
+
+    @PostMapping("/{orderId}/delivery")
+    public ResponseEntity<DeliveryConfirmationDto> confirmDelivery(
+            Authentication authentication, @PathVariable Long orderId) {
+        Long courierId = getCourierId(authentication);
+        AssignedOrderDto order = courierDeliveryService.confirmDelivery(courierId, orderId);
+        CourierDutyResponseDto duty = courierDutyService.getDutyStatus(courierId);
+
+        return ResponseEntity.ok(new DeliveryConfirmationDto(order.orderId(), order.status(), duty.status()));
     }
 }    

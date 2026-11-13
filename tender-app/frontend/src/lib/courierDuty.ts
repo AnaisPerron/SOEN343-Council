@@ -15,3 +15,11 @@ export function stateLabel(state: CourierState) {
     case 'carrying': return 'Carrying · on the way to the customer';
   }
 }
+
+export const hasActiveDelivery = (state: CourierState) => state === 'assigned' || state === 'carrying';
+
+export const canConfirmPickup = (state: CourierState, orderStatus?: string | null) =>
+  state === 'assigned' && orderStatus === 'ready';
+
+export const canConfirmDelivery = (state: CourierState, orderStatus?: string | null) =>
+  state === 'carrying' && orderStatus === 'picked_up';
