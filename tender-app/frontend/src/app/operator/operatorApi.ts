@@ -22,6 +22,7 @@ export async function changeRestaurantStatus(restaurantId: number, status: Resta
 
 export async function resetDemoSeed(token: string): Promise<void> {
   await requestJson<void>('POST', '/api/operator/reset-seed', undefined, token);
+}
   
 export async function refundOrder(orderId: number, token: string): Promise<void> {
   await requestJson<void>('POST', operatorPaths.orderRefund(orderId), undefined, token);

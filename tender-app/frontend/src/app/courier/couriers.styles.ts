@@ -1,6 +1,8 @@
 import { StyleSheet } from 'react-native';
 
 export const styles = StyleSheet.create({
+  queueRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  queueDot: { width: 9, height: 9, borderRadius: 5 },
   page: { flex: 1, backgroundColor: '#FFFAF9' },
   header: { height: 70, width: '100%', maxWidth: 1000, alignSelf: 'center', paddingHorizontal: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', zIndex: 10 },
   brand: { color: '#D42F50', fontSize: 25, fontWeight: '900' },
