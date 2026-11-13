@@ -29,7 +29,7 @@ function RootNavigator() {
 function SessionContent() {
   const { user } = useAuth();
   return <CatalogProvider key={user?.id ?? 'signed-out'}>
-    <CartProvider key={user?.id ?? 'signed-out'}>
+    <CartProvider key={user?.id ?? 'signed-out'} userId={user?.id}>
       <OrdersProvider key={user?.id ?? 'signed-out'}>
         <ItemCustomizationProvider>
           <RootNavigator />

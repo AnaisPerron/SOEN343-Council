@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import { restaurantOrdersMock } from '../../mocks/restaurantOrders.ts';
-import { deleteSelectedOrders, filterAndSortOrders, ORDER_STATUSES, orderTotal, transitionOrder } from '../../services/restaurant/orderQueue.ts';
+import { deleteSelectedOrders, filterAndSortOrders, isWaitingForCourier, nextOrderToPrepare, ORDER_STATUSES, orderTotal, transitionOrder } from '../../services/restaurant/orderQueue.ts';
 
 describe('restaurant orders queue', () => {
   it('puts placed orders first, oldest first, and filters every status', () => {
@@ -43,5 +43,25 @@ describe('restaurant orders queue', () => {
     assert.equal(restaurantOrdersMock.length, 11, 'deletion must not mutate the source queue');
     assert.equal(orderTotal(placed), 26);
     assert.equal(orderTotal({ ...placed, totalPrice: 29.50 }), 29.50, 'the server total includes pricing fees');
+  });
+  it('only lets the oldest accepted order start preparing', () => {
+    const base = restaurantOrdersMock[0];
+    const accepted = (id: number, createdAt: string) => ({ ...base, id, status: 'accepted' as const, createdAt });
+    const orders = [
+      accepted(3, '2026-01-01T10:05:00Z'),
+      { ...base, id: 1, status: 'placed' as const, createdAt: '2026-01-01T09:00:00Z' },
+      accepted(2, '2026-01-01T10:00:00Z'),
+      accepted(4, '2026-01-01T10:00:00Z'),
+    ];
+    assert.equal(nextOrderToPrepare(orders)?.id, 2);
+    assert.equal(nextOrderToPrepare(orders.filter((order) => order.id !== 2))?.id, 4);
+    assert.equal(nextOrderToPrepare([]), null);
+  });
+
+  it('identifies ready orders that are still waiting for a courier', () => {
+    const ready = restaurantOrdersMock.find((order) => order.status === 'ready')!;
+    assert.equal(isWaitingForCourier({ ...ready, courierId: null }), true);
+    assert.equal(isWaitingForCourier({ ...ready, courierId: 8 }), false);
+    assert.equal(isWaitingForCourier({ ...ready, status: 'picked_up', courierId: null }), false);
   });
 });

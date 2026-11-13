@@ -18,6 +18,10 @@ export async function changeRestaurantStatus(restaurantId: number, status: Resta
   await requestJson<void>('PUT', operatorPaths.restaurantStatus(restaurantId), { status }, token);
 }
 
+export async function refundOperatorOrder(orderId: number, token: string): Promise<void> {
+  await requestJson('POST', `/api/operator/orders/${orderId}/refund`, undefined, token);
+}
+
 export function updateOperatorProfile(request: ProfileUpdateRequest, token: string): Promise<ProfileResponse> {
   return updateProfile(token, request.name, request.phone);
 }

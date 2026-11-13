@@ -25,6 +25,14 @@ export interface OperatorRestaurant {
   longitude: number | null;
   address: string | null;
   phone: string | null;
+  queueCount: number;
+}
+
+export interface OperatorOrderFilters {
+  statuses: OperatorOrderStatus[];
+  restaurantIds: number[];
+  from: string;
+  to: string;
 }
 
 export interface OperatorCustomer {

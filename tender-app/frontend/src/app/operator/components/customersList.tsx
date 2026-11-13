@@ -37,9 +37,9 @@ export default function CustomerList({ customers = [] }: CustomerListProps) {
             )}
 
             <View style={styles.cardBottom}>
-              <Text style={styles.totalLabel}>TD Cash Balance:</Text>
+              <Text style={styles.totalLabel}>Tender Cash Balance:</Text>
               <Text style={styles.totalValue}>
-                {tdCashBalance === null ? 'Unknown' : `$${tdCashBalance.toFixed(2)}`}
+                {tdCashBalance === null ? 'Unknown' : `${Math.trunc(tdCashBalance)} tenders`}
               </Text>
             </View>
           </View>

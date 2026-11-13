@@ -1,5 +1,5 @@
 import { ApiError, requestJson } from '../api/client.ts';
-import type { OperatorCourier, OperatorCustomer, OperatorOrder, OperatorPage, OperatorRestaurant, OperatorSection, OperatorSectionName, OperatorSummary } from '../types/operator.ts';
+import type { OperatorCourier, OperatorCustomer, OperatorOrder, OperatorOrderFilters, OperatorPage, OperatorRestaurant, OperatorSection, OperatorSectionName, OperatorSummary } from '../types/operator.ts';
 
 type Row = Record<string, unknown>;
 const row = (v: unknown): v is Row => typeof v === 'object' && v !== null;
@@ -12,7 +12,7 @@ const orderStatuses = ['placed', 'accepted', 'preparing', 'ready', 'picked_up', 
 
 function restaurant(v: unknown): v is OperatorRestaurant {
   return row(v) && number(v.id) && typeof v.name === 'string' && typeof v.status === 'string' && ['open', 'paused', 'closed'].includes(v.status)
-    && location(v) && nullableText(v.address) && nullableText(v.phone);
+    && location(v) && nullableText(v.address) && nullableText(v.phone) && Number.isInteger(v.queueCount) && (v.queueCount as number) >= 0;
 }
 function customer(v: unknown): v is OperatorCustomer {
   return row(v) && contact(v) && location(v) && nullableNumber(v.tdCashBalance);
@@ -26,8 +26,17 @@ function order(v: unknown): v is OperatorOrder {
     && nullableText(v.acceptedAt) && nullableText(v.rejectionReason) && number(v.totalPrice);
 }
 
-async function page<T>(kind: OperatorSectionName, index: number, token: string, guard: (v: unknown) => v is T): Promise<OperatorPage<T>> {
-  const data = await requestJson<unknown>('GET', `/api/operator/${kind}?page=${index}&size=50`, undefined, token);
+async function page<T>(kind: OperatorSectionName, index: number, token: string, guard: (v: unknown) => v is T, filters?: OperatorOrderFilters): Promise<OperatorPage<T>> {
+  const query = new URLSearchParams({ page: String(index), size: '50' });
+  if (kind === 'restaurants' && filters) filters.restaurantIds.forEach((id) => query.append('restaurantIds', String(id)));
+  if (kind === 'orders' && filters) {
+    filters.statuses.forEach((status) => query.append('statuses', status));
+    filters.restaurantIds.forEach((id) => query.append('restaurantIds', String(id)));
+    if (filters.from) query.set('from', filters.from);
+    if (filters.to) query.set('to', filters.to);
+    if (filters.from || filters.to) query.set('timeZone', Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
+  }
+  const data = await requestJson<unknown>('GET', `/api/operator/${kind}?${query}`, undefined, token);
   if (!row(data) || !Array.isArray(data.items) || !data.items.every(guard)
     || !Number.isInteger(data.total) || (data.total as number) < data.items.length
     || data.page !== index || data.size !== 50 || data.items.length > 50) {
@@ -45,14 +54,21 @@ export async function fetchOperatorSummary(token: string): Promise<OperatorSumma
   return data as unknown as OperatorSummary;
 }
 
-export async function fetchOperatorSection(kind: OperatorSectionName, index: number, token: string): Promise<OperatorSection> {
+export async function fetchOperatorSection(kind: OperatorSectionName, index: number, token: string, filters?: OperatorOrderFilters): Promise<OperatorSection> {
   if (!Number.isInteger(index) || index < 0) throw new Error('Invalid page');
   switch (kind) {
     case 'restaurants': return { kind, data: await page(kind, index, token, restaurant) };
-    case 'orders': return { kind, data: await page(kind, index, token, order) };
+    case 'orders': return { kind, data: await page(kind, index, token, order, filters) };
     case 'customers': return { kind, data: await page(kind, index, token, customer) };
     case 'couriers': return { kind, data: await page(kind, index, token, courier) };
   }
+}
+
+export async function fetchRestaurantOptions(token: string): Promise<{ id: number; name: string }[]> {
+  const data = await requestJson<unknown>('GET', '/api/operator/restaurant-options', undefined, token);
+  if (!Array.isArray(data) || !data.every((item) => row(item) && number(item.id) && typeof item.name === 'string'))
+    throw new ApiError(502, 'The server returned invalid restaurant options');
+  return data as { id: number; name: string }[];
 }
 
 export function appendOperatorSection(current: OperatorSection | null, next: OperatorSection): OperatorSection {

@@ -1,6 +1,6 @@
 package com.council.tenderapp.ord.commands;
 
-import com.council.tenderapp.ord.dto.response.OrderResponse;
+import com.council.tenderapp.ord.dtos.OrderResponse;
 import com.council.tenderapp.ord.services.OrderService;
 
 public final class OrderCommands {
@@ -40,20 +40,6 @@ public final class OrderCommands {
         @Override
         public OrderResponse execute(OrderService receiver) {
             return receiver.markReady(restaurantId, orderId);
-        }
-    }
-
-    public record MarkPickedUp(Long restaurantId, Long orderId) implements OrderCommand {
-        @Override
-        public OrderResponse execute(OrderService receiver) {
-            return receiver.markPickedUp(restaurantId, orderId);
-        }
-    }
-
-    public record MarkDelivered(Long restaurantId, Long orderId) implements OrderCommand {
-        @Override
-        public OrderResponse execute(OrderService receiver) {
-            return receiver.markDelivered(restaurantId, orderId);
         }
     }
 

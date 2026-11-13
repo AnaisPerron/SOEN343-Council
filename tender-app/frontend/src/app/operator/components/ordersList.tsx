@@ -89,8 +89,10 @@ export default function OrderList({ orders, onRefund, changingId }: OrderListPro
             <Text style={styles.rejectionText}>Reason: {rejectionReason}</Text>
           )}
           {onRefund && status === 'delivered' && (
-            <TouchableOpacity accessibilityRole="button" disabled={changingId != null} onPress={() => onRefund(id)} style={{ paddingVertical: 12 }}>
-              <Text style={styles.detail}>Refund as Tender Cash</Text>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Refund order ${id} as Tender Cash`}
+              accessibilityState={{ disabled: changingId != null, busy: changingId === id }}
+              disabled={changingId != null} onPress={() => onRefund(id)} style={styles.refundButton}>
+              <Text style={styles.refundButtonText}>{changingId === id ? 'Refunding…' : 'Refund as Tender Cash'}</Text>
             </TouchableOpacity>
           )}
         </View>

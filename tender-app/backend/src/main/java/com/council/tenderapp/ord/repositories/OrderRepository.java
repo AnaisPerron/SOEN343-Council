@@ -38,9 +38,20 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     Optional<Order> findFirstByCourierIdAndStatusInOrderByDateOrderedAscIdAsc(Long courierId, Collection<OrderStatus> statuses);
 
-    // Dispatch queue: ready orders still waiting for a courier, oldest first
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    List<Order> findByStatusAndCourierIdIsNullOrderByDateOrderedAscIdAsc(OrderStatus status);
+    // The persistent dispatch queue is READY orders without a courier, ordered by when they became ready.
+    @Query(value = """
+        SELECT o.*
+        FROM orders o
+        WHERE o.status = 'ready' AND o.courier_id IS NULL
+        ORDER BY COALESCE(
+            (SELECT MIN(e.created_at)
+             FROM order_events e
+             WHERE e.order_id = o.id AND e.event_type = 'order_ready'),
+            o.created_at
+        ) ASC, o.id ASC
+        FOR UPDATE
+        """, nativeQuery = true)
+    List<Order> findWaitingReadyOrdersForDispatch();
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT o FROM Order o WHERE o.id = :orderId")
