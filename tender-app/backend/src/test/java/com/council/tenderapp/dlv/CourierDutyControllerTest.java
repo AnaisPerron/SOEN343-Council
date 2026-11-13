@@ -269,4 +269,56 @@ class CourierDutyControllerTest {
         assertThat(statusOf(owner)).isEqualTo(CourierStatus.ASSIGNED);
         assertThat(statusOf(other)).isEqualTo(CourierStatus.ASSIGNED);
     }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void orderGoesFromReadyThroughPickedUpToDelivered() throws Exception {
+        Account courier = register("duty-fullpath@example.com", Role.COURIER);
+        Restaurant restaurant = restaurants.saveAndFlush(new Restaurant("Full Path Cafe", "open", 45.50, -73.57));
+        Order ready = orderFor(courier, restaurant, OrderStatus.READY);
+        setStatus(courier, CourierStatus.ASSIGNED);
+
+        mockMvc.perform(post("/api/courier/duty/orders/" + ready.getId() + "/picked-up")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + courier.token()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("carrying"))
+                .andExpect(jsonPath("$.assignedOrder.status").value("picked_up"));
+        assertThat(orders.findById(ready.getId()).orElseThrow().getStatus()).isEqualTo(OrderStatus.PICKED_UP);
+        assertThat(statusOf(courier)).isEqualTo(CourierStatus.CARRYING);
+
+        mockMvc.perform(post("/api/courier/duty/orders/" + ready.getId() + "/delivered")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + courier.token()))
+                .andExpect(status().isOk());
+        assertThat(orders.findById(ready.getId()).orElseThrow().getStatus()).isEqualTo(OrderStatus.DELIVERED);
+
+        mockMvc.perform(post("/api/courier/duty/off").header(HttpHeaders.AUTHORIZATION, "Bearer " + courier.token()))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void courierIsIdleAgainAfterDelivery() throws Exception {
+        Account courier = register("duty-idle-after@example.com", Role.COURIER);
+        Restaurant restaurant = restaurants.saveAndFlush(new Restaurant("Idle Cafe", "open", 45.50, -73.57));
+        Order pickedUp = orderFor(courier, restaurant, OrderStatus.PICKED_UP);
+        setStatus(courier, CourierStatus.CARRYING);
+
+        mockMvc.perform(post("/api/courier/duty/orders/" + pickedUp.getId() + "/delivered")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + courier.token()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("idle"));
+
+        assertThat(orders.findById(pickedUp.getId()).orElseThrow().getStatus()).isEqualTo(OrderStatus.DELIVERED);
+        assertThat(statusOf(courier)).isEqualTo(CourierStatus.IDLE);
+
+        mockMvc.perform(get("/api/courier/duty").header(HttpHeaders.AUTHORIZATION, "Bearer " + courier.token()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("idle"))
+                .andExpect(jsonPath("$.assignedOrder").doesNotExist());
+
+        mockMvc.perform(post("/api/courier/duty/off").header(HttpHeaders.AUTHORIZATION, "Bearer " + courier.token()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("offline"));
+        assertThat(statusOf(courier)).isEqualTo(CourierStatus.OFFLINE);
+    }
 }
