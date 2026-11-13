@@ -1,5 +1,7 @@
 # Phase II operator checkpoint
 
+This is the historical Phase II checkpoint.
+
 Branch: `feature/operator-backend`.
 
 ## Scope

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Modal, ScrollView, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/AuthContext';
 import { ApiError } from '@/api/client';
@@ -15,8 +15,10 @@ import CourrierList from './components/courriersList';
 import OperatorProfile from './components/operatorProfile';
 import CityMap from '@/components/dash/CityMap';
 import MapDirectory from './components/MapDirectory';
+import ResetSystemDialog from './components/ResetSystemDialog';
+import ReassignOrderDialog from './components/ReassignOrderDialog';
 import { getOperatorDisplayName, toOperatorUser } from './operatorLogic';
-import { changeRestaurantStatus, refundOrder, reassignOrder, resetDemoSeed } from './operatorApi';
+import { changeRestaurantStatus, reassignOrder, resetSystem } from './operatorApi';
 
 const tabs: { kind: OperatorSectionName; label: string; count: keyof OperatorSummary }[] = [
   { kind: 'restaurants', label: 'Restaurants', count: 'restaurantCount' },
@@ -33,7 +35,6 @@ const orderStatuses: { value: OperatorOrderStatus; label: string }[] = [
   { value: 'refunded', label: 'Refunded' },
 ];
 const emptyFilters: OperatorOrderFilters = { statuses: [], restaurantIds: [], from: '', to: '' };
-const demoSeedResetEnabled = process.env.EXPO_PUBLIC_DEMO_SEED_RESET_ENABLED === 'true';
 const validDate = (date: string) => /^\d{4}-\d{2}-\d{2}$/.test(date) && !Number.isNaN(Date.parse(`${date}T00:00:00Z`))
   && new Date(`${date}T00:00:00Z`).toISOString().slice(0, 10) === date;
 
@@ -56,24 +57,33 @@ export default function OperatorHome() {
   const [fromDraft, setFromDraft] = useState('');
   const [toDraft, setToDraft] = useState('');
   const [mapRestaurant, setMapRestaurant] = useState<MapRestaurant | null>(null);
+  const [showReset, setShowReset] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [resetComplete, setResetComplete] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [reassignTarget, setReassignTarget] = useState<{ id: number; courierId: number } | null>(null);
+  const [reassigning, setReassigning] = useState(false);
+  const [reassignError, setReassignError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const resettingRef = useRef(false);
   const requestId = useRef(0);
   const changing = useRef(false);
   const loadingRef = useRef(false);
+  const dialogOpen = useRef(false);
+
+  useEffect(() => { dialogOpen.current = showReset || reassignTarget !== null; }, [showReset, reassignTarget]);
   const operator = toOperatorUser(user);
 
-  const loadPage = useCallback(async (page = 0, quiet = false) => {
-    if (!token || changing.current || (quiet && loadingRef.current)) return;
+  const fetchPage = useCallback((page = 0, quiet = false): Promise<void> => {
+    if (!token || changing.current || resettingRef.current || resetComplete || (quiet && (loadingRef.current || dialogOpen.current))) return Promise.resolve();
     const version = ++requestId.current;
-    if (!quiet) { loadingRef.current = true; setLoading(true); setError(null); }
-    if (page === 0 && !quiet) { setSummary(null); setSection(null); }
-    try {
-      const [counts, next] = await Promise.all([
-        fetchOperatorSummary(token), fetchOperatorSection(activeFilter, page, token, filters),
-      ]);
+    return Promise.all([
+      fetchOperatorSummary(token), fetchOperatorSection(activeFilter, page, token, filters),
+    ]).then(([counts, next]) => {
       if (version !== requestId.current) return;
       setSummary(counts);
       setSection((current) => page === 0 ? next : appendOperatorSection(current, next));
-    } catch (cause) {
+    }, (cause: unknown) => {
       if (version !== requestId.current) return;
       if (cause instanceof ApiError && cause.status === 401) {
         setSummary(null);
@@ -82,26 +92,39 @@ export default function OperatorHome() {
       } else {
         setError(cause instanceof Error ? cause.message : 'Unable to load dashboard');
       }
-    } finally {
+    }).finally(() => {
       if (version === requestId.current && !quiet) { loadingRef.current = false; setLoading(false); }
-    }
-  }, [activeFilter, token, signOut, filters]);
+    });
+  }, [activeFilter, token, signOut, filters, resetComplete]);
+
+  const beginLoad = (page = 0) => {
+    loadingRef.current = true;
+    setLoading(true);
+    setError(null);
+    if (page === 0) { setSummary(null); setSection(null); }
+  };
+
+  const loadPage = async (page = 0) => {
+    if (!token || changing.current || resettingRef.current || resetComplete) return;
+    beginLoad(page);
+    await fetchPage(page);
+  };
 
   useEffect(() => {
-    void loadPage();
+    void fetchPage();
     return () => { requestId.current += 1; };
-  }, [loadPage]);
+  }, [fetchPage]);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || resetting || resetComplete) return;
     let active = true;
     fetchRestaurantOptions(token).then((options) => { if (active) setRestaurantOptions(options); })
       .catch((cause) => { if (active) setError(cause instanceof Error ? cause.message : 'Unable to load restaurants'); });
     return () => { active = false; };
-  }, [token]);
+  }, [token, resetting, resetComplete]);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || resetting || resetComplete) return;
     let active = true;
     const refreshDirectory = () => {
       void Promise.all(tabs.map(async ({ kind }) => {
@@ -118,19 +141,19 @@ export default function OperatorHome() {
     refreshDirectory();
     const timer = setInterval(refreshDirectory, 15000);
     return () => { active = false; clearInterval(timer); };
-  }, [token, mapRefreshKey]);
+  }, [token, mapRefreshKey, resetting, resetComplete]);
 
   useEffect(() => {
-    const timer = setInterval(() => { void loadPage(0, true); }, 15000);
+    const timer = setInterval(() => { void fetchPage(0, true); }, 15000);
     return () => clearInterval(timer);
-  }, [loadPage]);
+  }, [fetchPage]);
 
-  const toggleStatus = (status: OperatorOrderStatus) => setFilters((current) => ({ ...current,
+  const toggleStatus = (status: OperatorOrderStatus) => { beginLoad(); setFilters((current) => ({ ...current,
     statuses: current.statuses.includes(status) ? current.statuses.filter((item) => item !== status) : [...current.statuses, status],
-  }));
-  const toggleRestaurant = (id: number) => setFilters((current) => ({ ...current,
+  })); };
+  const toggleRestaurant = (id: number) => { beginLoad(); setFilters((current) => ({ ...current,
     restaurantIds: current.restaurantIds.includes(id) ? current.restaurantIds.filter((item) => item !== id) : [...current.restaurantIds, id],
-  }));
+  })); };
   const applyDates = () => {
     const from = fromDraft.trim();
     const to = toDraft.trim();
@@ -139,30 +162,12 @@ export default function OperatorHome() {
       return;
     }
     setError(null);
+    beginLoad();
     setFilters((current) => ({ ...current, from, to }));
   };
 
-  const resetSeed = async () => {
-    if (!token || changing.current) return;
-    changing.current = true;
-    setChangingId(-1);
-    setError(null);
-    try {
-      await resetDemoSeed(token);
-      setMapRestaurant(null);
-      setMapRefreshKey((key) => key + 1);
-      Alert.alert('Demo seed restored', 'Sign in again with the demo operator account to continue.');
-      signOut();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Unable to reset the demo seed');
-    } finally {
-      changing.current = false;
-      setChangingId(null);
-    }
-  };
-
   const updateStatus = async (id: number, status: RestaurantStatus) => {
-    if (!token || changing.current || loading) return;
+    if (!token || changing.current || loading || resettingRef.current || resetComplete) return;
     changing.current = true;
     const version = ++requestId.current;
     setChangingId(id);
@@ -191,35 +196,79 @@ export default function OperatorHome() {
   const updateMapRestaurant = useCallback((data: MapData) => {
     setMapRestaurant((current) => current ? data.restaurants.find((item) => item.id === current.id) ?? current : null);
   }, []);
-   const runOrderAction = async (
-    id: number,
-    action: (id: number, token: string) => Promise<unknown>,
-    fallback: string,
-  ) => {
-    if (!token || changing.current || loading) return;
+  const confirmReassignment = async () => {
+    if (!token || user?.role !== 'Operator' || !reassignTarget || changing.current || resettingRef.current || resetComplete) return;
+    const target = reassignTarget;
     changing.current = true;
+    setReassigning(true);
+    setReassignError(null);
+    setNotice(null);
     const version = ++requestId.current;
-    setChangingId(id);
-    setError(null);
     try {
-      await action(id, token);
-      setMapRefreshKey((key) => key + 1);
+      await reassignOrder(target.id, target.courierId, token);
       if (version !== requestId.current) return;
       changing.current = false;
-      setChangingId(null);
+      setReassigning(false);
+      setReassignTarget(null);
+      setMapRefreshKey((key) => key + 1);
+      setNotice(`Order #${target.id} returned to dispatch. The refreshed list shows its current courier or queued state.`);
       await loadPage();
     } catch (cause) {
       if (version !== requestId.current) return;
       if (cause instanceof ApiError && cause.status === 401) signOut();
-      else setError(cause instanceof Error ? cause.message : fallback);
+      else if (cause instanceof ApiError && (cause.status === 409 || cause.status === 404)) {
+        changing.current = false;
+        setReassigning(false);
+        setReassignTarget(null);
+        await loadPage();
+        setError(`${cause.message}. Orders have been refreshed; check the current assignment before retrying.`);
+      } else setReassignError(cause instanceof Error ? cause.message : 'Unable to reassign the order');
     } finally {
       changing.current = false;
-      if (version === requestId.current) setChangingId(null);
+      if (version === requestId.current) setReassigning(false);
+    }
+  };
+
+  const confirmReset = async () => {
+    if (!token || user?.role !== 'Operator' || resettingRef.current || changing.current || resetComplete) return;
+    resettingRef.current = true;
+    setResetting(true);
+    setResetError(null);
+    const version = ++requestId.current;
+    try {
+      await resetSystem(token);
+      if (version !== requestId.current) return;
+      setSection(null);
+      setSummary(null);
+      setError(null);
+      setNotice(null);
+      setReassignTarget(null);
+      setChangingId(null);
+      setShowProfileMenu(false);
+      setActiveFilter('restaurants');
+      setMapRefreshKey((key) => key + 1);
+      setDirectorySections({});
+      setMapRestaurant(null);
+      setDirectoryDetail(null);
+      setRestaurantOptions([]);
+      setFilters(emptyFilters);
+      setFromDraft('');
+      setToDraft('');
+      setResetComplete(true);
+    } catch (cause) {
+      if (version !== requestId.current) return;
+      if (cause instanceof ApiError && cause.status === 401) signOut();
+      else setResetError(cause instanceof ApiError && cause.status === 0
+        ? 'Connection lost. The reset may have completed. Sign out and sign in again before retrying.'
+        : cause instanceof Error ? cause.message : 'Unable to reset the system');
+    } finally {
+      resettingRef.current = false;
+      if (version === requestId.current) setResetting(false);
     }
   };
 
   const visible = section?.kind === activeFilter ? section : null;
-  const busy = loading || changingId !== null;
+  const busy = loading || changingId !== null || resetting || showReset || reassigning || reassignTarget !== null;
   const queueCounts: Record<number, number> | undefined = directorySections.orders?.kind === 'orders'
     ? directorySections.orders.data.items.reduce<Record<number, number>>((counts, order) => {
       if (order.restaurantId != null && ['placed', 'accepted', 'preparing'].includes(order.status)) {
@@ -233,7 +282,7 @@ export default function OperatorHome() {
 
   return (
     <SafeAreaView style={styles.page} edges={['top']}>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingHorizontal: width < 600 ? 20 : 48 }]}>
+      {!resetComplete && <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingHorizontal: width < 600 ? 20 : 48 }]}>
         <View style={styles.topbar}>
           <TouchableOpacity style={styles.profile} onPress={() => setShowProfileMenu(true)} accessibilityRole="button">
             <Text style={styles.profileText}>{getOperatorDisplayName(operator)}</Text>
@@ -242,8 +291,8 @@ export default function OperatorHome() {
         <View style={styles.statsContainer}>
           {tabs.map((tab) => (
             <TouchableOpacity key={tab.kind} style={[styles.statCard, activeFilter === tab.kind && styles.statCardSelected]}
-              onPress={() => { if (!changing.current) setActiveFilter(tab.kind); }} disabled={changingId !== null} accessibilityRole="button"
-              accessibilityState={{ selected: activeFilter === tab.kind, disabled: changingId !== null }}>
+              onPress={() => { if (changing.current || tab.kind === activeFilter) return; beginLoad(); setActiveFilter(tab.kind); }} disabled={busy} accessibilityRole="button"
+              accessibilityState={{ selected: activeFilter === tab.kind, disabled: busy }}>
               <Text style={styles.statLabel}>{tab.label}</Text>
               <Text style={styles.statValue}>{summary?.[tab.count] ?? '—'}</Text>
               {tab.kind === 'couriers' && <Text style={styles.statLabel}>{summary ? `${summary.availableCourierCount} available` : 'Availability unknown'}</Text>}
@@ -253,12 +302,10 @@ export default function OperatorHome() {
         <TouchableOpacity onPress={() => { setMapRefreshKey((key) => key + 1); void loadPage(); }} disabled={busy} accessibilityRole="button" style={styles.action}>
           <Text style={styles.profileText}>Refresh</Text>
         </TouchableOpacity>
-        {demoSeedResetEnabled && <TouchableOpacity accessibilityRole="button" disabled={busy} onPress={() => Alert.alert(
-          'Reset demo seed?',
-          'This restores the demo database to its initial state and removes demo activity since the seed was loaded.',
-          [{ text: 'Cancel', style: 'cancel' }, { text: 'Reset seed', style: 'destructive', onPress: () => void resetSeed() }],
-        )} style={styles.action}>
-          <Text style={styles.profileText}>Reset demo seed</Text>
+        {user?.role === 'Operator' && <TouchableOpacity accessibilityRole="button"
+          disabled={busy} accessibilityState={{ disabled: busy }} style={styles.action}
+          onPress={() => { setResetError(null); setShowReset(true); }}>
+          <Text style={styles.profileText}>Reset system</Text>
         </TouchableOpacity>}
         <MapDirectory visible={mapKinds}
           onToggle={(kind) => setMapKinds((current) => current.includes(kind) ? current.filter((item) => item !== kind) : [...current, kind])} />
@@ -290,6 +337,7 @@ export default function OperatorHome() {
             : mapQueue.map((order) => <Text key={order.id} style={styles.mapQueueItem}>Order #{order.id} · {order.status}</Text>)}
           <Text style={styles.filterHint}>Queue size {queueCounts?.[mapRestaurant.id] ?? (queueCounts ? 0 : mapRestaurant.queueCount)} · {mapQueue.length} orders shown</Text>
         </View>}
+        {notice && <Text accessibilityLiveRegion="polite" style={styles.notice}>{notice}</Text>}
         {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
         {activeFilter === 'orders' && <View style={styles.filterPanel}>
           <Text style={styles.filterTitle}>Restaurants</Text>
@@ -324,17 +372,12 @@ export default function OperatorHome() {
         {visible?.kind === 'restaurants' && <RestaurantList restaurants={visible.data.items.map((restaurant) => ({
           ...restaurant, queueCount: queueCounts?.[restaurant.id] ?? (queueCounts ? 0 : restaurant.queueCount),
         }))} onStatusChange={updateStatus} changingId={changingId} disabled={busy} />}
-        {visible?.kind === 'orders' && <OrdersList orders={visible.data.items} />}
-        {visible?.kind === 'restaurants' && <RestaurantList restaurants={visible.data.items} onStatusChange={updateStatus} changingId={changingId} disabled={busy} />}
-        {visible?.kind === 'orders' && (
-          <OrdersList
-            orders={visible.data.items}
-            onRefund={(id) => void runOrderAction(id, refundOrder, 'Unable to refund order')}
-            onReassign={(id) => void runOrderAction(id, reassignOrder, 'Unable to reassign courier')}
-            changingId={changingId}
-            disabled={busy}
-          />
-        )}
+        {visible?.kind === 'orders' && <OrdersList orders={visible.data.items} disabled={busy} changingId={changingId}
+          onReassign={user?.role === 'Operator' ? (order) => {
+            if (busy || changing.current) return;
+            setReassignError(null);
+            setReassignTarget(order);
+          } : undefined} />}
         {visible?.kind === 'customers' && <CustomerList customers={visible.data.items} />}
         {visible?.kind === 'couriers' && <CourrierList couriers={visible.data.items} />}
         {visible && <Text style={styles.statLabel}>Showing {visible.data.items.length} of {visible.data.total} {activeFilter}</Text>}
@@ -344,7 +387,13 @@ export default function OperatorHome() {
             <Text style={styles.profileText}>Load more</Text>
           </TouchableOpacity>
         )}
-      </ScrollView>
+      </ScrollView>}
+      <ReassignOrderDialog order={reassignTarget} submitting={reassigning} error={reassignError}
+        onCancel={() => { if (!changing.current) { setReassignTarget(null); setReassignError(null); } }}
+        onConfirm={() => void confirmReassignment()} />
+      <ResetSystemDialog visible={showReset} resetting={resetting} completed={resetComplete} error={resetError}
+        onCancel={() => { if (!resettingRef.current) { setShowReset(false); setResetError(null); } }}
+        onConfirm={() => void confirmReset()} onSignIn={signOut} />
       <OperatorProfile visible={showProfileMenu} operatorUser={operator} onClose={() => setShowProfileMenu(false)}
         onLogout={() => { setShowProfileMenu(false); signOut(); }} />
       <Modal visible={directoryDetail !== null} transparent animationType="fade" onRequestClose={() => setDirectoryDetail(null)}>

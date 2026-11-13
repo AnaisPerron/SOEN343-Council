@@ -131,15 +131,15 @@ class CourierDutyControllerTest {
 
         mockMvc.perform(post("/api/courier/duty/on").header(HttpHeaders.AUTHORIZATION, "Bearer " + courier.token()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("idle"))
+                .andExpect(jsonPath("$.status").value("assigned"))
                 .andExpect(jsonPath("$.assignedOrder.orderId").value(waiting.getId()));
 
         assertThat(orders.findById(waiting.getId()).orElseThrow().getCourierId()).isEqualTo(courier.id());
-        assertThat(statusOf(courier)).isEqualTo(CourierStatus.IDLE);
+        assertThat(statusOf(courier)).isEqualTo(CourierStatus.ASSIGNED);
 
         mockMvc.perform(get("/api/courier/duty").header(HttpHeaders.AUTHORIZATION, "Bearer " + courier.token()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("idle"))
+                .andExpect(jsonPath("$.status").value("assigned"))
                 .andExpect(jsonPath("$.assignedOrder.orderId").value(waiting.getId()))
                 .andExpect(jsonPath("$.assignedOrder.status").value("ready"))
                 .andExpect(jsonPath("$.assignedOrder.restaurantName").value("Queue Cafe"));
@@ -277,6 +277,10 @@ class CourierDutyControllerTest {
         Restaurant restaurant = restaurants.saveAndFlush(new Restaurant("Full Path Cafe", "open", 45.50, -73.57));
         Order ready = orderFor(courier, restaurant, OrderStatus.READY);
         setStatus(courier, CourierStatus.ASSIGNED);
+        mockMvc.perform(post("/api/courier/duty/orders/" + ready.getId() + "/accept")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + courier.token()))
+                .andExpect(status().isOk());
+
 
         mockMvc.perform(post("/api/courier/duty/orders/" + ready.getId() + "/picked-up")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + courier.token()))

@@ -129,7 +129,7 @@ class CourierDeliveryControllerTest {
                     .andExpect(status().isOk());
 
             assertThat(orders.findById(waiting.getId()).orElseThrow().getCourierId()).isEqualTo(courier.id());
-            assertThat(statusOf(courier)).isEqualTo(CourierStatus.IDLE);
+            assertThat(statusOf(courier)).isEqualTo(CourierStatus.ASSIGNED);
         } finally {
             orders.findById(waiting.getId()).filter(o -> o.getStatus() == OrderStatus.READY)
                     .ifPresent(o -> orderService.refundOrder(restaurant.getId(), waiting.getId()));

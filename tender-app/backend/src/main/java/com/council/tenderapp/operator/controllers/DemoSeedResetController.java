@@ -1,6 +1,9 @@
 package com.council.tenderapp.operator.controllers;
 
 import org.springframework.context.annotation.Profile;
+import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.RequestBody;
+import com.council.tenderapp.operator.dto.ResetRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,7 +25,7 @@ public class DemoSeedResetController {
 
     @PostMapping("/reset-seed")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void resetSeed() {
+    public void resetSeed(@Valid @RequestBody ResetRequest request) {
         service.reset();
     }
 }

@@ -55,6 +55,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query("SELECT o FROM Order o WHERE o.id = :orderId")
     Optional<Order> findByIdForUpdate(@Param("orderId") Long orderId);
 
+    boolean existsByCourierIdAndIdNotAndStatusIn(Long courierId, Long orderId, Collection<OrderStatus> statuses);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT o FROM Order o WHERE o.id = :orderId")
     Optional<Order> findWithLockById(@Param("orderId") Long orderId);
