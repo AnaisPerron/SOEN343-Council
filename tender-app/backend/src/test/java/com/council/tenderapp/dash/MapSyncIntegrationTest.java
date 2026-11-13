@@ -53,10 +53,6 @@ class MapSyncIntegrationTest {
         return found.isEmpty() ? null : found.get(0);
     }
 
-    private String statusOf(Long courierId) {
-        return couriers.findById(courierId).orElseThrow().getStatus().name().toLowerCase();
-    }
-
     @Test
     void mapFollowsTheCourierThroughDutyAssignmentPickupAndDelivery() throws Exception {
         Long courierId = registrationService.register(new RegisterRequest(
