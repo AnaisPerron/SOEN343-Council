@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { Redirect } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AccountMenu from '@/components/AccountMenu';
 import CityMap from '@/components/dash/CityMap';
+import type { MapData } from '@/types/dash';
+import { queueBand, queueBandColor } from '@/lib/queueBands';
+import { styles } from './couriers.styles';
 import { useAuth } from '@/context/AuthContext';
 import { ApiError } from '@/api/client';
 import { acceptCourierOffer, declineOrder, markOrderPickedUp, markOrderDelivered, fetchCourierDuty, goOffDuty, goOnDuty, type CourierDuty } from '@/api/courierDuty';
-import { canGoOffDuty, canGoOnDuty, isOnDuty, stateLabel } from '@/lib/courierDuty';
+import { canGoOffDuty, canGoOnDuty, isOnDuty, stateLabel, getOrderActionAvailability } from '@/lib/courierDuty';
 
 // Orders can be assigned at any time, so the panel refreshes itself while open
 const REFRESH_MS = 15000;
@@ -24,6 +27,7 @@ export default function CourierDashboard() {
   const requestId = useRef(0);
   // Going on or off duty puts the courier on or takes them off the map, so it reloads at once
   const [mapRefreshKey, setMapRefreshKey] = useState(0);
+  const [mapData, setMapData] = useState<MapData | null>(null);
 
   useEffect(() => {
     if (!token || user?.role !== 'courier') return;
@@ -127,6 +131,10 @@ export default function CourierDashboard() {
   const onDuty = duty != null && isOnDuty(duty.status);
   const order = duty?.assignedOrder;
   const busy = switching || accepting || updatingOrder;
+  const pickupRestaurant = mapData?.restaurants.find((restaurant) => restaurant.name === order?.restaurantName);
+  const availability = getOrderActionAvailability(duty?.status, order?.status, order?.assignmentStatus);
+  const pickupEnabled = !busy && availability.pickupEnabled;
+  const deliveryEnabled = !busy && availability.deliveryEnabled;
   const offered = duty?.status === 'assigned' && order?.assignmentStatus === 'offered' && order.status === 'ready';
   const toggleEnabled = duty != null && !busy && (onDuty ? canGoOffDuty(duty.status) || offered : canGoOnDuty(duty.status));
 
@@ -152,6 +160,7 @@ export default function CourierDashboard() {
         {order ? <View style={styles.orderCard}>
           <View style={styles.orderRow}><Text style={styles.orderTitle}>Order #{order.orderId}</Text><Text style={styles.orderStatus}>{order.status.replace('_', ' ')}</Text></View>
           {!!order.restaurantName && <Text style={styles.orderLine}>Pick up at {order.restaurantName}</Text>}
+          {pickupRestaurant && <View style={styles.queueRow}><View style={[styles.queueDot, { backgroundColor: queueBandColor[queueBand(pickupRestaurant.queueCount, pickupRestaurant.status)] }]} /><Text style={styles.orderMuted}>(Queue Length: {pickupRestaurant.queueCount})</Text></View>}
           <Text style={styles.orderMuted}>{order.restaurantAddress || 'Pickup address unavailable'}</Text>
           <Text style={styles.orderLine}>Deliver to {order.deliveryAddress || 'address unavailable'}</Text>
           <Text style={styles.orderMuted}>{order.assignmentStatus === 'offered' ? 'Waiting for your acceptance' : 'Offer accepted'}</Text>
@@ -166,53 +175,23 @@ export default function CourierDashboard() {
             onPress={() => void performOrderAction(declineOrder)} style={[styles.toggle, styles.toggleOff, busy && styles.toggleDisabled]}>
             <Text style={styles.toggleOffText}>Decline and go off duty</Text>
           </Pressable>}
-          {duty.status === 'assigned' && order.assignmentStatus === 'accepted' && order.status === 'ready' && (
-            <Pressable accessibilityRole="button" disabled={busy} accessibilityState={{ disabled: busy }}
-              onPress={() => void performOrderAction(markOrderPickedUp)} style={[styles.toggle, styles.toggleOn, busy && styles.toggleDisabled]}>
-              <Text style={styles.toggleText}>{updatingOrder ? 'Updating…' : 'Confirm pickup'}</Text>
+          <View style={styles.actionRow}>
+            <Pressable accessibilityRole="button" disabled={!pickupEnabled} accessibilityState={{ disabled: !pickupEnabled }}
+              accessibilityHint={availability.pickupHint}
+              onPress={() => void performOrderAction(markOrderPickedUp)} style={[styles.actionButton, !pickupEnabled && styles.toggleDisabled]}>
+              <Text style={styles.deliveredButtonText}>{updatingOrder ? 'Updating…' : 'Confirm pickup'}</Text>
             </Pressable>
-          )}
-          {duty.status === 'carrying' && order.status === 'picked_up' && (
-            <Pressable accessibilityRole="button" disabled={busy} accessibilityState={{ disabled: busy }}
-              onPress={() => void performOrderAction(markOrderDelivered)} style={[styles.toggle, styles.toggleOn, busy && styles.toggleDisabled]}>
-              <Text style={styles.toggleText}>{updatingOrder ? 'Updating…' : 'Mark delivered'}</Text>
+            <Pressable accessibilityRole="button" disabled={!deliveryEnabled} accessibilityState={{ disabled: !deliveryEnabled }}
+              accessibilityHint={availability.deliveryHint}
+              onPress={() => void performOrderAction(markOrderDelivered)} style={[styles.actionButton, !deliveryEnabled && styles.toggleDisabled]}>
+              <Text style={styles.deliveredButtonText}>{updatingOrder ? 'Updating…' : 'Confirm delivery'}</Text>
             </Pressable>
-          )}
+          </View>
+          {!pickupEnabled && !deliveryEnabled && <Text style={styles.hint}>{availability.pickupHint}</Text>}
         </View> : <Text style={styles.empty}>{onDuty ? 'No order yet. You will be assigned the next ready order nearby.' : 'Go on duty to start receiving orders.'}</Text>}
       </>}
       {!!message && <Text accessibilityRole="alert" style={styles.message}>{message}</Text>}
-      <View style={styles.map}><CityMap refreshKey={mapRefreshKey} /></View>
+      <View style={styles.map}><CityMap refreshKey={mapRefreshKey} onData={setMapData} /></View>
     </ScrollView>
   </SafeAreaView>;
 }
-
-const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: '#FFFAF9' },
-  header: { height: 70, width: '100%', maxWidth: 1000, alignSelf: 'center', paddingHorizontal: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', zIndex: 10 },
-  brand: { color: '#D42F50', fontSize: 25, fontWeight: '900' },
-  content: { padding: 24, width: '100%', maxWidth: 1000, alignSelf: 'center' },
-  title: { color: '#302629', fontFamily: 'LoveLight', fontSize: 42, fontWeight: '400' },
-  subtitle: { color: '#887B7E', marginTop: 6, marginBottom: 28 },
-  stateCard: { backgroundColor: '#F7F3F3', borderRadius: 18, padding: 24 },
-  stateCardOn: { backgroundColor: '#D42F50' },
-  stateEyebrow: { color: '#887B7E', fontSize: 11, fontWeight: '800', letterSpacing: 2 },
-  stateValue: { color: '#302629', fontSize: 23, fontWeight: '900', marginTop: 8 },
-  onText: { color: '#FFF' },
-  toggle: { borderRadius: 14, alignItems: 'center', padding: 16, marginTop: 14 },
-  toggleOn: { backgroundColor: '#D42F50' },
-  toggleOff: { borderWidth: 1, borderColor: '#D42F50', backgroundColor: '#FFF' },
-  toggleDisabled: { opacity: 0.4 },
-  toggleText: { color: '#FFF', fontWeight: '800' },
-  toggleOffText: { color: '#D42F50' },
-  hint: { color: '#887B7E', fontSize: 12, marginTop: 8, textAlign: 'center' },
-  sectionHeading: { color: '#302629', fontSize: 18, fontWeight: '800', marginTop: 32, marginBottom: 12 },
-  orderCard: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#EDE6E6', borderRadius: 18, padding: 20 },
-  orderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  orderTitle: { color: '#302629', fontSize: 18, fontWeight: '800' },
-  orderStatus: { color: '#D42F50', fontWeight: '800', textTransform: 'capitalize' },
-  orderLine: { color: '#302629', marginTop: 10 },
-  orderMuted: { color: '#887B7E', marginTop: 4 },
-  empty: { color: '#887B7E' },
-  message: { color: '#302629', marginTop: 16 },
-  map: { marginTop: 32 },
-});

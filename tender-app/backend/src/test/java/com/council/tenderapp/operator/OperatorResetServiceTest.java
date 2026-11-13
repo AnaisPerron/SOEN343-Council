@@ -95,6 +95,16 @@ class OperatorResetServiceTest {
     }
 
     @Test
+    void demoResetAliasCannotBypassTheDisabledResetGuard() {
+        var alias = new com.council.tenderapp.operator.services.DemoSeedResetService(
+                service("DELETE FROM reset_fixture;", false));
+        assertThatThrownBy(alias::reset).isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode().value()).isEqualTo(409));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM reset_fixture", Long.class)).isEqualTo(1);
+        assertThat(sessions.find(operatorToken)).isPresent();
+    }
+
+    @Test
     void emptySeedDoesNotChangeData() {
         assertThatThrownBy(() -> service("BEGIN;\nCOMMIT;", true).reset()).isInstanceOf(IllegalStateException.class);
         assertThat(jdbc.queryForObject("SELECT name FROM reset_fixture WHERE id = 1", String.class)).isEqualTo("before reset");

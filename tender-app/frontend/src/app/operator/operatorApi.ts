@@ -10,6 +10,7 @@ export interface ProfileUpdateRequest {
 export type ProfileResponse = RegisterResponse;
 
 export const operatorPaths = {
+  orderRefund: (orderId: number) => `/api/operator/orders/${orderId}/refund`,
   restaurantStatus: (restaurantId: number) => `/api/operator/restaurants/${restaurantId}/status`,
   profile: '/api/profile',
   reset: '/api/operator/reset',
@@ -31,3 +32,9 @@ export async function resetSystem(token: string): Promise<void> {
 export async function reassignOrder(orderId: number, expectedCourierId: number, token: string): Promise<void> {
   await requestJson<void>('POST', operatorPaths.reassignOrder(orderId), { expectedCourierId }, token);
 }
+
+export async function refundOrder(orderId: number, token: string): Promise<void> {
+  await requestJson<void>('POST', operatorPaths.orderRefund(orderId), undefined, token);
+}
+
+export const resetDemoSeed = resetSystem;
