@@ -116,13 +116,13 @@ export default function EditMenu() {
   if (!items) return <View style={local.center}>
     <Text style={local.emptyTitle}>We couldn&apos;t fetch a menu for your restaurant.</Text>
     <Text style={local.emptyDetail}>{message}</Text>
-    <Pressable accessibilityRole="button" onPress={() => router.back()}><Text style={local.link}>Back</Text></Pressable>
+    <Pressable accessibilityRole="button" onPress={() => router.canGoBack() ? router.back() : router.replace('/restaurant')}><Text style={local.link}>Back</Text></Pressable>
   </View>;
   const coverHeight = Math.max(290, Math.min(height * 0.39, 390));
   const categories = [...new Set(items.map((item) => item.category.trim() || 'Menu'))];
   const editing = expanded == null ? undefined : items[expanded];
   return <DetailPage title={user.name} cover={cover ? { uri: cover } : undefined} coverHeight={coverHeight} foreground={<><View style={[local.topBar, { top: insets.top + 12 }]}>
-    <Pressable style={local.topButton} accessibilityRole="button" onPress={() => router.back()}><Text style={local.topButtonText}>‹</Text></Pressable>
+    <Pressable style={local.topButton} accessibilityRole="button" onPress={() => router.canGoBack() ? router.back() : router.replace('/restaurant')}><Text style={local.topButtonText}>‹</Text></Pressable>
     <Pressable style={local.saveButton} accessibilityRole="button" accessibilityState={{ disabled: saving }} disabled={saving} onPress={save}><Text style={local.saveText}>{saving ? 'Saving…' : 'Save menu'}</Text></Pressable>
   </View><View style={{ position: 'absolute', top: coverHeight - 58, right: 18 }}><CoverImagePicker compact onSelect={selectCover} onError={setMessage} /></View></>}>
     <View style={customerStyles.info}>

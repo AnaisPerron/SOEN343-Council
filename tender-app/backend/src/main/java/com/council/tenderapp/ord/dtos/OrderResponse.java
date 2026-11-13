@@ -1,4 +1,4 @@
-package com.council.tenderapp.ord.dto.response;
+package com.council.tenderapp.ord.dtos;
 
 import java.math.BigDecimal;
 import java.util.Date;

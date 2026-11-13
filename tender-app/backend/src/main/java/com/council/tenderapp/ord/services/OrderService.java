@@ -15,8 +15,8 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.council.tenderapp.ord.dto.response.OrderLineResponse;
-import com.council.tenderapp.ord.dto.response.OrderResponse;
+import com.council.tenderapp.ord.dtos.OrderLineResponse;
+import com.council.tenderapp.ord.dtos.OrderResponse;
 import com.council.tenderapp.ord.entities.Order;
 import com.council.tenderapp.ord.entities.OrderStatus;
 import com.council.tenderapp.ord.repositories.OrderEventRepository;
@@ -121,6 +121,7 @@ public class OrderService {
     public OrderResponse startPreparation(Long restaurantId, Long orderId) {
         Order order = getOwnedOrderForUpdate(restaurantId, orderId);
         OrderStatus previousStatus = order.getStatus();
+        if (previousStatus == OrderStatus.ACCEPTED) requireOldestAccepted(restaurantId, orderId);
         transitionOrder(order, OrderStatus.PREPARING, "prepare");
         Order savedOrder = orderRepository.save(order);
         publishStatusChange(savedOrder, previousStatus, "started preparing", null);
@@ -216,6 +217,19 @@ public class OrderService {
             );
         }
         return order;
+    }
+
+    // Kitchens prepare accepted orders first-come, first-served by the time they were placed
+    private void requireOldestAccepted(Long restaurantId, Long orderId) {
+        List<Order> accepted = orderRepository.findByRestaurantIdAndStatusOrderByDateOrderedAscIdAsc(
+            restaurantId, OrderStatus.ACCEPTED
+        );
+        if (!accepted.isEmpty() && !Objects.equals(accepted.get(0).getId(), orderId)) {
+            throw new ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "Start preparing order #" + accepted.get(0).getId() + " first; orders are prepared in the order they were placed"
+            );
+        }
     }
 
     private ResponseStatusException invalidTransition(OrderStatus currentStatus, String action) {

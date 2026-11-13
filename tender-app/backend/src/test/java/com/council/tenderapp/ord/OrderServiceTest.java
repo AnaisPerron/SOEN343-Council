@@ -19,7 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.council.tenderapp.ord.dto.response.OrderResponse;
+import com.council.tenderapp.ord.dtos.OrderResponse;
 import com.council.tenderapp.ord.entities.MenuItem;
 import com.council.tenderapp.ord.entities.Order;
 import com.council.tenderapp.ord.entities.OrderLine;
@@ -213,6 +213,38 @@ class OrderServiceTest {
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         assertThat(orderService.startPreparation(42L, 7L).getStatus()).isEqualTo(OrderStatus.PREPARING);
+    }
+
+    @Test
+    void refusesToPrepareANewerOrderWhileAnOlderAcceptedOrderWaits() {
+        Order older = order(42L, OrderStatus.ACCEPTED, new Date(1000L));
+        older.setId(20L);
+        Order newer = order(42L, OrderStatus.ACCEPTED, new Date(2000L));
+        newer.setId(21L);
+        when(orderRepository.findByIdForUpdate(21L)).thenReturn(Optional.of(newer));
+        when(orderRepository.findByRestaurantIdAndStatusOrderByDateOrderedAscIdAsc(42L, OrderStatus.ACCEPTED))
+            .thenReturn(List.of(older, newer));
+
+        assertThatThrownBy(() -> orderService.startPreparation(42L, 21L))
+            .isInstanceOf(ResponseStatusException.class)
+            .hasMessageContaining("Start preparing order #20 first");
+        assertThat(newer.getStatus()).isEqualTo(OrderStatus.ACCEPTED);
+        verify(orderRepository, never()).save(any());
+        verify(orderStatusPublisher, never()).publish(any(), any(), any(), any());
+    }
+
+    @Test
+    void preparesTheOldestAcceptedOrder() {
+        Order older = order(42L, OrderStatus.ACCEPTED, new Date(1000L));
+        older.setId(20L);
+        Order newer = order(42L, OrderStatus.ACCEPTED, new Date(2000L));
+        newer.setId(21L);
+        when(orderRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(older));
+        when(orderRepository.findByRestaurantIdAndStatusOrderByDateOrderedAscIdAsc(42L, OrderStatus.ACCEPTED))
+            .thenReturn(List.of(older, newer));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        assertThat(orderService.startPreparation(42L, 20L).getStatus()).isEqualTo(OrderStatus.PREPARING);
     }
 
     @Test
