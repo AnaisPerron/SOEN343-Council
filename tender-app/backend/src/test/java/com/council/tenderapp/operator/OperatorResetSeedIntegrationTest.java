@@ -100,6 +100,33 @@ class OperatorResetSeedIntegrationTest {
     }
 
     @Test
+    void staleAssignmentRepairPreservesActiveDeliveriesAndAssignmentHistory() throws Exception {
+        service(new ClassPathResource("demo/seed.sql")).reset();
+        jdbc.update("INSERT INTO assignments (order_id, courier_id) VALUES (7, 7)");
+        jdbc.update("UPDATE courier_profiles SET status = 'assigned' WHERE user_id IN (6, 7)");
+        jdbc.update("UPDATE orders SET courier_id = 6 WHERE id = 5");
+        jdbc.update("INSERT INTO assignments (order_id, courier_id, status, accepted_at) VALUES (5, 6, 'accepted', CURRENT_TIMESTAMP)");
+        String repair = Files.readString(Path.of("docs/migrations/2026-11-13-close-stale-assignments.sql"));
+
+        jdbc.execute(repair);
+        jdbc.execute(repair);
+
+        assertThat(jdbc.queryForObject("SELECT status FROM assignments WHERE order_id = 7", String.class)).isEqualTo("ended");
+        assertThat(jdbc.queryForObject("SELECT status FROM courier_profiles WHERE user_id = 7", String.class)).isEqualTo("idle");
+        assertThat(jdbc.queryForObject("SELECT status FROM assignments WHERE order_id = 5", String.class)).isEqualTo("accepted");
+        assertThat(jdbc.queryForObject("SELECT status FROM courier_profiles WHERE user_id = 6", String.class)).isEqualTo("assigned");
+        assertThat(jdbc.queryForObject("SELECT courier_id FROM orders WHERE id = 5", Long.class)).isEqualTo(6L);
+
+        jdbc.update("INSERT INTO assignments (order_id, courier_id, status, accepted_at) VALUES (7, 7, 'accepted', CURRENT_TIMESTAMP)");
+        jdbc.update("UPDATE courier_profiles SET status = 'carrying' WHERE user_id = 7");
+        jdbc.execute(repair);
+
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM assignments WHERE order_id = 7 AND status = 'ended'", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM assignments WHERE order_id = 7 AND status = 'completed'", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT status FROM courier_profiles WHERE user_id = 7", String.class)).isEqualTo("idle");
+    }
+
+    @Test
     void failureAfterRealTruncateRollsBackRowsAndKeepsSessionsValid() throws Exception {
         var realSeed = new ClassPathResource("demo/seed.sql");
         service(realSeed).reset();

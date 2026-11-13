@@ -263,6 +263,14 @@ tests that intentionally exercise the mock payment gateway.
 - Tests verify the actual seed against an isolated PostgreSQL schema, including
   repeated resets and rollback on failure.
 
+## Repair existing stale assignments
+
+Apply [docs/migrations/2026-11-13-close-stale-assignments.sql](docs/migrations/2026-11-13-close-stale-assignments.sql)
+after deploying the delivery/refund cleanup fix. It closes active assignments
+for finished orders and releases affected couriers only when they have no
+other active assignment or delivery. It preserves order and assignment history,
+and can be run again safely. No database reset is needed.
+
 ## Courier offers
 
 Apply [docs/assignments.sql](docs/assignments.sql) before using courier offers.
