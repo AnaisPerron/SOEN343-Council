@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { AdvancedMarker, APIProvider, Map, useMap } from '@vis.gl/react-google-maps';
-import { markerStateLabel, type MapMarker } from '@/lib/cityMap';
+import { MONTREAL_MAP_BOUNDS, markerStateLabel, type MapMarker } from '@/lib/cityMap';
 import { googleMapsApiKey as apiKey } from '@/lib/googleMaps';
 import type { MapBounds } from '@/types/dash';
 import { MARKER_SIZE, stateColors } from './CityMap.styles';
@@ -14,7 +14,6 @@ export const googleMapsAvailable = apiKey !== '';
 
 export interface GoogleCityMapProps {
   bounds: MapBounds;
-  restrictBounds?: boolean;
   markers: MapMarker[];
   activeKey: string | null;
   highlightedKeys: string[];
@@ -34,7 +33,7 @@ const toLiteral = (bounds: MapBounds) => ({
 });
 
 /** City map (DASH) on Google Maps: same markers, colours and tooltips as the built-in map. */
-export default function GoogleCityMap({ bounds, restrictBounds = false, markers, activeKey, highlightedKeys, fitKey, onHover, onSelect, onFail }: GoogleCityMapProps) {
+export default function GoogleCityMap({ bounds, markers, activeKey, highlightedKeys, fitKey, onHover, onSelect, onFail }: GoogleCityMapProps) {
   useEffect(() => {
     // Google calls this global when the key is invalid or not allowed for this site
     const w = window as typeof window & { gm_authFailure?: () => void };
@@ -47,7 +46,7 @@ export default function GoogleCityMap({ bounds, restrictBounds = false, markers,
       <Map
         mapId={mapId}
         defaultBounds={{ ...toLiteral(bounds), padding: PADDING }}
-        restriction={restrictBounds ? { latLngBounds: toLiteral(bounds), strictBounds: true } : undefined}
+        restriction={{ latLngBounds: toLiteral(MONTREAL_MAP_BOUNDS), strictBounds: true }}
         gestureHandling="cooperative"
         clickableIcons={false}
         disableDefaultUI

@@ -214,7 +214,6 @@ export default function CityMap({ refreshKey = 0, boundsOverride, fill = false, 
             {useGoogle && data ? (
               <GoogleCityMap
                 bounds={bounds!}
-                restrictBounds={boundsOverride !== undefined}
                 markers={markers}
                 activeKey={active?.key ?? null}
                 highlightedKeys={highlightedKeys}

@@ -147,13 +147,14 @@ export default function CustomerHome() {
         ) : !mapOnly && <ScrollView
           ref={scrollRef}
           style={split && styles.sidePanel}
-          stickyHeaderIndices={[isMobileSearch ? 1 : 2]}
+          stickyHeaderIndices={[1]}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={[
             styles.content,
             { paddingHorizontal: compact ? 20 : 48 },
           ]}
         >
+          <View>
           <View style={[styles.topbar, compact && styles.mobileTopbar]}>
             {/* TODO: Restore the delivery location control when location selection is implemented.
             <TouchableOpacity
@@ -203,6 +204,7 @@ export default function CustomerHome() {
             </TouchableOpacity>
             </View>
           )}
+          </View>
 
           {/* Keep the search background opaque while rows scroll underneath it. */}
           <View style={styles.stickySearch}>
