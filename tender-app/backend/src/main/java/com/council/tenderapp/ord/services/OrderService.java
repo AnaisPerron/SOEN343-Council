@@ -1,5 +1,6 @@
 package com.council.tenderapp.ord.services;
 
+import java.util.Date;
 import java.time.Instant;
 import java.util.Locale;
 import java.util.List;
@@ -151,7 +152,18 @@ public class OrderService {
 
         OrderStatus previousStatus = order.getStatus();
         transitionOrder(order, OrderStatus.PICKED_UP, "mark picked up");
+        
+        Instant now=Instant.now();
+        order.setPickupDate(Date.from(now));
         Order savedOrder = orderRepository.save(order);
+        
+        orderEventRepository.save(new OrderEvent(
+        savedOrder.getId(),
+        previousStatus.name().toLowerCase(Locale.ROOT),
+        OrderStatus.PICKED_UP.name().toLowerCase(Locale.ROOT),
+        "order_picked_up",
+        now));
+        
         publishStatusChange(savedOrder, previousStatus, "marked picked up by courier", null);
         return toResponse(savedOrder);
     }

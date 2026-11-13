@@ -11,7 +11,10 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.council.tenderapp.dlv.dtos.AssignedOrderDto;
+import com.council.tenderapp.dlv.dtos.CourierDutyResponseDto;
+import com.council.tenderapp.dlv.dtos.PickupConfirmationDto;
 import com.council.tenderapp.dlv.services.CourierDeliveryService;
+import com.council.tenderapp.dlv.services.CourierDutyService;
 
 
 @RestController
@@ -20,9 +23,11 @@ import com.council.tenderapp.dlv.services.CourierDeliveryService;
 public class CourierOrderController {
 
     private final CourierDeliveryService courierDeliveryService;
+    private final CourierDutyService courierDutyService;
 
-    public CourierOrderController(CourierDeliveryService courierDeliveryService) {
+    public CourierOrderController(CourierDeliveryService courierDeliveryService,CourierDutyService courierDutyService) {
         this.courierDeliveryService = courierDeliveryService;
+        this.courierDutyService=courierDutyService;
     }
 
     private Long getCourierId(Authentication authentication) {
@@ -33,8 +38,12 @@ public class CourierOrderController {
     }
 
     @PostMapping("/{orderId}/pickup")
-    public ResponseEntity<AssignedOrderDto> confirmPickup(
+    public ResponseEntity<PickupConfirmationDto> confirmPickup(
             Authentication authentication, @PathVariable Long orderId) {
-        return ResponseEntity.ok(courierDeliveryService.confirmPickup(getCourierId(authentication), orderId));
+        Long courierId = getCourierId(authentication);
+        AssignedOrderDto order = courierDeliveryService.confirmPickup(courierId, orderId);
+        CourierDutyResponseDto duty = courierDutyService.getDutyStatus(courierId);
+
+        return ResponseEntity.ok(new PickupConfirmationDto(order.orderId(), order.status(), duty.status()));
     }
-}
+}    
