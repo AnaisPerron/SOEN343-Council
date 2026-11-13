@@ -10,7 +10,7 @@ import com.council.tenderapp.prc.entities.LedgerEntry;
 import com.council.tenderapp.prc.repositories.LedgerEntryRepository;
 
 @Service
-public class LedgerService 
+public class LedgerService
 {
     private final LedgerEntryRepository ledgerEntryRepository;
     private final BillService billService;

@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 @RestController
 @RequestMapping("/api/order-summary/")
-public class OrderSummaryController 
+public class OrderSummaryController
 {
     private final SummaryService summaryService;
     private final OrderBelongingService orderService;
@@ -29,7 +29,7 @@ public class OrderSummaryController
 
     @GetMapping("customer/{id}")
     @PreAuthorize("hasRole('CUSTOMER')")
-    public SummaryDto getCustomerOrderSummary(@PathVariable Long id, Authentication auth) 
+    public SummaryDto getCustomerOrderSummary(@PathVariable Long id, Authentication auth)
     {
         Session session = (Session) auth.getDetails();
         Long customerId = session.accountId();
@@ -42,7 +42,7 @@ public class OrderSummaryController
 
     @GetMapping("operator/{id}")
     @PreAuthorize("hasRole('OPERATOR')")
-    public SummaryDto getOperatorOrderSummary(@PathVariable Long id) 
+    public SummaryDto getOperatorOrderSummary(@PathVariable Long id)
     {
         SummaryDto summaryDto = summaryService.generateOrderSummary(id);
         return summaryDto;
@@ -50,7 +50,7 @@ public class OrderSummaryController
 
     @GetMapping("courier/{id}")
     @PreAuthorize("hasRole('COURIER')")
-    public SummaryDto getCourierOrderSummary(@PathVariable Long id, Authentication auth) 
+    public SummaryDto getCourierOrderSummary(@PathVariable Long id, Authentication auth)
     {
         Session session = (Session) auth.getDetails();
         Long courierId = session.accountId();
@@ -63,7 +63,7 @@ public class OrderSummaryController
 
     @GetMapping("restaurant/{id}")
     @PreAuthorize("hasRole('STAFF')")
-    public SummaryDto getRestaurantOrderSummary(@PathVariable Long id, Authentication auth) 
+    public SummaryDto getRestaurantOrderSummary(@PathVariable Long id, Authentication auth)
     {
         Session session = (Session) auth.getDetails();
         Long restaurantId = session.restaurantId();

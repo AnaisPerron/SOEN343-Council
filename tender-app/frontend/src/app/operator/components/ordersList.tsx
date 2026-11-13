@@ -1,11 +1,16 @@
 import { Text, TextStyle, TouchableOpacity, View, ViewStyle } from 'react-native';
 import type { OperatorOrder as Order } from '../../../types/operator';
 import { styles } from './orders.styles';
+import { useState } from 'react';
+import { canRefundOrder } from '../operatorLogic';
+
 
 interface OrderListProps {
   orders: Order[];
   onRefund?: (orderId: number) => void;
+  onReassign?: (order: { id: number; courierId: number }) => void;
   changingId?: number | null;
+  disabled?: boolean;
 }
 
 const CHIP_STYLES: Record<Order['status'], ViewStyle> = {
@@ -44,10 +49,12 @@ const STATUS_LABEL: Record<Order['status'], string> = {
   refunded: 'Refunded',
 };
 
-export default function OrderList({ orders, onRefund, changingId }: OrderListProps) {
-  const activeCount = orders.filter((o) => 
+export default function OrderList({ orders, onRefund, onReassign, changingId, disabled }: OrderListProps) {
+  const activeCount = orders.filter((o) =>
     ['placed', 'accepted', 'preparing', 'ready', 'picked_up'].includes(o.status)
   ).length;
+  const [confirmRefundId, setConfirmRefundId] = useState<number | null>(null);
+  const locked = !!disabled || changingId != null;
 
   return (
     <View style={styles.wrapper}>
@@ -56,7 +63,13 @@ export default function OrderList({ orders, onRefund, changingId }: OrderListPro
         {activeCount} active of {orders.length} loaded orders
       </Text>
 
-      {orders.map(({ id, customerId, restaurantId, courierId, status, dateOrdered, rejectionReason, totalPrice }) => (
+      {orders.map(({ id, customerId, restaurantId, courierId, courierOnline, status, dateOrdered, rejectionReason, totalPrice }) => {
+        const showRefund = !!onRefund && canRefundOrder({ status });
+        const showReassign = !!onReassign && status === 'ready' && courierId !== null;
+        const isChanging = changingId === id;
+        const confirming = confirmRefundId === id;
+
+      return(
         <View key={id} style={styles.card}>
           <View style={styles.cardTop}>
             <Text style={styles.name}>Order #{id}</Text>
@@ -74,6 +87,7 @@ export default function OrderList({ orders, onRefund, changingId }: OrderListPro
 
           <Text style={styles.detail}>
             Courier ID: {courierId ?? 'Unassigned'}
+            {courierId != null && courierOnline === false ? ' (offline)' : ''}
           </Text>
 
           <Text style={styles.detail}>
@@ -88,15 +102,53 @@ export default function OrderList({ orders, onRefund, changingId }: OrderListPro
           {rejectionReason && (
             <Text style={styles.rejectionText}>Reason: {rejectionReason}</Text>
           )}
-          {onRefund && status === 'delivered' && (
-            <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Refund order ${id} as Tender Cash`}
-              accessibilityState={{ disabled: changingId != null, busy: changingId === id }}
-              disabled={changingId != null} onPress={() => onRefund(id)} style={styles.refundButton}>
-              <Text style={styles.refundButtonText}>{changingId === id ? 'Refunding…' : 'Refund as Tender Cash'}</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      ))}
+           {(showRefund || showReassign) && (
+              <View style={styles.actionsRow}>
+                {showRefund && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (!confirming) { setConfirmRefundId(id); return; }
+                      setConfirmRefundId(null);
+                      onRefund?.(id);
+                    }}
+                    disabled={locked}
+                    accessibilityRole="button"
+                    accessibilityState={{ disabled: locked }}
+                    style={[styles.actionButton, styles.actionButtonDanger, locked && styles.actionButtonDisabled]}
+                  >
+                    <Text style={[styles.actionButtonText, styles.actionButtonTextDanger]}>
+                      {isChanging ? 'Updating…' : confirming ? 'Confirm refund?' : 'Refund'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                {showReassign && (
+                  <TouchableOpacity
+                    onPress={() => { if (courierId !== null) onReassign?.({ id, courierId }); }}
+                    disabled={locked}
+                    accessibilityRole="button"
+                    accessibilityState={{ disabled: locked }}
+                    style={[styles.actionButton, locked && styles.actionButtonDisabled]}
+                  >
+                    <Text style={styles.actionButtonText}>
+                      {isChanging ? 'Updating…' : 'Reassign courier'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {confirming && (
+                  <TouchableOpacity
+                    onPress={() => setConfirmRefundId(null)}
+                    accessibilityRole="button"
+                    style={styles.actionButton}
+                  >
+                    <Text style={styles.actionButtonText}>Back</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+          </View>
+        );
+      })}
     </View>
   );
 }

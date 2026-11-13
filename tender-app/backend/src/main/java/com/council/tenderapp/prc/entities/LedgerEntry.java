@@ -10,11 +10,11 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
-@Entity 
+@Entity
 @Table(name = "ledger_entries", schema = "public")
-public class LedgerEntry 
+public class LedgerEntry
 {
-    @Id 
+    @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
@@ -83,7 +83,7 @@ public class LedgerEntry
         this.timestamp = timestamp;
     }
 
-    
+
     public Double getTotalCharge() {
         return totalCharge;
     }
@@ -100,5 +100,5 @@ public class LedgerEntry
         this.finalOrderStatus = finalOrderStatus;
     }
 
-    
+
 }

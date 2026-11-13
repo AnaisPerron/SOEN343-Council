@@ -8,6 +8,7 @@ export interface GoogleCityMapProps {
   bounds: MapBounds;
   markers: MapMarker[];
   activeKey: string | null;
+  highlightedKeys: string[];
   fitKey: number;
   onHover: (key: string | null) => void;
   onSelect: (key: string) => void;

@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { afterEach, describe, it, mock } from 'node:test';
 
-import { changeRestaurantStatus, updateOperatorProfile } from '../../app/operator/operatorApi.ts';
+import { changeRestaurantStatus, reassignOrder, resetSystem, updateOperatorProfile } from '../../app/operator/operatorApi.ts';
 import { API_URL, ApiError } from '../../api/client.ts';
 
 function mockFetch(status: number, body: unknown) {
@@ -57,5 +57,51 @@ describe('operator profile api', () => {
     mockFetch(400, { message: 'Validation failed', fieldErrors: { phone: 'must be a valid phone number' } });
     await assert.rejects(updateOperatorProfile({ name: 'Olivia', phone: 'x' }, 'tok'),
       (e: ApiError) => e.status === 400 && e.message === 'must be a valid phone number');
+  });
+});
+
+describe('operator reset api', () => {
+  afterEach(() => mock.restoreAll());
+
+  it('sends explicit confirmation and the operator token and accepts an empty success response', async () => {
+    const fetchMock = mock.method(globalThis, 'fetch', async () => new Response(null, { status: 204 }));
+    await resetSystem('operator-token');
+    const [url, init] = fetchMock.mock.calls[0].arguments as [string, RequestInit];
+    assert.equal(url, `${API_URL}/api/operator/reset`);
+    assert.equal(init.method, 'POST');
+    assert.equal((init.headers as Record<string, string>).Authorization, 'Bearer operator-token');
+    assert.deepEqual(JSON.parse(init.body as string), { confirmation: 'RESET' });
+  });
+
+  it('preserves disabled reset and authorization errors for the UI', async () => {
+    for (const status of [401, 403, 409, 500]) {
+      const fetchMock = mockFetch(status, { message: status === 409 ? 'System reset is disabled' : 'Reset failed' });
+      await assert.rejects(resetSystem('token'), (error: ApiError) => error.status === status);
+      fetchMock.mock.restore();
+    }
+  });
+});
+
+
+describe('operator reassignment api', () => {
+  afterEach(() => mock.restoreAll());
+
+  it('sends the expected courier to protect a replacement assignment from stale retries', async () => {
+    const fetchMock = mock.method(globalThis, 'fetch', async () => new Response(null, { status: 204 }));
+    await reassignOrder(42, 6, 'operator-token');
+    const [url, init] = fetchMock.mock.calls[0].arguments as [string, RequestInit];
+    assert.equal(url, `${API_URL}/api/operator/orders/42/reassign`);
+    assert.equal(init.method, 'POST');
+    assert.equal((init.headers as Record<string, string>).Authorization, 'Bearer operator-token');
+    assert.deepEqual(JSON.parse(init.body as string), { expectedCourierId: 6 });
+  });
+
+  it('preserves authorization, missing-order and assignment-conflict errors', async () => {
+    for (const status of [401, 403, 404, 409, 500]) {
+      const fetchMock = mockFetch(status, { message: 'Assignment changed' });
+      await assert.rejects(reassignOrder(42, 6, 'operator-token'),
+        (error: ApiError) => error.status === status && error.message === 'Assignment changed');
+      fetchMock.mock.restore();
+    }
   });
 });

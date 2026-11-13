@@ -9,8 +9,8 @@ import com.council.tenderapp.ord.entities.Order;
 import com.council.tenderapp.prc.entities.Bill;
 import com.council.tenderapp.prc.repositories.BillRepository;
 
-@Service 
-public class BillService 
+@Service
+public class BillService
 {
     private final BillRepository billRepository;
 
@@ -18,7 +18,7 @@ public class BillService
         this.billRepository = billRepository;
     }
 
-    public Double calculateTotalCharge(Long orderId) 
+    public Double calculateTotalCharge(Long orderId)
     {
         Bill bill = billRepository.findByOrderId(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("No bill found for order ID: " + orderId));
@@ -27,11 +27,11 @@ public class BillService
                 .add(BigDecimal.valueOf(bill.getServiceFee()))
                 .add(BigDecimal.valueOf(bill.getDeliveryFee()))
                 .add(BigDecimal.valueOf(bill.getSmallOrderFee())).doubleValue();
-        
+
         return totalAmount;
     }
 
-    public Long getBillIdByOrderId(Long orderId) 
+    public Long getBillIdByOrderId(Long orderId)
     {
         Bill bill = billRepository.findByOrderId(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("No bill found for order ID: " + orderId));

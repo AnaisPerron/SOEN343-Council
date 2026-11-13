@@ -8,8 +8,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 
-@Entity 
-public class Bill 
+@Entity
+public class Bill
 {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -115,5 +115,5 @@ public class Bill
         this.smallOrderFee = smallOrderFee;
     }
 
-    
+
 }
