@@ -104,7 +104,7 @@ class OperatorDashboardRepositoryTest {
         var result = repository.customers(0, 50);
         assertThat(result.items()).extracting(CustomerSummary::id).containsExactly(1L, 2L);
         assertThat(result.total()).isEqualTo(2);
-        assertThat(result.items().get(0).tdCashBalance()).isEqualByComparingTo("255");
+        assertThat(result.items().get(0).tdCashBalance()).isEqualByComparingTo("25.50");
         assertThat(result.items().get(1).tdCashBalance()).isNull();
         assertThat(result.items().get(1).latitude()).isNull();
         assertThat(result.items().get(1).phone()).isNull();
