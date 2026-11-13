@@ -10,9 +10,9 @@ import type { MapCourier, MapData } from '../../types/dash.ts';
 const data: MapData = {
   bounds: { minLatitude: 45.501, minLongitude: -73.6132, maxLatitude: 45.5352, maxLongitude: -73.561 },
   restaurants: [
-    { id: 1, name: 'Maple & Main', status: 'open', latitude: 45.51, longitude: -73.57 },
-    { id: 4, name: 'Little Italy Pizza', status: 'open', latitude: 45.5352, longitude: -73.6132 },
-    { id: 3, name: 'Cafe Nord', status: 'closed', latitude: 45.501, longitude: -73.584 },
+    { id: 1, name: 'Maple & Main', status: 'open', latitude: 45.51, longitude: -73.57, queueCount: 4 },
+    { id: 4, name: 'Little Italy Pizza', status: 'open', latitude: 45.5352, longitude: -73.6132, queueCount: 6 },
+    { id: 3, name: 'Cafe Nord', status: 'closed', latitude: 45.501, longitude: -73.584, queueCount: 0 },
   ],
   couriers: [{ courierId: 6, name: 'Sam Courier', status: 'idle', latitude: 45.509, longitude: -73.561 }],
   customers: [],
@@ -76,6 +76,12 @@ describe('city map markers', () => {
       ['courier', 'Sam Courier', 'idle'],
     ]);
     assert.equal(new Set(markers.map((m) => m.key)).size, markers.length);
+  });
+
+  it('colours restaurant markers by the R-DASH-03 queue bands', () => {
+    assert.deepEqual(toMarkers(data).filter((m) => m.kind === 'restaurant').map((m) => m.color), ['#f59e0b', '#dc2626', '#16a34a']);
+    const paused = { ...data, restaurants: [{ ...data.restaurants[0], status: 'paused' as const, queueCount: 0 }] };
+    assert.equal(toMarkers(paused)[0].color, '#dc2626');
   });
 
   it('shows nothing when no location is known', () => {

@@ -5,7 +5,7 @@ import type { AuthUser } from '../../types/auth';
 import type { CustomerProfile, User } from '../../types/users';
 import type { OperatorOrder } from '../../types/operator';
 
-
+export { queueBand } from '../../lib/queueBands.ts';
 
 export const ACTIVE_ORDER_STATUSES: Order['status'][] = [
   'placed',

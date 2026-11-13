@@ -13,6 +13,7 @@ export interface CustomerOrderItem {
 export interface CustomerOrder {
   id: string;
   restaurantId: number;
+  courierId?: number | null;
   // Cart lines exist only for orders placed in this session; history from the backend uses items instead.
   lines: RestaurantCartGroup['lines'];
   items?: CustomerOrderItem[];
@@ -38,6 +39,7 @@ export function createPlacedOrders(groups: RestaurantCartGroup[], timestamp: str
 export interface OrderHistoryEntry {
   orderId: number;
   restaurantId: number;
+  courierId?: number | null;
   restaurantName: string;
   status: string;
   total: number;
@@ -50,6 +52,7 @@ export function fromOrderHistory(entry: OrderHistoryEntry): CustomerOrder {
   return {
     id: String(entry.orderId),
     restaurantId: entry.restaurantId,
+    courierId: entry.courierId,
     restaurantName: entry.restaurantName,
     lines: [],
     // BigDecimal arrives as a JSON number, but coerce in case a proxy stringifies it.

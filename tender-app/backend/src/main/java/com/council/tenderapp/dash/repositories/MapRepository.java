@@ -63,6 +63,10 @@ public class MapRepository {
         return customers("p.user_id = ?", customerId);
     }
 
+    public List<MapCustomerDto> customers() {
+        return customers("TRUE");
+    }
+
     /** Where the courier delivers their current order. */
     public List<MapCustomerDto> customersOfCourierOrders(long courierId) {
         return customers("p.user_id IN (SELECT o.customer_id FROM orders o WHERE " + ACTIVE_ORDER + " AND o.courier_id = ?)", courierId);
@@ -70,12 +74,14 @@ public class MapRepository {
 
     private List<MapRestaurantDto> restaurants(String filter, Object... args) {
         return jdbc.query("""
-                SELECT r.id, r.name, r.status, r.latitude, r.longitude
+                SELECT r.id, r.name, r.status, r.latitude, r.longitude,
+                    (SELECT COUNT(*) FROM orders o WHERE o.restaurant_id = r.id
+                        AND LOWER(o.status) IN ('placed', 'accepted', 'preparing')) AS queue_count
                 FROM restaurants r
                 WHERE r.latitude IS NOT NULL AND r.longitude IS NOT NULL AND (%s)
                 ORDER BY r.id
                 """.formatted(filter), (rs, row) -> new MapRestaurantDto(rs.getLong("id"), rs.getString("name"),
-                        lower(rs.getString("status")), rs.getDouble("latitude"), rs.getDouble("longitude")), args);
+                        lower(rs.getString("status")), rs.getDouble("latitude"), rs.getDouble("longitude"), rs.getLong("queue_count")), args);
     }
 
     private List<MapCourierDto> couriers(String filter, Object... args) {

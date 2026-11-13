@@ -65,7 +65,16 @@ needs the Maps JavaScript API enabled in Google Cloud, and billing on the
 project. Restart Expo after changing `.env`. Without a key, on a phone, or if
 Google rejects the key, the map falls back to a built-in OpenStreetMap street
 map. Either way it is fitted to the dataset bounds and shows restaurant and
-on-duty courier markers.
+on-duty courier markers. Restaurant marker colours follow R-DASH-03: green
+for short queues, amber for three to five orders, and red for six or more or a
+paused restaurant. Selecting an operator's restaurant marker opens its live
+preparation queue and pause/reopen action.
+
+To show the operator's **Reset demo seed** action, set
+`EXPO_PUBLIC_DEMO_SEED_RESET_ENABLED=true` and run the backend with its `demo`
+profile against a dedicated demo database. The reset endpoint is registered
+only under that backend profile. Resetting clears demo activity and sessions;
+the operator must sign in again after the reset.
 
 ## Restaurant demo accounts
 

@@ -6,7 +6,7 @@ import { useCart } from '@/context/CartContext';
 import { useOrders, type OrderFailure } from '@/context/OrdersContext';
 import { useCatalog } from '@/context/CatalogContext';
 import { groupCartLinesByRestaurant } from '../cart/cartStore';
-import { getCartOrderRestriction, type RestaurantOrderRestriction } from '../services/restaurantOrderRules';
+import { getCartOrderRestriction, getPlaceOrderAvailability, type RestaurantOrderRestriction } from '../services/restaurantOrderRules';
 import { styles } from './confirm-order.styles';
 
 type OrderPhase = 'review' | 'submitting' | 'success';
@@ -27,6 +27,9 @@ export default function ConfirmOrderScreen() {
   const sending = useRef(false);
   const groups = groupCartLinesByRestaurant(lines);
   const total = groups.reduce((sum, group) => sum + group.total, 0);
+  const currentRestriction = getCartOrderRestriction(groups.map((group) => group.restaurantId), restaurants);
+  const placeOrderAvailability = getPlaceOrderAvailability(currentRestriction, lines.map((line) => findItem(line.itemId)?.available), phase === 'submitting');
+  const { disabled: placeOrderDisabled, hint: placeOrderHint } = placeOrderAvailability;
   const placedOrders = orders.filter((order) => placedIds.includes(order.id));
 
   useEffect(() => () => {
@@ -159,9 +162,12 @@ export default function ConfirmOrderScreen() {
         {phase === 'success' ? (
           <TouchableOpacity style={styles.sendButton} accessibilityRole="button" onPress={() => router.replace('/customer/home/home')}><Text style={styles.sendButtonText}>Browse restaurants</Text></TouchableOpacity>
         ) : (
-          <TouchableOpacity style={[styles.sendButton, (phase === 'submitting' || lines.length === 0) && styles.sendButtonDisabled]} accessibilityRole="button" accessibilityLabel="Send orders" accessibilityState={{ disabled: phase === 'submitting' || lines.length === 0, busy: phase === 'submitting' }} disabled={phase === 'submitting' || lines.length === 0} onPress={sendOrders}>
+          <>
+          <TouchableOpacity style={[styles.sendButton, placeOrderDisabled && styles.sendButtonDisabled]} accessibilityRole="button" accessibilityLabel="Send orders" accessibilityHint={placeOrderHint} accessibilityState={{ disabled: placeOrderDisabled, busy: phase === 'submitting' }} disabled={placeOrderDisabled} onPress={sendOrders}>
             {phase === 'submitting' ? <><ActivityIndicator color="#FFFFFF" size="small" /><Text style={styles.sendButtonText}>Placing orders...</Text></> : <Text style={styles.sendButtonText}>Send orders</Text>}
           </TouchableOpacity>
+          {placeOrderHint && <Text style={styles.restrictionText}>{placeOrderHint}</Text>}
+          </>
         )}
       </View>
     </SafeAreaView>
