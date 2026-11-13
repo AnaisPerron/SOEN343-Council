@@ -231,6 +231,20 @@ constraint to include `refunded`; it does not perform refunds or reseed data.
 The demo seed retains open, paused, and closed restaurant scenarios, so its
 restaurant statuses and generated IDs can differ from the frontend mock state.
 
+### Tender Cash
+
+Tender Cash uses 10 whole tenders per CAD dollar. The existing
+`customer_profiles.td_cash_balance` is the starting CAD balance; order credits
+and debits are recorded in `tender_cash_transactions`. Apply
+`docs/migrations/2026-11-11-tender-cash.sql` to an existing database before
+starting the updated backend. A purchase earns 10 tenders per CAD dollar paid
+after redemption, with fractional tenders dropped. A refund, rejection, or cancellation reverses those earned
+tenders, returns any tenders spent, and credits the cash portion as Tender Cash,
+rounded up to the next tender. These are store credits; no PayPal refund is sent.
+The direct order endpoint accepts a fully Tender Cash funded order; a remaining
+cash amount must go through PayPal. Set `app.payments.allow-mock=true` only for
+tests that intentionally exercise the mock payment gateway.
+
 ## Operator actions
 
 - `POST /api/operator/orders/{orderId}/reassign`: operator-only reassignment.

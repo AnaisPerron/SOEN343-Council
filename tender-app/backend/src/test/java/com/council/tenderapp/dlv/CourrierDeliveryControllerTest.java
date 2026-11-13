@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Propagation;
@@ -27,7 +28,6 @@ import com.council.tenderapp.ord.entities.Restaurant;
 import com.council.tenderapp.ord.repositories.OrderEventRepository;
 import com.council.tenderapp.ord.repositories.OrderRepository;
 import com.council.tenderapp.ord.repositories.RestaurantRepository;
-import com.council.tenderapp.ord.services.OrderService;
 import com.council.tenderapp.reg.dtos.LoginRequest;
 import com.council.tenderapp.reg.dtos.RegisterRequest;
 import com.council.tenderapp.reg.entities.CourierProfile;
@@ -46,11 +46,11 @@ class CourierDeliveryControllerTest {
     @Autowired private RegistrationService registrationService;
     @Autowired private LoginService loginService;
     @Autowired private CourierDutyService courierDutyService;
-    @Autowired private OrderService orderService;
     @Autowired private CourierProfileRepository couriers;
     @Autowired private RestaurantRepository restaurants;
     @Autowired private OrderRepository orders;
     @Autowired private OrderEventRepository orderEvents;
+    @Autowired private JdbcTemplate jdbc;
     @MockitoBean private CustomerProfileService customerProfileService;
 
     private record Account(Long id, String token) {}
@@ -131,8 +131,10 @@ class CourierDeliveryControllerTest {
             assertThat(orders.findById(waiting.getId()).orElseThrow().getCourierId()).isEqualTo(courier.id());
             assertThat(statusOf(courier)).isEqualTo(CourierStatus.ASSIGNED);
         } finally {
-            orders.findById(waiting.getId()).filter(o -> o.getStatus() == OrderStatus.READY)
-                    .ifPresent(o -> orderService.refundOrder(restaurant.getId(), waiting.getId()));
+            orders.findById(waiting.getId()).filter(o -> o.getCourierId() != null)
+                    .ifPresent(o -> courierDutyService.declineOffer(courier.id(), waiting.getId()));
+            jdbc.update("DELETE FROM assignments WHERE order_id = ?", waiting.getId());
+            orders.deleteById(waiting.getId());
             if (statusOf(courier) == CourierStatus.IDLE) courierDutyService.goOffDuty(courier.id());
         }
     }

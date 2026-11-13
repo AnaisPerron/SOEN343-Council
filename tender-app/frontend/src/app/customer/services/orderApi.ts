@@ -5,9 +5,13 @@ import type { OrderHistoryEntry } from './orderLifecycle';
 export interface OrderSubmission {
   restaurantId: number;
   items: { menuItemId: number; quantity: number; optionIds: number[] }[];
+  deliveryAddress?: string;
+  deliveryLatitude?: number;
+  deliveryLongitude?: number;
+  tendersToUse?: number;
 }
 
-/** Server receipt for a placed order; total includes add-ons and is what was charged. */
+/** Server receipt for a placed order; total is the gross order price before Tender Cash. */
 export interface OrderSubmissionResult {
   orderId: number;
   restaurantId: number;
@@ -17,6 +21,15 @@ export interface OrderSubmissionResult {
   paymentReference: string;
 }
 
+export interface OrderQuote {
+  subtotal: number;
+  distanceKm: number;
+  serviceFee: number;
+  deliveryFee: number;
+  smallOrderFee: number;
+  total: number;
+}
+
 export interface OrderCancellationResult {
   orderId: number;
   previousStatus: string;
@@ -24,10 +37,12 @@ export interface OrderCancellationResult {
   changedAt: string;
 }
 
-export function toOrderSubmission(group: RestaurantCartGroup): OrderSubmission {
+export function toOrderSubmission(group: RestaurantCartGroup, destination?: { address: string; latitude: number; longitude: number }): OrderSubmission {
   return {
     restaurantId: group.restaurantId,
     items: group.lines.map((line) => ({ menuItemId: line.itemId, quantity: line.quantity, optionIds: [...line.optionIds] })),
+    ...(destination ? { deliveryAddress: destination.address, deliveryLatitude: destination.latitude,
+      deliveryLongitude: destination.longitude } : {}),
   };
 }
 
@@ -66,6 +81,14 @@ export async function sendOrder(
   const result = await postWithToken<OrderSubmissionResult>(endpoint, token, order, 'Order submission failed', fetchImpl);
   // BigDecimal arrives as a JSON number, but coerce in case a proxy stringifies it.
   return { ...result, total: Number(result.total) };
+}
+
+export async function fetchOrderQuote(endpoint: string, token: string, order: OrderSubmission,
+  fetchImpl: typeof fetch = fetch): Promise<OrderQuote> {
+  const result = await postWithToken<OrderQuote>(endpoint, token, order, 'Could not calculate order total', fetchImpl);
+  return { subtotal: Number(result.subtotal), distanceKm: Number(result.distanceKm),
+    serviceFee: Number(result.serviceFee), deliveryFee: Number(result.deliveryFee),
+    smallOrderFee: Number(result.smallOrderFee), total: Number(result.total) };
 }
 
 export async function sendOrderCancellation(

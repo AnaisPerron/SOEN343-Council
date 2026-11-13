@@ -52,7 +52,7 @@ public class CourierDeliveryService {
 
         return new AssignedOrderDto(order, restaurantRepository.findById(order.getRestaurantId()).orElse(null), assignment);
     }
-    
+
     @Transactional
     public AssignedOrderDto confirmDelivery(Long courierId, Long orderId) {
         assignments.lockCouriers();

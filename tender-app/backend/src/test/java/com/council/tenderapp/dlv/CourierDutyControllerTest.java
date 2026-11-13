@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,6 +44,7 @@ class CourierDutyControllerTest {
     @Autowired private OrderRepository orders;
     @Autowired private DispatchService dispatchService;
     @Autowired private OrderService orderService;
+    @Autowired private JdbcTemplate jdbc;
 
     private record Account(Long id, String token) {}
 
@@ -190,7 +192,8 @@ class CourierDutyControllerTest {
         assertThat(statusOf(courier)).isEqualTo(CourierStatus.OFFLINE);
         assertThat(orders.findById(waiting.getId()).orElseThrow().getCourierId()).isNull();
         assertThat(orders.findWaitingReadyOrdersForDispatch()).extracting(Order::getId).contains(waiting.getId());
-        orderService.refundOrder(restaurant.getId(), waiting.getId());
+        jdbc.update("DELETE FROM assignments WHERE order_id = ?", waiting.getId());
+        orders.deleteById(waiting.getId());
     }
 
     @Test
@@ -212,7 +215,8 @@ class CourierDutyControllerTest {
         assertThat(statusOf(courier)).isEqualTo(CourierStatus.OFFLINE);
         assertThat(orders.findById(waiting.getId()).orElseThrow().getCourierId()).isNull();
         assertThat(orders.findWaitingReadyOrdersForDispatch()).extracting(Order::getId).contains(waiting.getId());
-        orderService.refundOrder(restaurant.getId(), waiting.getId());
+        jdbc.update("DELETE FROM assignments WHERE order_id = ?", waiting.getId());
+        orders.deleteById(waiting.getId());
     }
 
     @Test

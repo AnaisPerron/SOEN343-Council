@@ -1,4 +1,4 @@
-import { Text, TextStyle, View, ViewStyle,TouchableOpacity } from 'react-native';
+import { Text, TextStyle, TouchableOpacity, View, ViewStyle } from 'react-native';
 import type { OperatorOrder as Order } from '../../../types/operator';
 import { styles } from './orders.styles';
 import { useState } from 'react';
@@ -9,7 +9,7 @@ interface OrderListProps {
   orders: Order[];
   onRefund?: (orderId: number) => void;
   onReassign?: (order: { id: number; courierId: number }) => void;
-  changingId: number | null;
+  changingId?: number | null;
   disabled?: boolean;
 }
 
@@ -49,7 +49,7 @@ const STATUS_LABEL: Record<Order['status'], string> = {
   refunded: 'Refunded',
 };
 
-export default function OrderList({ orders,onRefund,onReassign,changingId,disabled }: OrderListProps) {
+export default function OrderList({ orders, onRefund, onReassign, changingId, disabled }: OrderListProps) {
   const activeCount = orders.filter((o) =>
     ['placed', 'accepted', 'preparing', 'ready', 'picked_up'].includes(o.status)
   ).length;

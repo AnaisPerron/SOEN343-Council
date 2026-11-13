@@ -58,7 +58,7 @@ class CustomerOrderHistoryServiceTest {
 
     @Test
     void listsOrdersWithRestaurantNamesAndAddOnPrices() {
-        Order order = new Order(CUSTOMER_ID, 3L, OrderStatus.ACCEPTED, new BigDecimal("41.00"));
+        Order order = new Order(CUSTOMER_ID, 3L, OrderStatus.ACCEPTED, new BigDecimal("43.00"));
         order.setId(42L);
         order.addOrderLine(line(100L, "Pepperoni Pizza", "17.00", 2));
         order.addOrderLine(line(101L, "Sparkling Water", "3.00", 1));

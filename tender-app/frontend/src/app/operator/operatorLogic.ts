@@ -2,8 +2,8 @@ import type { Order, OrderLine } from '../../types/orders';
 import type { Restaurant, RestaurantStatus } from '../../types/restaurant';
 import type { ProfileResponse, ProfileUpdateRequest } from './operatorApi';
 import type { AuthUser } from '../../types/auth';
+import type { OperatorOrder, OperatorOrderStatus, OperatorSection } from '../../types/operator';
 import type { CustomerProfile, User } from '../../types/users';
-import type { OperatorOrder } from '../../types/operator';
 
 export { queueBand } from '../../lib/queueBands.ts';
 
@@ -23,6 +23,17 @@ export function countOpenRestaurants(restaurants: Restaurant[]): number {
   return restaurants.filter((r) => r.status === 'open').length;
 }
 
+export function markOperatorOrderRefunded(section: OperatorSection | null, orderId: number,
+  selectedStatuses: OperatorOrderStatus[]): OperatorSection | null {
+  if (section?.kind !== 'orders') return section;
+  const hiddenByStatus = selectedStatuses.length > 0 && !selectedStatuses.includes('refunded');
+  return { ...section, data: { ...section.data,
+    items: hiddenByStatus ? section.data.items.filter((order) => order.id !== orderId) :
+      section.data.items.map((order) => order.id === orderId ? { ...order, status: 'refunded' as const } : order),
+    total: hiddenByStatus ? Math.max(0, section.data.total - 1) : section.data.total,
+  } };
+}
+
 export function calculateOrderTotal(orderId: number, lines: OrderLine[]): string {
   const total = lines
     .filter((line) => line.order_id === orderId)
@@ -32,7 +43,7 @@ export function calculateOrderTotal(orderId: number, lines: OrderLine[]): string
 
 export function getCustomerBalance(userId: number, profiles: CustomerProfile[]): string {
   const balance = profiles.find((p) => p.user_id === userId)?.td_cash_balance;
-  return balance != null ? balance.toFixed(2) : '0.00';
+  return String(balance != null ? Math.floor(balance * 10) : 0);
 }
 
 export function formatRegisteredSummary(count: number, singular: string): string {

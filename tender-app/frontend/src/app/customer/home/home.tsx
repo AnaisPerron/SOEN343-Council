@@ -16,6 +16,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCart } from '@/context/CartContext';
 import { useCatalog } from '@/context/CatalogContext';
+import { useAuth } from '@/context/AuthContext';
+import { fetchTenderCash } from '@/api/tenderCash';
 import { useOrders } from '@/context/OrdersContext';
 import type { CustomerOrder } from '../services/orderLifecycle';
 import type { Restaurant } from '@/types/restaurant';
@@ -60,6 +62,15 @@ const toCardData = (restaurant: Restaurant, mapData?: MapData | null): Restauran
 export default function CustomerHome() {
   const router = useRouter();
   const { lines } = useCart();
+  const { token } = useAuth();
+  const [tenderBalance, setTenderBalance] = useState(0);
+  useEffect(() => {
+    if (!token) return;
+    let active = true;
+    fetchTenderCash(token).then((balance) => { if (active) setTenderBalance(balance.tenders); })
+      .catch(() => { if (active) setTenderBalance(0); });
+    return () => { active = false; };
+  }, [token]);
   const { orders, refreshOrders } = useOrders();
   const { restaurants, restaurantsStatus, restaurantsError, reloadRestaurants } = useCatalog();
   const cartCount = lines.reduce((count, line) => count + line.quantity, 0);
@@ -181,8 +192,7 @@ export default function CustomerHome() {
             <View style={styles.pointsTop}>
               <View style={styles.pointsCopy}>
                 <Text style={styles.pointsEyebrow}>TENDER CASH</Text>
-                {/* Placeholder for now. TODO: Connect with actual Tender Cash */}
-                <Text style={styles.pointsValue}>0<Text style={styles.pointsUnit}> pts</Text></Text>
+                <Text style={styles.pointsValue}>{tenderBalance}<Text style={styles.pointsUnit}> tenders</Text></Text>
                 <Text style={styles.pointsTitle}>Your cheapest way to get lucky tonight.</Text>
               </View>
               {/* Disable the native fade while keeping tintColor consistent across phone and web. */}

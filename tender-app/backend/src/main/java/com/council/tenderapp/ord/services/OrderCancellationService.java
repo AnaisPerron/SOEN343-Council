@@ -16,6 +16,7 @@ import com.council.tenderapp.ord.exceptions.InvalidOrderStateException;
 import com.council.tenderapp.ord.exceptions.OrderAccessDeniedException;
 import com.council.tenderapp.ord.exceptions.OrderNotFoundException;
 import com.council.tenderapp.ord.repositories.OrderRepository;
+import com.council.tenderapp.technicalservices.payment.TenderCash;
 
 @Service
 @Transactional
@@ -23,12 +24,14 @@ public class OrderCancellationService {
     private final OrderRepository orders;
     private final PreparationQueueService queue;
     private final OrderStatusPublisher publisher;
+    private final TenderCash tenderCash;
 
     public OrderCancellationService(OrderRepository orders, PreparationQueueService queue,
-            OrderStatusPublisher publisher) {
+            OrderStatusPublisher publisher, TenderCash tenderCash) {
         this.orders = orders;
         this.queue = queue;
         this.publisher = publisher;
+        this.tenderCash = tenderCash;
     }
 
     @PreAuthorize("hasRole('CUSTOMER')")
@@ -53,6 +56,7 @@ public class OrderCancellationService {
         }
         Instant cancelledAt = Instant.now();
         order.transitionTo(OrderStatus.CANCELLED);
+        tenderCash.refunded(order);
         orders.save(order);
         queue.remove(order, "placed", cancelledAt);
         Runnable notify = () -> publisher.publish(order, previous, "cancelled", null);

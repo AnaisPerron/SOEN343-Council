@@ -58,9 +58,9 @@ public class OperatorDashboardRepository {
         arguments.add(size);
         arguments.add((long) page * size);
         List<RestaurantSummary> items = jdbc.query("""
-                SELECT r.id, r.name, r.status, r.latitude, r.longitude, r.address, r.phone,
-                    (SELECT COUNT(*) FROM orders o WHERE o.restaurant_id = r.id
-                        AND UPPER(o.status) IN ('PLACED', 'ACCEPTED', 'PREPARING')) AS queue_count
+                SELECT                 r.id, r.name, r.status, r.latitude, r.longitude, r.address, r.phone,
+                (SELECT COUNT(*) FROM orders o WHERE o.restaurant_id = r.id
+                    AND UPPER(o.status) IN ('PLACED', 'ACCEPTED', 'PREPARING')) AS queue_count
                 FROM restaurants r
                 """ + where + " ORDER BY LOWER(r.name), r.id LIMIT ? OFFSET ?", (rs, row) -> new RestaurantSummary(rs.getLong("id"), rs.getString("name"),
                         lower(rs.getString("status")), number(rs, "latitude"), number(rs, "longitude"),
@@ -75,7 +75,9 @@ public class OperatorDashboardRepository {
 
     public DashboardPage<CustomerSummary> customers(int page, int size) {
         return page("SELECT COUNT(*) FROM users WHERE role = 'customer'", """
-                SELECT u.id, u.name, u.email, u.phone, c.td_cash_balance, c.latitude, c.longitude
+                SELECT u.id, u.name, u.email, u.phone,
+                    (CASE WHEN c.user_id IS NULL THEN NULL ELSE FLOOR(COALESCE(c.td_cash_balance, 0) * 10) + COALESCE((SELECT SUM(t.tenders) FROM tender_cash_transactions t WHERE t.customer_id = u.id), 0) END) AS td_cash_balance,
+                    c.latitude, c.longitude
                 FROM users u LEFT JOIN customer_profiles c ON c.user_id = u.id
                 WHERE u.role = 'customer' ORDER BY u.id LIMIT ? OFFSET ?
                 """, (rs, row) -> new CustomerSummary(rs.getLong("id"), rs.getString("name"),

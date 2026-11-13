@@ -24,6 +24,10 @@ import com.council.tenderapp.operator.dto.DashboardSummary;
 import com.council.tenderapp.operator.dto.OrderSummary;
 import com.council.tenderapp.operator.dto.RestaurantSummary;
 import com.council.tenderapp.operator.repositories.OperatorDashboardRepository;
+import com.council.tenderapp.technicalservices.payment.TenderCash;
+import com.council.tenderapp.ord.entities.Order;
+import com.council.tenderapp.ord.entities.OrderStatus;
+import java.math.BigDecimal;
 
 class OperatorDashboardRepositoryTest {
     private Connection connection;
@@ -42,6 +46,28 @@ class OperatorDashboardRepositoryTest {
 
     @AfterEach
     void tearDown() throws SQLException { connection.close(); }
+
+    @Test
+    void tenderCashStartsFromExistingProfileBalanceAndIncludesTransactions() {
+        TenderCash cash = new TenderCash(jdbc);
+        assertThat(cash.balance(1L).tenders()).isEqualTo(255L);
+        jdbc.update("INSERT INTO tender_cash_transactions (id, customer_id, order_id, reason, tenders) VALUES (1, 1, 10, 'EARNED', 20)");
+        assertThat(cash.balance(1L).tenders()).isEqualTo(275L);
+        assertThat(repository.customers(0, 1).items().get(0).tdCashBalance()).isEqualByComparingTo("275");
+    }
+
+    @Test
+    void refundCreditsTheCustomerLedgerInWholeTenders() {
+        TenderCash cash = new TenderCash(jdbc);
+        jdbc.update("INSERT INTO tender_cash_transactions (id, customer_id, order_id, reason, tenders) VALUES (100, 1, 10, 'EARNED', 50)");
+        jdbc.update("INSERT INTO tender_cash_transactions (id, customer_id, order_id, reason, tenders) VALUES (101, 1, 10, 'SPENT', -10)");
+        assertThat(cash.balance(1L).tenders()).isEqualTo(295);
+        Order order = new Order(1L, 10L, OrderStatus.DELIVERED, new BigDecimal("99.00"));
+        order.setId(10L);
+        cash.refunded(order);
+        assertThat(cash.balance(1L).tenders()).isEqualTo(1235);
+        assertThat(repository.customers(0, 1).items().get(0).tdCashBalance()).isEqualByComparingTo("1235");
+    }
 
     @Test
     void summaryCountsAllAccountsAndOnlyIdleCouriersAsAvailable() {
@@ -104,7 +130,7 @@ class OperatorDashboardRepositoryTest {
         var result = repository.customers(0, 50);
         assertThat(result.items()).extracting(CustomerSummary::id).containsExactly(1L, 2L);
         assertThat(result.total()).isEqualTo(2);
-        assertThat(result.items().get(0).tdCashBalance()).isEqualByComparingTo("25.50");
+        assertThat(result.items().get(0).tdCashBalance()).isEqualByComparingTo("255");
         assertThat(result.items().get(1).tdCashBalance()).isNull();
         assertThat(result.items().get(1).latitude()).isNull();
         assertThat(result.items().get(1).phone()).isNull();

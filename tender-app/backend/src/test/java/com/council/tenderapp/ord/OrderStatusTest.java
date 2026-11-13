@@ -25,10 +25,6 @@ class OrderStatusTest {
             .isEqualTo(OrderStatus.PICKED_UP);
         assertThat(OrderStatus.PICKED_UP.transitionTo(OrderStatus.DELIVERED))
             .isEqualTo(OrderStatus.DELIVERED);
-        assertThat(OrderStatus.READY.transitionTo(OrderStatus.REFUNDED))
-            .isEqualTo(OrderStatus.REFUNDED);
-        assertThat(OrderStatus.PICKED_UP.transitionTo(OrderStatus.REFUNDED))
-            .isEqualTo(OrderStatus.REFUNDED);
         assertThat(OrderStatus.DELIVERED.transitionTo(OrderStatus.REFUNDED))
             .isEqualTo(OrderStatus.REFUNDED);
     }

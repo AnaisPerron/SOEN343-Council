@@ -17,8 +17,8 @@ import CityMap from '@/components/dash/CityMap';
 import MapDirectory from './components/MapDirectory';
 import ResetSystemDialog from './components/ResetSystemDialog';
 import ReassignOrderDialog from './components/ReassignOrderDialog';
-import { getOperatorDisplayName, toOperatorUser } from './operatorLogic';
-import { changeRestaurantStatus, reassignOrder, resetSystem } from './operatorApi';
+import { getOperatorDisplayName, markOperatorOrderRefunded, toOperatorUser } from './operatorLogic';
+import { changeRestaurantStatus, reassignOrder, resetSystem, refundOperatorOrder } from './operatorApi';
 
 const tabs: { kind: OperatorSectionName; label: string; count: keyof OperatorSummary }[] = [
   { kind: 'restaurants', label: 'Restaurants', count: 'restaurantCount' },
@@ -74,16 +74,23 @@ export default function OperatorHome() {
   useEffect(() => { dialogOpen.current = showReset || reassignTarget !== null; }, [showReset, reassignTarget]);
   const operator = toOperatorUser(user);
 
-  const fetchPage = useCallback((page = 0, quiet = false): Promise<void> => {
-    if (!token || changing.current || resettingRef.current || resetComplete || (quiet && (loadingRef.current || dialogOpen.current))) return Promise.resolve();
+  const fetchPage = useCallback(async (page = 0, quiet = false): Promise<void> => {
+    if (!token || changing.current || resettingRef.current || resetComplete || (quiet && (loadingRef.current || dialogOpen.current))) return;
     const version = ++requestId.current;
-    return Promise.all([
-      fetchOperatorSummary(token), fetchOperatorSection(activeFilter, page, token, filters),
-    ]).then(([counts, next]) => {
+    if (!quiet) {
+      loadingRef.current = true;
+      setLoading(true);
+      setError(null);
+      if (page === 0) { setSection(null); setSummary(null); }
+    }
+    try {
+      const [counts, next] = await Promise.all([
+        fetchOperatorSummary(token), fetchOperatorSection(activeFilter, page, token, filters),
+      ]);
       if (version !== requestId.current) return;
       setSummary(counts);
       setSection((current) => page === 0 ? next : appendOperatorSection(current, next));
-    }, (cause: unknown) => {
+    } catch (cause: unknown) {
       if (version !== requestId.current) return;
       if (cause instanceof ApiError && cause.status === 401) {
         setSummary(null);
@@ -92,9 +99,9 @@ export default function OperatorHome() {
       } else {
         setError(cause instanceof Error ? cause.message : 'Unable to load dashboard');
       }
-    }).finally(() => {
+    } finally {
       if (version === requestId.current && !quiet) { loadingRef.current = false; setLoading(false); }
-    });
+    }
   }, [activeFilter, token, signOut, filters, resetComplete]);
 
   const beginLoad = (page = 0) => {
@@ -104,15 +111,18 @@ export default function OperatorHome() {
     if (page === 0) { setSummary(null); setSection(null); }
   };
 
-  const loadPage = async (page = 0) => {
+  const loadPage = useCallback(async (page = 0, quiet = false) => {
     if (!token || changing.current || resettingRef.current || resetComplete) return;
-    beginLoad(page);
-    await fetchPage(page);
-  };
+    if (!quiet) beginLoad(page);
+    await fetchPage(page, quiet);
+  }, [fetchPage, token, resetComplete]);
 
   useEffect(() => {
-    void fetchPage();
-    return () => { requestId.current += 1; };
+    const timer = setTimeout(() => { void fetchPage(); }, 0);
+    return () => {
+      clearTimeout(timer);
+      requestId.current += 1;
+    };
   }, [fetchPage]);
 
   useEffect(() => {
@@ -187,6 +197,26 @@ export default function OperatorHome() {
     } finally {
       changing.current = false;
       if (version === requestId.current) setChangingId(null);
+    }
+  };
+
+  const refundOrder = async (orderId: number) => {
+    if (!token || changing.current || resettingRef.current || resetComplete) return;
+    changing.current = true;
+    setChangingId(orderId);
+    setError(null);
+    setNotice(null);
+    try {
+      await refundOperatorOrder(orderId, token);
+      setSection((current) => markOperatorOrderRefunded(current, orderId, filters.statuses));
+      setMapRefreshKey((key) => key + 1);
+      setNotice(`Order #${orderId} refunded as Tender Cash.`);
+    } catch (cause) {
+      if (cause instanceof ApiError && cause.status === 401) signOut();
+      else setError(cause instanceof Error ? cause.message : 'Unable to refund order');
+    } finally {
+      changing.current = false;
+      setChangingId(null);
     }
   };
 
@@ -339,8 +369,9 @@ export default function OperatorHome() {
         </View>}
         {notice && <Text accessibilityLiveRegion="polite" style={styles.notice}>{notice}</Text>}
         {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
-        {activeFilter === 'orders' && <View style={styles.filterPanel}>
+        {(activeFilter === 'orders' || activeFilter === 'restaurants') && <View style={styles.filterPanel}>
           <Text style={styles.filterTitle}>Restaurants</Text>
+          <Text style={styles.filterHint}>Choose restaurants to show. All are shown when none are selected.</Text>
           <View style={styles.filterChoices}>
             {restaurantOptions.map((restaurant) => <TouchableOpacity key={restaurant.id} accessibilityRole="checkbox"
               accessibilityState={{ checked: filters.restaurantIds.includes(restaurant.id) }}
@@ -348,6 +379,7 @@ export default function OperatorHome() {
               <Text style={styles.filterChoiceText}>{filters.restaurantIds.includes(restaurant.id) ? '☑' : '□'} {restaurant.name}</Text>
             </TouchableOpacity>)}
           </View>
+          {activeFilter === 'orders' && <>
             <Text style={styles.filterTitle}>Order status</Text>
             <Text style={styles.filterHint}>All statuses are shown when none are selected.</Text>
             <View style={styles.filterChoices}>
@@ -367,12 +399,14 @@ export default function OperatorHome() {
                 <Text style={styles.profileText}>Apply dates</Text>
               </TouchableOpacity>
             </View>
+          </>}
         </View>}
         {loading && <ActivityIndicator accessibilityLabel="Loading dashboard" color="#D42F50" />}
         {visible?.kind === 'restaurants' && <RestaurantList restaurants={visible.data.items.map((restaurant) => ({
           ...restaurant, queueCount: queueCounts?.[restaurant.id] ?? (queueCounts ? 0 : restaurant.queueCount),
         }))} onStatusChange={updateStatus} changingId={changingId} disabled={busy} />}
         {visible?.kind === 'orders' && <OrdersList orders={visible.data.items} disabled={busy} changingId={changingId}
+          onRefund={(orderId) => void refundOrder(orderId)}
           onReassign={user?.role === 'Operator' ? (order) => {
             if (busy || changing.current) return;
             setReassignError(null);

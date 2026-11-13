@@ -3,6 +3,7 @@ import { afterEach, describe, it, mock } from 'node:test';
 
 import { API_URL } from '../../api/client.ts';
 import { acceptCourierOffer, acceptOrder, declineOrder, fetchCourierDuty, goOffDuty, goOnDuty, markOrderPickedUp, markOrderDelivered } from '../../api/courierDuty.ts';
+import { fetchLedgerHistory } from '../../api/orderHistory.ts';
 import { canGoOffDuty, canGoOnDuty, getOrderActionAvailability, isOnDuty } from '../../lib/courierDuty.ts';
 
 describe('courier duty toggle', () => {
@@ -75,6 +76,14 @@ describe('courier duty API', () => {
       ['POST', `${API_URL}/api/courier/duty/orders/41/delivered`],
     ]);
     for (const [, request] of calls) assert.equal((request.headers as Record<string, string>).Authorization, 'Bearer session-token');
+  });
+
+  it('loads only the server-filtered courier history', async () => {
+    const record = { orderId: 12, status: 'DELIVERED', placedAt: '2026-11-11T10:00:00Z', pickedUpAt: null, deliveredAt: '2026-11-11T11:00:00Z', totalCharge: 14.1 };
+    const fetchMock = mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify([record]), { status: 200 }));
+    assert.deepEqual(await fetchLedgerHistory('session-token'), [record]);
+    assert.equal(fetchMock.mock.calls[0].arguments[0], `${API_URL}/api/pricing/history`);
+    assert.equal((fetchMock.mock.calls[0].arguments[1] as RequestInit).method, 'GET');
   });
 });
 
