@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Redirect } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AccountMenu from '@/components/AccountMenu';
 import CityMap from '@/components/dash/CityMap';
 import { useAuth } from '@/context/AuthContext';
 import { acceptOrder, declineOrder, fetchCourierDuty, goOffDuty, goOnDuty, markOrderDelivered, markOrderPickedUp, type CourierDuty } from '@/api/courierDuty';
-import { canGoOffDuty, canGoOnDuty, isOnDuty, stateLabel } from '@/lib/courierDuty';
+import { canConfirmDelivery, canConfirmPickup, canGoOffDuty, canGoOnDuty, hasActiveDelivery, isOnDuty, stateLabel } from '@/lib/courierDuty';
+import { styles } from './couriers.styles';
 
 // Orders can be assigned at any time, so the panel refreshes itself while open
 const REFRESH_MS = 15000;
@@ -65,6 +66,12 @@ export default function CourierDashboard() {
 
   const onDuty = duty != null && isOnDuty(duty.status);
   const toggleEnabled = duty != null && !updating && (onDuty ? canGoOffDuty(duty.status) : canGoOnDuty(duty.status));
+  const showDeliveryActions = duty != null && order != null && hasActiveDelivery(duty.status);
+  const pickupEnabled = duty != null && !updating && canConfirmPickup(duty.status, order?.status);
+  const deliveryEnabled = duty != null && !updating && canConfirmDelivery(duty.status, order?.status);
+  const actionHint = duty?.status === 'assigned'
+    ? (order?.status === 'ready' ? 'Confirm delivery unlocks after pickup.' : 'Confirm pickup unlocks once the restaurant marks the order ready.')
+    : '';
 
   return <SafeAreaView style={styles.page}>
     <View style={styles.header}><Text style={styles.brand}>Tender</Text><AccountMenu /></View>
@@ -101,22 +108,28 @@ export default function CourierDashboard() {
               <Text style={styles.declineButtonText}>Decline and go off duty</Text>
             </Pressable>
           </View>}
-          {duty.status === 'assigned' && order.status === 'ready' && <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ disabled: updating }}
-            disabled={updating}
-            onPress={() => void performOrderAction(markOrderPickedUp, 'Could not confirm pickup.')}
-            style={[styles.deliveredButton, updating && styles.toggleDisabled]}>
-            <Text style={styles.deliveredButtonText}>{updating ? 'Updating…' : 'Confirm pickup'}</Text>
-          </Pressable>}
-          {duty.status === 'carrying' && order.status === 'picked_up' && <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ disabled: updating }}
-            disabled={updating}
-            onPress={() => void performOrderAction(markOrderDelivered, 'Could not mark the order delivered.')}
-            style={[styles.deliveredButton, updating && styles.toggleDisabled]}>
-            <Text style={styles.deliveredButtonText}>{updating ? 'Updating…' : 'Mark delivered'}</Text>
-          </Pressable>}
+          {showDeliveryActions && <>
+          <View style={styles.actionRow}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !pickupEnabled }}
+              disabled={!pickupEnabled}
+              onPress={() => void performOrderAction(markOrderPickedUp, 'Could not confirm pickup.')}
+              style={[styles.actionButton, !pickupEnabled && styles.toggleDisabled]}>
+              <Text style={styles.deliveredButtonText}>{updating ? 'Updating…' : 'Confirm pickup'}</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !deliveryEnabled }}
+              disabled={!deliveryEnabled}
+              onPress={() => void performOrderAction(markOrderDelivered, 'Could not confirm delivery.')}
+              style={[styles.actionButton, !deliveryEnabled && styles.toggleDisabled]}>
+              <Text style={styles.deliveredButtonText}>{updating ? 'Updating…' : 'Confirm delivery'}</Text>
+            </Pressable>
+          </View>
+          {!!actionHint && <Text style={styles.hint}>{actionHint}</Text>}
+        </>}
+          
         </View> : <Text style={styles.empty}>{onDuty ? 'No order is currently offered. You will receive the oldest ready order nearby.' : 'Go on duty to receive delivery offers.'}</Text>}
       </>}
       {!!message && <Text style={styles.message}>{message}</Text>}
@@ -125,38 +138,4 @@ export default function CourierDashboard() {
   </SafeAreaView>;
 }
 
-const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: '#FFFAF9' },
-  header: { height: 70, width: '100%', maxWidth: 1000, alignSelf: 'center', paddingHorizontal: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', zIndex: 10 },
-  brand: { color: '#D42F50', fontSize: 25, fontWeight: '900' },
-  content: { padding: 24, width: '100%', maxWidth: 1000, alignSelf: 'center' },
-  title: { color: '#302629', fontFamily: 'LoveLight', fontSize: 42, fontWeight: '400' },
-  subtitle: { color: '#887B7E', marginTop: 6, marginBottom: 28 },
-  stateCard: { backgroundColor: '#F7F3F3', borderRadius: 18, padding: 24 },
-  stateCardOn: { backgroundColor: '#D42F50' },
-  stateEyebrow: { color: '#887B7E', fontSize: 11, fontWeight: '800', letterSpacing: 2 },
-  stateValue: { color: '#302629', fontSize: 23, fontWeight: '900', marginTop: 8 },
-  onText: { color: '#FFF' },
-  toggle: { borderRadius: 14, alignItems: 'center', padding: 16, marginTop: 14 },
-  toggleOn: { backgroundColor: '#D42F50' },
-  toggleOff: { borderWidth: 1, borderColor: '#D42F50', backgroundColor: '#FFF' },
-  toggleDisabled: { opacity: 0.4 },
-  toggleText: { color: '#FFF', fontWeight: '800' },
-  toggleOffText: { color: '#D42F50' },
-  hint: { color: '#887B7E', fontSize: 12, marginTop: 8, textAlign: 'center' },
-  sectionHeading: { color: '#302629', fontSize: 18, fontWeight: '800', marginTop: 32, marginBottom: 12 },
-  orderCard: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#EDE6E6', borderRadius: 18, padding: 20 },
-  deliveredButton: { backgroundColor: '#D42F50', borderRadius: 14, alignItems: 'center', padding: 16, marginTop: 16 },
-  deliveredButtonText: { color: '#FFF', fontWeight: '800' },
-  offerActions: { gap: 8 },
-  declineButton: { borderWidth: 1, borderColor: '#887B7E', borderRadius: 14, alignItems: 'center', padding: 14, marginTop: 8 },
-  declineButtonText: { color: '#62585A', fontWeight: '800' },
-  orderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  orderTitle: { color: '#302629', fontSize: 18, fontWeight: '800' },
-  orderStatus: { color: '#D42F50', fontWeight: '800', textTransform: 'capitalize' },
-  orderLine: { color: '#302629', marginTop: 10 },
-  orderMuted: { color: '#887B7E', marginTop: 4 },
-  empty: { color: '#887B7E' },
-  message: { color: '#302629', marginTop: 16 },
-  map: { marginTop: 32 },
-});
+
