@@ -59,7 +59,7 @@ public class CustomerOrderHistoryService {
             // Summing the lines with their add-ons matches the charged total and also covers seeded orders without one.
             BigDecimal total = lines.stream().map(line -> line.unitPrice().multiply(BigDecimal.valueOf(line.quantity())))
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
-            return new CustomerOrderDto(order.getId(), order.getRestaurantId(),
+            return new CustomerOrderDto(order.getId(), order.getRestaurantId(), order.getCourierId(),
                     restaurantNames.getOrDefault(order.getRestaurantId(), "Restaurant"),
                     order.getStatus().name().toLowerCase(), order.getTotalPrice() == null ? total : order.getTotalPrice(),
                     order.getDateOrdered() == null ? null : order.getDateOrdered().toInstant(),

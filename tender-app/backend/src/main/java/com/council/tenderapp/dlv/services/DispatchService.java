@@ -1,77 +1,51 @@
 package com.council.tenderapp.dlv.services;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import org.springframework.transaction.annotation.Propagation;
+import com.council.tenderapp.dlv.domain.NearestIdleCourierRule;
 import com.council.tenderapp.ord.entities.Order;
 import com.council.tenderapp.ord.entities.OrderStatus;
-import com.council.tenderapp.ord.entities.Restaurant;
 import com.council.tenderapp.ord.repositories.OrderRepository;
 import com.council.tenderapp.ord.repositories.RestaurantRepository;
-import com.council.tenderapp.reg.entities.CourierProfile;
 import com.council.tenderapp.reg.entities.CourierStatus;
-import com.council.tenderapp.reg.repositories.CourierProfileRepository;
 import com.council.tenderapp.technicalservices.logging.AppLogService;
 
-/**
- * The dispatch queue is every ready order that has no courier yet, oldest first.
- * Retrying it offers each waiting order to the nearest idle courier without an outstanding offer (R-DLV-04).
- */
 @Service
 public class DispatchService {
+    private final OrderRepository orders;
+    private final RestaurantRepository restaurants;
+    private final AssignmentService assignments;
+    private final AppLogService log;
 
-    private final OrderRepository orderRepository;
-    private final RestaurantRepository restaurantRepository;
-    private final CourierProfileRepository courierProfileRepository;
-    private final AppLogService logService;
-
-    public DispatchService(OrderRepository orderRepository, RestaurantRepository restaurantRepository,
-            CourierProfileRepository courierProfileRepository, AppLogService logService) {
-        this.orderRepository = orderRepository;
-        this.restaurantRepository = restaurantRepository;
-        this.courierProfileRepository = courierProfileRepository;
-        this.logService = logService;
+    public DispatchService(OrderRepository orders, RestaurantRepository restaurants, AssignmentService assignments, AppLogService log) {
+        this.orders = orders;
+        this.restaurants = restaurants;
+        this.assignments = assignments;
+        this.log = log;
     }
 
     @Transactional
     public void retryQueue() {
-        List<CourierProfile> idle = new ArrayList<>(courierProfileRepository.findByStatusOrderByUserIdAsc(CourierStatus.IDLE));
-        idle.removeIf(courier -> orderRepository
-                .findFirstByCourierIdAndStatusInOrderByDateOrderedAscIdAsc(courier.getUserId(), List.of(OrderStatus.READY))
-                .isPresent());
-        for (Order order : orderRepository.findWaitingReadyOrdersForDispatch()) {
-            if (idle.isEmpty()) {
-                logService.info("Dispatch queue: order #" + order.getId() + " is waiting for a courier");
+        var idle = new ArrayList<>(assignments.lockCouriers().stream()
+                .filter(c -> c.getStatus() == CourierStatus.IDLE)
+                .filter(c -> !assignments.courierHasAssignment(c.getUserId()))
+                .filter(c -> orders.findFirstByCourierIdAndStatusInOrderByDateOrderedAscIdAsc(c.getUserId(),
+                        List.of(OrderStatus.READY, OrderStatus.PICKED_UP)).isEmpty()).toList());
+        for (Order order : orders.findWaitingReadyOrdersForDispatch()) {
+            var courier = NearestIdleCourierRule.choose(restaurants.findById(order.getRestaurantId()).orElse(null), idle);
+            if (courier.isEmpty()) {
+                log.info("Dispatch queue: order #" + order.getId() + " is waiting for a courier");
                 continue;
             }
-            Restaurant restaurant = restaurantRepository.findById(order.getRestaurantId()).orElse(null);
-            CourierProfile courier = idle.stream().min(byDistanceTo(restaurant)).orElseThrow();
-            idle.remove(courier);
-            order.setCourierId(courier.getUserId());
-            logService.info("Dispatch queue: order #" + order.getId() + " offered to courier #" + courier.getUserId());
+            assignments.offer(order, courier.get());
+            idle.remove(courier.get());
+            log.info("Dispatch queue: order #" + order.getId() + " offered to courier #" + courier.get().getUserId());
         }
     }
 
-    // Couriers without a known location (or a restaurant without one) fall back to lowest id
-    private static Comparator<CourierProfile> byDistanceTo(Restaurant restaurant) {
-        return Comparator.comparingDouble((CourierProfile courier) -> distanceKm(restaurant, courier))
-                .thenComparing(CourierProfile::getUserId);
-    }
-
-    private static double distanceKm(Restaurant restaurant, CourierProfile courier) {
-        if (restaurant == null || restaurant.getLatitude() == null || restaurant.getLongitude() == null
-                || courier.getLatitude() == null || courier.getLongitude() == null) {
-            return Double.MAX_VALUE;
-        }
-        double lat1 = Math.toRadians(restaurant.getLatitude());
-        double lat2 = Math.toRadians(courier.getLatitude());
-        double dLat = lat2 - lat1;
-        double dLon = Math.toRadians(courier.getLongitude() - restaurant.getLongitude());
-        double a = Math.pow(Math.sin(dLat / 2), 2) + Math.cos(lat1) * Math.cos(lat2) * Math.pow(Math.sin(dLon / 2), 2);
-        return 2 * 6371 * Math.asin(Math.sqrt(a));
-    }
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void retryQueueAfterCommit() { retryQueue(); }
 }

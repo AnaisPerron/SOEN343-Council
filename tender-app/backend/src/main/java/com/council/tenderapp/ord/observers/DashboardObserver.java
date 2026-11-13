@@ -57,6 +57,11 @@ public class DashboardObserver implements OrderObserver {
         }
     }
 
+    public void completeAll() {
+        subscribers.values().forEach(emitters -> emitters.forEach(SseEmitter::complete));
+        subscribers.clear();
+    }
+
     private void removeSubscriber(Long restaurantId, SseEmitter emitter) {
         CopyOnWriteArrayList<SseEmitter> restaurantSubscribers = subscribers.get(restaurantId);
         if (restaurantSubscribers == null) {

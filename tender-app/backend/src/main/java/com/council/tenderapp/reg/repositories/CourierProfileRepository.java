@@ -14,6 +14,9 @@ import jakarta.persistence.LockModeType;
 public interface CourierProfileRepository extends JpaRepository<CourierProfile, Long> {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    List<CourierProfile> findAllByOrderByUserIdAsc();
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<CourierProfile> findWithLockByUserId(Long userId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

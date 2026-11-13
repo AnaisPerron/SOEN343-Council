@@ -75,7 +75,8 @@ public class CourierDutyController {
         Long courierId = getCourierId(authentication);
         CourierDutyResponseDto duty = courierDutyService.getDutyStatus(courierId);
         if (!"assigned".equals(duty.status()) || duty.assignedOrder() == null
-                || !orderId.equals(duty.assignedOrder().orderId())) {
+                || !orderId.equals(duty.assignedOrder().orderId())
+                || !"accepted".equals(duty.assignedOrder().assignmentStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Accept this order before confirming pickup");
         }
         orderService.markPickedUpByCourier(courierId, orderId);

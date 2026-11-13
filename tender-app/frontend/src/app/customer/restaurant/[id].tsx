@@ -84,7 +84,10 @@ function MenuItemCard({ item, onOpen }: { item: CatalogItem; onOpen: (item: Cata
   );
 }
 
-export default function RestaurantDetails() {
+export default function RestaurantDetails({ restaurantId, onBack }: {
+  restaurantId?: number;
+  onBack?: () => void;
+} = {}) {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { lines } = useCart();
@@ -101,9 +104,10 @@ export default function RestaurantDetails() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
   const { restaurants, restaurantsStatus } = useCatalog();
-  const restaurant = restaurants.find((entry) => entry.id === Number(id));
+  const resolvedRestaurantId = restaurantId ?? Number(id);
+  const restaurant = restaurants.find((entry) => entry.id === resolvedRestaurantId);
   const { menu, status: menuStatus, error: menuError, retry: retryMenu } = useRestaurantMenu(restaurant?.id);
-  const goToRestaurants = () => router.replace('/customer/home/home');
+  const goToRestaurants = () => onBack ? onBack() : router.replace('/customer/home/home');
   const coverHeight = Math.max(290, Math.min(windowHeight * 0.39, 390));
   const items = useMemo(() => menu?.items ?? [], [menu]);
   const categories = useMemo(() => [...new Set(items.map(categoryOf))], [items]);

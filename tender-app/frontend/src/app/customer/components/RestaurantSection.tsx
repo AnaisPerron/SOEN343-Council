@@ -11,6 +11,7 @@ interface RestaurantSectionProps {
   compact: boolean;
   index: number;
   onRestaurantPress: (restaurant: Restaurant) => void;
+  onRestaurantHover?: (restaurantId: number | null) => void;
 }
 
 export default function RestaurantSection({
@@ -20,6 +21,7 @@ export default function RestaurantSection({
   compact,
   index,
   onRestaurantPress,
+  onRestaurantHover,
 }: RestaurantSectionProps) {
   const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const scrollBy = (direction: number) => {
@@ -69,6 +71,7 @@ export default function RestaurantSection({
               key={`${index}-${item.restaurant.id}-${itemIndex}`}
               {...item}
               onPress={() => onRestaurantPress(item.restaurant)}
+              onHover={(hovered) => onRestaurantHover?.(hovered ? item.restaurant.id : null)}
             />
           ))}
         </ScrollView>
