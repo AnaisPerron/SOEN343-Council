@@ -17,9 +17,10 @@ public class ResetCoordinationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
+        String path = UriUtils.decode(request.getRequestURI(), StandardCharsets.UTF_8);
         boolean reset = "POST".equals(request.getMethod())
-                && (request.getContextPath() + "/api/operator/reset").equals(
-                        UriUtils.decode(request.getRequestURI(), StandardCharsets.UTF_8));
+                && ((request.getContextPath() + "/api/operator/reset").equals(path)
+                    || (request.getContextPath() + "/api/operator/reset-seed").equals(path));
         try (var guard = reset ? coordinator.reset() : coordinator.request()) {
             chain.doFilter(request, response);
         }
