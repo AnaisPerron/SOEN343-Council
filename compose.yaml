@@ -1,0 +1,38 @@
+name: tender
+services:
+  backend:
+    build: ./tender-app/backend
+    environment:
+      DB_URL: ${DB_URL:?set DB_URL in the root .env file}
+      DB_USER: ${DB_USER:?set DB_USER in the root .env file}
+      DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in the root .env file}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8081}
+      SPRING_PROFILES_ACTIVE: ""
+      SPRING_SQL_INIT_MODE: never
+      APP_OPERATOR_RESET_ENABLED: "false"
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/127.0.0.1/8080"]
+      interval: 10s
+      timeout: 3s
+      start_period: 40s
+      retries: 6
+  frontend:
+    build:
+      context: ./tender-app/frontend
+      args:
+        EXPO_PUBLIC_API_URL: ${EXPO_PUBLIC_API_URL:-http://localhost:8080}
+        EXPO_PUBLIC_GOOGLE_MAPS_API_KEY: ${EXPO_PUBLIC_GOOGLE_MAPS_API_KEY:-}
+        EXPO_PUBLIC_GOOGLE_MAPS_MAP_ID: ${EXPO_PUBLIC_GOOGLE_MAPS_MAP_ID:-}
+    ports:
+      - "${FRONTEND_PORT:-8081}:8081"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8081').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      start_period: 20s
+      retries: 6

@@ -10,6 +10,26 @@ export interface RestaurantOrderRestriction {
   message: string;
 }
 
+export interface PlaceOrderAvailability {
+  disabled: boolean;
+  hint: string | undefined;
+}
+
+export function getPlaceOrderAvailability(
+  restriction: RestaurantOrderRestriction | null,
+  selectedItemAvailability: readonly (boolean | undefined)[],
+  submitting = false,
+): PlaceOrderAvailability {
+  const hasItems = selectedItemAvailability.length > 0;
+  const everySelectedItemSoldOut = hasItems && selectedItemAvailability.every((available) => available === false);
+  const hint = restriction?.message
+    ?? (everySelectedItemSoldOut ? 'All items in your cart are sold out.' : !hasItems ? 'Add a menu item before placing an order.' : undefined);
+  return {
+    disabled: submitting || !hasItems || restriction !== null || everySelectedItemSoldOut,
+    hint,
+  };
+}
+
 // R-ORD-02 - ORD allows order placement only while a restaurant is open.
 export function getRestaurantOrderRestriction(
   restaurant: Restaurant,

@@ -50,6 +50,7 @@ export const styles = StyleSheet.create({
   footer: { borderTopWidth: 1, borderTopColor: '#DAD4D6', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12, backgroundColor: '#FFFFFF', alignItems: 'center' },
   makeOrderButton: { width: '100%', maxWidth: 760, minHeight: 58, borderRadius: 16, backgroundColor: tender, alignItems: 'center', justifyContent: 'center' },
   makeOrderButtonDisabled: { backgroundColor: '#BFB5B7' },
+  orderBlockedHint: { color: '#9B3344', fontSize: 12, textAlign: 'center', marginTop: 8 },
   makeOrderText: { fontFamily: font, color: '#FFFFFF', fontSize: 17, fontWeight: '800' },
   orderErrorOverlay: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, zIndex: 10 },
   orderErrorToast: { width: '100%', maxWidth: 420, paddingVertical: 18, paddingHorizontal: 22, backgroundColor: '#FFE6EB', borderColor: '#EF9AAA', borderWidth: 1, borderRadius: 18, shadowColor: '#852B3F', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.18, shadowRadius: 12, elevation: 8 },

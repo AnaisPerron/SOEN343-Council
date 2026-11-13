@@ -166,7 +166,7 @@ export default function RestaurantOrders() {
               {order.courierName
                 ? `Courier: ${order.courierName}`
                 : order.status === 'ready'
-                  ? order.courierId != null ? 'Awaiting courier acceptance…' : 'Awaiting courier…'
+                  ? order.courierId != null ? `Offered to ${order.courierName ?? `courier #${order.courierId}`} · awaiting acceptance` : 'Awaiting courier…'
                   : 'Courier: not assigned'}
             </Text>}
             <View style={styles.orderLines}>{order.lines.map((line, index) => <View key={`${order.id}-${index}`} style={index > 0 ? styles.additionalLine : undefined}>
@@ -199,7 +199,7 @@ export default function RestaurantOrders() {
             label="Courier"
             value={detail.courierName
               ?? (detail.status === 'ready'
-                ? detail.courierId != null ? 'Awaiting courier acceptance…' : 'Awaiting courier…'
+                ? detail.courierId != null ? `Offered to ${detail.courierName ?? `courier #${detail.courierId}`} · awaiting acceptance` : 'Awaiting courier…'
                 : 'Not assigned')}
           />}
           <Info label="Delivery address" value={detail.customer.address} />

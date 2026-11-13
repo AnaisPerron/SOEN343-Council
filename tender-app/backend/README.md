@@ -97,10 +97,9 @@ orders without a corresponding event use their creation time as a fallback.
 The Observer pattern connects committed order and courier state changes to
 dispatch: the order-status observer retries after an order becomes ready, and
 the courier duty service retries after a courier goes on duty or finishes a
-delivery. For each idle courier, dispatch creates at most one offer by setting
-the order's `courier_id`; the courier remains `IDLE` until accepting. This keeps
-the offer visible through the existing duty response without a new order entity
-field. The nearest idle courier receives the oldest eligible order. A courier
+delivery. For each idle courier, dispatch creates an `OFFERED` assignment, sets
+the order's `courier_id`, and reserves the courier as `ASSIGNED`. Accepting changes
+the assignment to `ACCEPTED`; pickup requires that acceptance. The nearest idle courier receives the oldest eligible order. A courier
 with an outstanding offer is not offered another one.
 
 Courier actions use `POST /api/courier/duty/on` and
@@ -117,9 +116,36 @@ returns the courier to `IDLE`, and retries the queue. The API verifies that the
 order is offered to or assigned to the authenticated courier. Waiting, offer,
 acceptance, decline, pickup, and delivery events are logged to the application
 console.
-Courier acceptance is recorded as a `courier_accepted` row in `order_events`;
-the restaurant order response uses that record to show the courier name even
-after the courier's current duty status changes.
+Courier acceptance is recorded in the assignment and as a `courier_accepted`
+row in `order_events`. Restaurant responses show the current courier's name
+only after that assignment is accepted, including after delivery.
+
+`POST /api/courier/orders/{orderId}/pickup` lets the assigned courier confirm pickup
+(Task 72, US.14). It requires the `COURIER` role and moves the order from `READY` to
+`PICKED_UP`, which moves the courier from `ASSIGNED` to `CARRYING`. The call is refused
+with `404` if the order does not exist, `403` if the authenticated courier is not the
+order's assigned courier or the caller is not a courier, `409` if the order is not
+`READY`, and `401` without a session. On success it returns
+`{"orderId": 12, "orderStatus": "picked_up", "courierStatus": "carrying"}`. The
+transition reuses `OrderService.markPickedUpByCourier`, which also sets the order's
+`pickup_date` and records an `order_picked_up` row in `order_events` (`ready` to
+`picked_up`) in the same transaction. The older
+`POST /api/courier/duty/orders/{orderId}/picked-up` route shares that method, so it
+records the same event.
+
+`POST /api/courier/orders/{orderId}/delivery` lets the assigned courier confirm delivery
+(Task 73, US.14). It requires the `COURIER` role and moves the order from `PICKED_UP` to
+`DELIVERED`. The call is refused with `404` if the order does not exist, `403` if the
+authenticated courier is not the order's assigned courier or the caller is not a courier,
+`409` if the order is not `PICKED_UP`, and `401` without a session. On success it returns
+`{"orderId": 12, "orderStatus": "delivered", "courierStatus": "idle"}`. The transition
+reuses `OrderService.markDeliveredByCourier`, which also sets the order's `date_delivered`
+and records an `order_delivered` row in `order_events` (`picked_up` to `delivered`) in the
+same transaction. After the change commits, `CourierReleaseObserver` returns the courier
+from `CARRYING` to `IDLE` and retries the dispatch queue, so the courier is immediately
+offered the oldest waiting order. The older
+`POST /api/courier/duty/orders/{orderId}/delivered` route shares that method, so it
+records the same event. The order summary and ledger entry are separate tasks (PRC).
 
 The current project has no authentication/authorization integration. The local
 restaurant profile is a demo context, not an authenticated account. Actions
@@ -140,7 +166,7 @@ your configured database.
 
 The `demo` Spring profile automatically loads `src/main/resources/demo/seed.sql` into PostgreSQL at startup.
 
-**Warning:** Every demo startup clears and reseeds the 15 tables listed in the seed. Use a dedicated demo database/branch. Normal startup preserves existing data.
+**Warning:** Every demo startup clears and reseeds the 17 tables listed in the seed. Use a dedicated demo database/branch. Normal startup preserves existing data.
 
 ### Setup
 
@@ -218,3 +244,20 @@ rounded up to the next tender. These are store credits; no PayPal refund is sent
 The direct order endpoint accepts a fully Tender Cash funded order; a remaining
 cash amount must go through PayPal. Set `app.payments.allow-mock=true` only for
 tests that intentionally exercise the mock payment gateway.
+
+## Operator actions
+
+- `POST /api/operator/orders/{orderId}/reassign`: operator-only reassignment.
+- `POST /api/operator/reset`: operator-only reset, disabled by default.
+- Enable reset with `app.operator.reset-enabled=true`. The baseline defaults to
+  `classpath:demo/seed.sql`; override it with `app.operator.reset-seed`.
+- The demo-profile alias `POST /api/operator/reset-seed` uses the same reset guard,
+  transaction, and `{ "confirmation": "RESET" }` request as `/api/operator/reset`.
+- A successful reset invalidates all sessions.
+- Tests use isolated fixtures; the real demo seed has not been verified.
+
+## Courier offers
+
+Apply [docs/assignments.sql](docs/assignments.sql) before using courier offers.
+Ready orders are dispatched automatically. Couriers accept offers from their
+dashboard through `POST /api/courier/offers/{assignmentId}/accept`.

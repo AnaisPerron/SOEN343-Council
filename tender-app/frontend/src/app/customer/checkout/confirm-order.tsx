@@ -13,7 +13,7 @@ import AddressAutocomplete, { type AddressLookup, type PickedAddress } from '@/c
 import DeliveryMap from './DeliveryMap';
 import PayPalButton from './PayPalButton';
 import { groupCartLinesByRestaurant } from '../cart/cartStore';
-import { getCartOrderRestriction, type RestaurantOrderRestriction } from '../services/restaurantOrderRules';
+import { getCartOrderRestriction, getPlaceOrderAvailability, type RestaurantOrderRestriction } from '../services/restaurantOrderRules';
 import { fetchOrderQuote, toOrderSubmission, type OrderQuote, type OrderSubmissionResult } from '../services/orderApi';
 import { styles } from './confirm-order.styles';
 
@@ -69,6 +69,9 @@ export default function ConfirmOrderScreen() {
   }, {} as Record<number, number>);
   const amountDue = Math.round((quotedTotal - tendersApplied / 10) * 100) / 100;
   const quotesReady = groups.length > 0 && groups.every((group) => quotes[group.restaurantId] != null);
+  const currentRestriction = getCartOrderRestriction(groups.map((group) => group.restaurantId), restaurants);
+  const placeOrderAvailability = getPlaceOrderAvailability(currentRestriction, lines.map((line) => findItem(line.itemId)?.available), phase === 'submitting');
+  const { disabled: placeOrderDisabled, hint: placeOrderHint } = placeOrderAvailability;
   const placedOrders = orders.filter((order) => placedIds.includes(order.id));
   const deliveryAddress = [addressLine.trim(), city.trim(), country.trim()].join(', ');
   const restaurantPoints = groups.flatMap((group) => {
@@ -130,10 +133,9 @@ export default function ConfirmOrderScreen() {
     : router.canGoBack() ? router.back() : router.replace('/customer/cart/cart');
 
   const validateCheckout = () => {
-    if (sending.current || phase !== 'review' || lines.length === 0 || quoteLoading || !quotesReady || quoteError) return false;
-    const blocked = getCartOrderRestriction(groups.map((group) => group.restaurantId), restaurants);
-    if (blocked) {
-      setRestriction(blocked);
+    if (sending.current || phase !== 'review' || placeOrderDisabled || quoteLoading || !quotesReady || quoteError) return false;
+    if (currentRestriction) {
+      setRestriction(currentRestriction);
       return false;
     }
     if (!addressLine.trim() || !city.trim() || !country.trim()) {
@@ -340,7 +342,7 @@ export default function ConfirmOrderScreen() {
             <Text style={styles.paymentText}>Amount due: ${amountDue.toFixed(2)}</Text>
             {token && amountDue > 0 && <PayPalButton token={token}
               orders={groups.map((group) => ({ ...toOrderSubmission(group, destination ? { address: deliveryAddress, ...destination } : undefined), tendersToUse: tenderAllocations[group.restaurantId] ?? 0 }))}
-              disabled={phase === 'submitting' || lines.length === 0 || quoteLoading || !quotesReady || !!quoteError}
+                disabled={placeOrderDisabled || quoteLoading || !quotesReady || !!quoteError}
               onBegin={beginPayPal} onSuccess={paidWithPayPal} onFailure={failPayPal}
               onCancel={() => { sending.current = false; setPhase('review'); }} />}
             {paypalError ? <Text style={styles.addressError} accessibilityRole="alert">{paypalError}</Text> : null}
@@ -357,10 +359,11 @@ export default function ConfirmOrderScreen() {
         {phase === 'success' ? (
           <TouchableOpacity style={styles.sendButton} accessibilityRole="button" onPress={() => router.replace('/customer/home/home')}><Text style={styles.sendButtonText}>Browse restaurants</Text></TouchableOpacity>
         ) : amountDue === 0 ? (
-          <TouchableOpacity style={[styles.sendButton, (phase === 'submitting' || lines.length === 0 || quoteLoading || !quotesReady || !!quoteError) && styles.sendButtonDisabled]} accessibilityRole="button" accessibilityLabel={amountDue === 0 ? 'Pay with Tender Cash' : 'Send orders'} accessibilityState={{ disabled: phase === 'submitting' || lines.length === 0 || quoteLoading || !quotesReady || !!quoteError, busy: phase === 'submitting' }} disabled={phase === 'submitting' || lines.length === 0 || quoteLoading || !quotesReady || !!quoteError} onPress={sendOrders}>
+          <TouchableOpacity style={[styles.sendButton, (placeOrderDisabled || quoteLoading || !quotesReady || !!quoteError) && styles.sendButtonDisabled]} accessibilityRole="button" accessibilityLabel="Pay with Tender Cash" accessibilityHint={placeOrderHint} accessibilityState={{ disabled: placeOrderDisabled || quoteLoading || !quotesReady || !!quoteError, busy: phase === 'submitting' }} disabled={placeOrderDisabled || quoteLoading || !quotesReady || !!quoteError} onPress={sendOrders}>
             {phase === 'submitting' ? <><ActivityIndicator color="#FFFFFF" size="small" /><Text style={styles.sendButtonText}>Placing orders...</Text></> : <Text style={styles.sendButtonText}>{amountDue === 0 ? 'Pay with Tender Cash' : 'Send orders'}</Text>}
           </TouchableOpacity>
         ) : <View />}
+        {placeOrderHint && <Text style={styles.restrictionText}>{placeOrderHint}</Text>}
       </View>
       <Modal transparent visible={showPricingInfo} animationType="fade" onRequestClose={() => setShowPricingInfo(false)}>
         <View style={styles.pricingBackdrop}>

@@ -2,8 +2,10 @@ import type { Order, OrderLine } from '../../types/orders';
 import type { Restaurant, RestaurantStatus } from '../../types/restaurant';
 import type { ProfileResponse, ProfileUpdateRequest } from './operatorApi';
 import type { AuthUser } from '../../types/auth';
-import type { OperatorOrderStatus, OperatorSection } from '../../types/operator';
+import type { OperatorOrder, OperatorOrderStatus, OperatorSection } from '../../types/operator';
 import type { CustomerProfile, User } from '../../types/users';
+
+export { queueBand } from '../../lib/queueBands.ts';
 
 export const ACTIVE_ORDER_STATUSES: Order['status'][] = [
   'placed',
@@ -19,14 +21,6 @@ export function countActiveOrders(orders: Order[]): number {
 
 export function countOpenRestaurants(restaurants: Restaurant[]): number {
   return restaurants.filter((r) => r.status === 'open').length;
-}
-
-export type QueueBand = 'short' | 'building' | 'long';
-
-export function queueBand(queueCount: number, status: RestaurantStatus): QueueBand {
-  if (status === 'paused' || queueCount >= 6) return 'long';
-  if (queueCount >= 3) return 'building';
-  return 'short';
 }
 
 export function markOperatorOrderRefunded(section: OperatorSection | null, orderId: number,
@@ -87,6 +81,19 @@ export function applyRestaurantStatus(
   return restaurants.map((r) => (r.id === restaurantId ? { ...r, status } : r));
 }
 
+export type OrderStatus=OperatorOrder['status'];
+const REASSIGNABLE_STATUSES: OrderStatus[] = ['accepted', 'preparing', 'ready', 'picked_up'];
+
+export function canRefundOrder(order: Pick<OperatorOrder, 'status'>): boolean {
+  return order.status === 'delivered';
+}
+export function canReassignOrder(order: {status: OrderStatus; courierId: number | null; courierOnline?: boolean | null | undefined; }): boolean {
+  return (
+    order.courierId != null &&
+    order.courierOnline === false &&
+    REASSIGNABLE_STATUSES.includes(order.status)
+  );
+}
 
 export type ProfileErrors = Partial<Record<'phone' | 'password' | 'form', string>>;
 export type ProfileValidation =
