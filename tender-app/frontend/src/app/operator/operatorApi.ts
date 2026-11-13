@@ -11,11 +11,21 @@ export type ProfileResponse = RegisterResponse;
 
 export const operatorPaths = {
   restaurantStatus: (restaurantId: number) => `/api/operator/restaurants/${restaurantId}/status`,
+  orderRefund: (orderId: number) => `/api/operator/orders/${orderId}/refund`, //VERIFYPATHPLS
+  orderReassign: (orderId: number) => `/api/operator/orders/${orderId}/reassign`, //VERIFYPATHPLS
   profile: '/api/profile',
 };
 
 export async function changeRestaurantStatus(restaurantId: number, status: RestaurantStatus, token: string): Promise<void> {
   await requestJson<void>('PUT', operatorPaths.restaurantStatus(restaurantId), { status }, token);
+}
+
+export async function refundOrder(orderId: number, token: string): Promise<void> {
+  await requestJson<void>('POST', operatorPaths.orderRefund(orderId), undefined, token);
+}
+
+export async function reassignOrder(orderId: number, token: string): Promise<void> {
+  await requestJson<void>('POST', operatorPaths.orderReassign(orderId), undefined, token);
 }
 
 export function updateOperatorProfile(request: ProfileUpdateRequest, token: string): Promise<ProfileResponse> {

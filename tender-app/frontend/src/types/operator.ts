@@ -52,6 +52,7 @@ export interface OperatorOrder {
   customerId: number | null;
   restaurantId: number | null;
   courierId: number | null;
+  courierOnline?: boolean | null; 
   status: OperatorOrderStatus;
   dateOrdered: string | null;
   acceptedAt: string | null;
