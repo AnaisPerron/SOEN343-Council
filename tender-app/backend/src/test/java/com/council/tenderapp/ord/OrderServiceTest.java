@@ -35,6 +35,7 @@ import com.council.tenderapp.reg.entities.CourierStatus;
 import com.council.tenderapp.reg.entities.Role;
 import com.council.tenderapp.reg.repositories.CourierProfileRepository;
 import com.council.tenderapp.reg.repositories.ProfileRepository;
+import com.council.tenderapp.prc.service.LedgerService;
 import com.council.tenderapp.technicalservices.payment.TenderCash;
 
 @ExtendWith(MockitoExtension.class)
@@ -60,6 +61,9 @@ class OrderServiceTest {
 
     @Mock
     private CourierProfileRepository courierProfileRepository;
+
+    @Mock
+    private LedgerService ledgerService;
 
     @InjectMocks
     private OrderService orderService;
@@ -295,18 +299,35 @@ class OrderServiceTest {
 
     @Test
     void refundsOnlyDeliveredOrders() {
-        for (OrderStatus currentStatus : List.of(OrderStatus.READY, OrderStatus.PICKED_UP)) {
+        for (OrderStatus currentStatus : List.of(OrderStatus.PLACED, OrderStatus.READY, OrderStatus.PICKED_UP,
+                OrderStatus.REFUNDED)) {
             Order order = order(42L, currentStatus, new Date());
             order.setId(14L);
             when(orderRepository.findByIdForUpdate(14L)).thenReturn(Optional.of(order));
             assertThatThrownBy(() -> orderService.refundOrder(42L, 14L))
                 .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+            verify(orderRepository, never()).save(any());
         }
         Order delivered = order(42L, OrderStatus.DELIVERED, new Date());
         delivered.setId(14L);
         when(orderRepository.findByIdForUpdate(14L)).thenReturn(Optional.of(delivered));
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
         assertThat(orderService.refundOrder(42L, 14L).getStatus()).isEqualTo(OrderStatus.REFUNDED);
+        verify(tenderCash).refunded(delivered);
+        verify(ledgerService).createRefundEntry(delivered);
+        org.mockito.ArgumentCaptor<com.council.tenderapp.ord.entities.OrderEvent> event =
+                org.mockito.ArgumentCaptor.forClass(com.council.tenderapp.ord.entities.OrderEvent.class);
+        verify(orderEventRepository).saveAndFlush(event.capture());
+        assertThat(event.getValue().getOrderId()).isEqualTo(14L);
+        assertThat(event.getValue().getPreviousStatus()).isEqualTo("delivered");
+        assertThat(event.getValue().getNewStatus()).isEqualTo("refunded");
+        assertThat(event.getValue().getEventType()).isEqualTo("order_refunded");
+
+        assertThatThrownBy(() -> orderService.refundOrder(42L, 14L))
+            .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+        verify(orderRepository, org.mockito.Mockito.times(1)).save(any());
+        verify(orderEventRepository, org.mockito.Mockito.times(1)).saveAndFlush(any());
+        verify(ledgerService, org.mockito.Mockito.times(1)).createRefundEntry(delivered);
     }
 
     @Test
