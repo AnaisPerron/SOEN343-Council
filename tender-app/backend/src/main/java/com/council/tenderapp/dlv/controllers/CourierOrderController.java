@@ -46,4 +46,14 @@ public class CourierOrderController {
 
         return ResponseEntity.ok(new PickupConfirmationDto(order.orderId(), order.status(), duty.status()));
     }
+
+    @PostMapping("/{orderId}/delivery")
+    public ResponseEntity<PickupConfirmationDto> confirmDelivery(
+            Authentication authentication, @PathVariable Long orderId) {
+        Long courierId = getCourierId(authentication);
+        AssignedOrderDto order = courierDeliveryService.confirmDelivery(courierId, orderId);
+        CourierDutyResponseDto duty = courierDutyService.getDutyStatus(courierId);
+
+        return ResponseEntity.ok(new PickupConfirmationDto(order.orderId(), order.status(), duty.status()));
+    }
 }    

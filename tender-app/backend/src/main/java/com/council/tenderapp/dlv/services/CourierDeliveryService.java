@@ -48,4 +48,7 @@ public class CourierDeliveryService {
 
         return new AssignedOrderDto(order, restaurantRepository.findById(order.getRestaurantId()).orElse(null));
     }
+    public AssignedOrderDto confirmDelivery(Long courierId, Long orderId) {
+        throw new UnsupportedOperationException("confirmDelivery not implemented yet");
+    }//placeholder
 }
