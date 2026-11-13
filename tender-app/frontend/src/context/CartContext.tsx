@@ -1,6 +1,7 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { MenuItem } from '../mocks/types';
 import { addCartLine, changeCartLineQuantity, type CartLine } from '../app/customer/cart/cartStore';
+import { loadCustomerCart, saveCustomerCart } from '../storage/customerCart';
 
 interface CartContextValue {
   lines: CartLine[];
@@ -12,9 +13,11 @@ interface CartContextValue {
 
 const CartContext = createContext<CartContextValue | null>(null);
 
-export function CartProvider({ children }: { children: ReactNode }) {
-  // Keep the draft cart across customer routes; it resets when the app session reloads.
-  const [lines, setLines] = useState<CartLine[]>([]);
+export function CartProvider({ userId, children }: { userId?: number; children: ReactNode }) {
+  // Keep the draft cart across customer routes and restore it after a page reload.
+  const [lines, setLines] = useState<CartLine[]>(() => loadCustomerCart(userId));
+  // Save after every add, remove or quantity change, including when the cart becomes empty.
+  useEffect(() => saveCustomerCart(userId, lines), [userId, lines]);
   const addItem: CartContextValue['addItem'] = (item, restaurantId, optionIds, optionCost, quantity) => {
     // Functional updates preserve earlier cart changes if several actions happen close together.
     setLines((current) => addCartLine(current, item, restaurantId, optionIds, optionCost, quantity));

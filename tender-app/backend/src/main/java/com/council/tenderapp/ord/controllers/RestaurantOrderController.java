@@ -14,8 +14,8 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import com.council.tenderapp.ord.commands.OrderCommandInvoker;
 import com.council.tenderapp.ord.commands.OrderCommands;
-import com.council.tenderapp.ord.dto.request.RejectOrderRequest;
-import com.council.tenderapp.ord.dto.response.OrderResponse;
+import com.council.tenderapp.ord.dtos.RejectOrderRequest;
+import com.council.tenderapp.ord.dtos.OrderResponse;
 import com.council.tenderapp.ord.observers.DashboardObserver;
 import com.council.tenderapp.ord.services.OrderService;
 
@@ -93,9 +93,8 @@ public class RestaurantOrderController {
         return commandInvoker.execute(new OrderCommands.MarkReady(restaurantId, orderId));
     }
 
-    @PostMapping("/{orderId}/picked-up")
-    public OrderResponse markPickedUp(@PathVariable Long restaurantId, @PathVariable Long orderId) {
-        return commandInvoker.execute(new OrderCommands.MarkPickedUp(restaurantId, orderId));
+    @PostMapping("/{orderId}/refund")
+    public OrderResponse refundOrder(@PathVariable Long restaurantId, @PathVariable Long orderId) {
+        return commandInvoker.execute(new OrderCommands.Refund(restaurantId, orderId));
     }
-
 }

@@ -23,7 +23,7 @@ import com.council.tenderapp.operator.dto.OrderSummary;
 import com.council.tenderapp.operator.dto.RestaurantSummary;
 import com.council.tenderapp.operator.services.OperatorDashboardService;
 import com.council.tenderapp.operator.repositories.OperatorDashboardRepository.RestaurantOption;
-import com.council.tenderapp.ord.dto.response.OrderResponse;
+import com.council.tenderapp.ord.dtos.OrderResponse;
 import com.council.tenderapp.ord.services.OrderService;
 import com.council.tenderapp.ord.repositories.OrderRepository;
 import org.springframework.http.HttpStatus;

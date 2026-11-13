@@ -37,7 +37,7 @@ import com.council.tenderapp.ord.services.OrderService;
 import com.council.tenderapp.ord.repositories.OrderRepository;
 import com.council.tenderapp.ord.entities.Order;
 import com.council.tenderapp.ord.entities.OrderStatus;
-import com.council.tenderapp.ord.dto.response.OrderResponse;
+import com.council.tenderapp.ord.dtos.OrderResponse;
 
 @WebMvcTest(controllers = OperatorDashboardController.class)
 @Import({SecurityConfig.class, SessionService.class})
@@ -108,7 +108,8 @@ class OperatorDashboardControllerTest {
         when(order.getRestaurantId()).thenReturn(10L);
         when(orderRepository.findById(20L)).thenReturn(Optional.of(order));
         when(orderService.refundOrder(10L, 20L)).thenReturn(new OrderResponse(20L, 10L,
-                OrderStatus.REFUNDED, null, null, null, new BigDecimal("12.50"), null, null, null, List.of()));
+                null, null, OrderStatus.REFUNDED, null, null, null, new BigDecimal("12.50"),
+                null, null, null, List.of()));
         mvc.perform(post("/api/operator/orders/20/refund").header(HttpHeaders.AUTHORIZATION, bearer(Role.CUSTOMER)))
                 .andExpect(status().isForbidden());
         mvc.perform(post("/api/operator/orders/20/refund").header(HttpHeaders.AUTHORIZATION, bearer(Role.OPERATOR)))

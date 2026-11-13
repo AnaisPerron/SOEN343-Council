@@ -16,6 +16,8 @@ export type RestaurantOrderLine = {
 export type RestaurantOrder = {
   id: number;
   restaurantId: number;
+  courierId?: number | null;
+  courierName?: string | null;
   status: RestaurantOrderStatus;
   createdAt: string;
   acceptedAt: string | null;
@@ -25,6 +27,10 @@ export type RestaurantOrder = {
   lines: RestaurantOrderLine[];
   totalPrice?: number | null;
 };
+
+export function isWaitingForCourier(order: RestaurantOrder): boolean {
+  return order.status === 'ready' && order.courierId == null;
+}
 
 const STATUS_PRIORITY: Record<RestaurantOrderStatus, number> = {
   placed: 0, accepted: 1, preparing: 2, ready: 3, picked_up: 4,
@@ -40,6 +46,11 @@ export function filterAndSortOrders(orders: RestaurantOrder[], filter: OrderFilt
       }
       return Date.parse(a.createdAt) - Date.parse(b.createdAt) || a.id - b.id;
     });
+}
+
+// Accepted orders are prepared in the order they were placed; only the oldest one may start.
+export function nextOrderToPrepare(orders: RestaurantOrder[]): RestaurantOrder | null {
+  return filterAndSortOrders(orders, 'accepted')[0] ?? null;
 }
 
 export function transitionOrder(order: RestaurantOrder, next: RestaurantOrderStatus, timestamp: string, reason?: string): RestaurantOrder {

@@ -6,7 +6,7 @@ import CityMap from '@/components/dash/CityMap';
 import { useAuth } from '@/context/AuthContext';
 
 export default function RestaurantDashboard() {
-  const { user, ready, signOut } = useAuth();
+  const { user, ready } = useAuth();
   const router = useRouter();
   if (!ready) return <SafeAreaView style={styles.page}><ActivityIndicator color="#D42F50" /></SafeAreaView>;
   if (!user) return <Redirect href="/auth/login" />;
@@ -39,5 +39,4 @@ const styles = StyleSheet.create({
   ordersButton: { backgroundColor: '#F7F3F3', borderRadius: 18, padding: 24, marginBottom: 30 },
   ordersTitle: { color: '#302629', fontSize: 23, fontWeight: '900' },
   ordersDescription: { color: '#887B7E', marginTop: 8 },
-  signOut: { color: '#D42F50', fontWeight: '700' },
 });

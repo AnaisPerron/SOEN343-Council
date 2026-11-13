@@ -54,7 +54,7 @@ export default function OperatorHome() {
   const loadingRef = useRef(false);
   const operator = toOperatorUser(user);
 
-  const loadPage = useCallback(async (page = 0, quiet = false) => {
+  const fetchPage = useCallback(async (page = 0, quiet = false): Promise<void> => {
     if (!token || changing.current || (quiet && loadingRef.current)) return;
     const version = ++requestId.current;
     if (!quiet) { loadingRef.current = true; setLoading(true); setError(null); }
@@ -69,7 +69,7 @@ export default function OperatorHome() {
       if (version !== requestId.current) return;
       setSummary(counts);
       setSection((current) => page === 0 ? next : appendOperatorSection(current, next));
-    } catch (cause) {
+    } catch (cause: unknown) {
       if (version !== requestId.current) return;
       if (cause instanceof ApiError && cause.status === 401) {
         setSection(null);
@@ -83,10 +83,29 @@ export default function OperatorHome() {
     }
   }, [activeFilter, token, signOut, filters]);
 
+  // Show the spinner and drop stale results before a reload the user asked for.
+  const resetForLoad = (page = 0) => {
+    setLoading(true);
+    setError(null);
+    if (page === 0) {
+      setSection(null);
+      setSummary(null);
+    }
+  };
+
+  const loadPage = useCallback(async (page = 0, quiet = false) => {
+    if (!token || changing.current) return;
+    if (!quiet) resetForLoad(page);
+    await fetchPage(page, quiet);
+  }, [fetchPage, token]);
+
   useEffect(() => {
-    void loadPage();
-    return () => { requestId.current += 1; };
-  }, [loadPage]);
+    const timer = setTimeout(() => { void fetchPage(); }, 0);
+    return () => {
+      clearTimeout(timer);
+      requestId.current += 1;
+    };
+  }, [fetchPage]);
 
   useEffect(() => {
     if (!token) return;
@@ -101,7 +120,6 @@ export default function OperatorHome() {
     const timer = setInterval(() => { void loadPage(0, true); }, 15000);
     return () => clearInterval(timer);
   }, [activeFilter, loadPage]);
-
   const toggleStatus = (status: OperatorOrderStatus) => setFilters((current) => ({ ...current,
     statuses: current.statuses.includes(status) ? current.statuses.filter((item) => item !== status) : [...current.statuses, status],
   }));
@@ -174,7 +192,7 @@ export default function OperatorHome() {
         <View style={styles.statsContainer}>
           {tabs.map((tab) => (
             <TouchableOpacity key={tab.kind} style={[styles.statCard, activeFilter === tab.kind && styles.statCardSelected]}
-              onPress={() => { if (!changing.current) setActiveFilter(tab.kind); }} disabled={changingId !== null} accessibilityRole="button"
+              onPress={() => { if (changing.current || tab.kind === activeFilter) return; resetForLoad(); setActiveFilter(tab.kind); }} disabled={changingId !== null} accessibilityRole="button"
               accessibilityState={{ selected: activeFilter === tab.kind, disabled: changingId !== null }}>
               <Text style={styles.statLabel}>{tab.label}</Text>
               <Text style={styles.statValue}>{summary?.[tab.count] ?? '—'}</Text>
