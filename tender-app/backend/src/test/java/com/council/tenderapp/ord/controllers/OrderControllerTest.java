@@ -93,7 +93,7 @@ class OrderControllerTest {
 
     @Test
     void customerCanListOwnOrders() throws Exception {
-        when(historyService.getOrders(7L)).thenReturn(List.of(new CustomerOrderDto(42L, 1L, "Metro Pizza", "accepted",
+        when(historyService.getOrders(7L)).thenReturn(List.of(new CustomerOrderDto(42L, 1L, null, "Metro Pizza", "accepted",
                 new BigDecimal("19.00"), Instant.now(), null,
                 List.of(new CustomerOrderLineDto("Pepperoni Pizza", 1, new BigDecimal("19.00"), List.of("Extra cheese"))))));
 

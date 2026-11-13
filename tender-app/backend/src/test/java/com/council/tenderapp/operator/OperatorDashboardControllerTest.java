@@ -9,6 +9,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.time.LocalDate;
+import java.time.ZoneId;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -63,7 +65,7 @@ class OperatorDashboardControllerTest {
     @Test
     void listDefaultsAndPaginationArePassedToTheService() throws Exception {
         when(service.restaurants(0, 50)).thenReturn(new DashboardPage<>(List.of(
-                new RestaurantSummary(1, "Maple & Main", "open", null, null, null, null)), 4, 0, 50));
+                new RestaurantSummary(1, "Maple & Main", "open", null, null, null, null, 0)), 4, 0, 50));
         when(service.orders(1, 2)).thenReturn(new DashboardPage<>(List.of(), 8, 1, 2));
         mvc.perform(get("/api/operator/restaurants").header(HttpHeaders.AUTHORIZATION, bearer(Role.OPERATOR)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].name").value("Maple & Main"))
@@ -74,6 +76,20 @@ class OperatorDashboardControllerTest {
                 .andExpect(jsonPath("$.total").value(8)).andExpect(jsonPath("$.page").value(1));
         verify(service).restaurants(0, 50);
         verify(service).orders(1, 2);
+    }
+
+    @Test
+    void orderFiltersReachTheServiceAndInvalidDatesAreRejected() throws Exception {
+        when(service.orders(0, 50, List.of("delivered", "refunded"), List.of(10L),
+                LocalDate.parse("2026-11-01"), LocalDate.parse("2026-11-11"), ZoneId.of("America/Toronto")))
+                .thenReturn(new DashboardPage<>(List.of(), 0, 0, 50));
+        mvc.perform(get("/api/operator/orders?statuses=delivered&statuses=refunded&restaurantIds=10&from=2026-11-01&to=2026-11-11&timeZone=America/Toronto")
+                .header(HttpHeaders.AUTHORIZATION, bearer(Role.OPERATOR)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
+        verify(service).orders(0, 50, List.of("delivered", "refunded"), List.of(10L),
+                LocalDate.parse("2026-11-01"), LocalDate.parse("2026-11-11"), ZoneId.of("America/Toronto"));
+        mvc.perform(get("/api/operator/orders?from=2026-11-12&to=2026-11-11")
+                .header(HttpHeaders.AUTHORIZATION, bearer(Role.OPERATOR))).andExpect(status().isBadRequest());
     }
 
     @Test

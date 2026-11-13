@@ -15,6 +15,7 @@ export interface MapRestaurant {
   status: RestaurantStatus;
   latitude: number;
   longitude: number;
+  queueCount: number;
 }
 
 export interface MapCourier {

@@ -120,6 +120,33 @@ Courier acceptance is recorded in the assignment and as a `courier_accepted`
 row in `order_events`. Restaurant responses show the current courier's name
 only after that assignment is accepted, including after delivery.
 
+`POST /api/courier/orders/{orderId}/pickup` lets the assigned courier confirm pickup
+(Task 72, US.14). It requires the `COURIER` role and moves the order from `READY` to
+`PICKED_UP`, which moves the courier from `ASSIGNED` to `CARRYING`. The call is refused
+with `404` if the order does not exist, `403` if the authenticated courier is not the
+order's assigned courier or the caller is not a courier, `409` if the order is not
+`READY`, and `401` without a session. On success it returns
+`{"orderId": 12, "orderStatus": "picked_up", "courierStatus": "carrying"}`. The
+transition reuses `OrderService.markPickedUpByCourier`, which also sets the order's
+`pickup_date` and records an `order_picked_up` row in `order_events` (`ready` to
+`picked_up`) in the same transaction. The older
+`POST /api/courier/duty/orders/{orderId}/picked-up` route shares that method, so it
+records the same event.
+
+`POST /api/courier/orders/{orderId}/delivery` lets the assigned courier confirm delivery
+(Task 73, US.14). It requires the `COURIER` role and moves the order from `PICKED_UP` to
+`DELIVERED`. The call is refused with `404` if the order does not exist, `403` if the
+authenticated courier is not the order's assigned courier or the caller is not a courier,
+`409` if the order is not `PICKED_UP`, and `401` without a session. On success it returns
+`{"orderId": 12, "orderStatus": "delivered", "courierStatus": "idle"}`. The transition
+reuses `OrderService.markDeliveredByCourier`, which also sets the order's `date_delivered`
+and records an `order_delivered` row in `order_events` (`picked_up` to `delivered`) in the
+same transaction. After the change commits, `CourierReleaseObserver` returns the courier
+from `CARRYING` to `IDLE` and retries the dispatch queue, so the courier is immediately
+offered the oldest waiting order. The older
+`POST /api/courier/duty/orders/{orderId}/delivered` route shares that method, so it
+records the same event. The order summary and ledger entry are separate tasks (PRC).
+
 The current project has no authentication/authorization integration. The local
 restaurant profile is a demo context, not an authenticated account. Actions
 verify that the order belongs to the restaurant ID in the URL, but this is not
@@ -210,6 +237,8 @@ restaurant statuses and generated IDs can differ from the frontend mock state.
 - `POST /api/operator/reset`: operator-only reset, disabled by default.
 - Enable reset with `app.operator.reset-enabled=true`. The baseline defaults to
   `classpath:demo/seed.sql`; override it with `app.operator.reset-seed`.
+- The demo-profile alias `POST /api/operator/reset-seed` uses the same reset guard,
+  transaction, and `{ "confirmation": "RESET" }` request as `/api/operator/reset`.
 - A successful reset invalidates all sessions.
 - Tests use isolated fixtures; the real demo seed has not been verified.
 

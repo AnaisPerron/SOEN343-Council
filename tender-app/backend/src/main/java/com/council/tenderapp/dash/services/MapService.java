@@ -35,7 +35,7 @@ public class MapService {
     public MapDataDto getMapData(Session viewer) {
         long id = viewer.accountId();
         return switch (viewer.role()) {
-            case OPERATOR -> build(mapRepository.restaurants(), mapRepository.onDutyCouriers(), List.of());
+            case OPERATOR -> build(mapRepository.restaurants(), mapRepository.onDutyCouriers(), mapRepository.customers());
             case CUSTOMER -> build(mapRepository.openRestaurants(), mapRepository.couriersOfCustomerOrders(id), mapRepository.customer(id));
             case COURIER -> build(mapRepository.restaurantsOfCourierOrders(id), mapRepository.onDutyCourier(id),
                     mapRepository.customersOfCourierOrders(id));

@@ -5,5 +5,6 @@ public record MapRestaurantDto(
     String name,
     String status,
     double latitude,
-    double longitude
+    double longitude,
+    long queueCount
 ) {}

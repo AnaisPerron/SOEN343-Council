@@ -1,5 +1,8 @@
 package com.council.tenderapp.ord.services;
 
+import java.util.Date;
+import java.time.Instant;
+import java.util.Locale;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -32,6 +35,7 @@ import com.council.tenderapp.reg.entities.CourierProfile;
 import com.council.tenderapp.reg.entities.CourierStatus;
 import com.council.tenderapp.reg.repositories.CourierProfileRepository;
 import com.council.tenderapp.reg.repositories.ProfileRepository;
+import com.council.tenderapp.ord.entities.OrderEvent;
 
 @Service
 public class OrderService {
@@ -172,7 +176,18 @@ public class OrderService {
         OrderStatus previousStatus = order.getStatus();
         assignments.pickUp(order);
         transitionOrder(order, OrderStatus.PICKED_UP, "mark picked up");
+
+        Instant now=Instant.now();
+        order.setPickupDate(Date.from(now));
         Order savedOrder = orderRepository.save(order);
+
+        orderEventRepository.save(new OrderEvent(
+        savedOrder.getId(),
+        previousStatus.name().toLowerCase(Locale.ROOT),
+        OrderStatus.PICKED_UP.name().toLowerCase(Locale.ROOT),
+        "order_picked_up",
+        now));
+
         publishStatusChange(savedOrder, previousStatus, "marked picked up by courier", null);
         return toResponse(savedOrder);
     }
@@ -189,10 +204,21 @@ public class OrderService {
         OrderStatus previousStatus = order.getStatus();
         assignments.current(order);
         transitionOrder(order, OrderStatus.DELIVERED, "mark delivered");
+
+        Instant now = Instant.now();
+        order.setDateDelivered(Date.from(now));
         Order savedOrder = orderRepository.save(order);
         assignments.finish(savedOrder, true);
         orderRepository.flush();
         dispatch.retryQueue();
+
+        orderEventRepository.save(new OrderEvent(
+        savedOrder.getId(),
+        previousStatus.name().toLowerCase(Locale.ROOT),
+        OrderStatus.DELIVERED.name().toLowerCase(Locale.ROOT),
+        "order_delivered",
+        now));
+
         publishStatusChange(savedOrder, previousStatus, "marked delivered", null);
         return toResponse(savedOrder);
     }

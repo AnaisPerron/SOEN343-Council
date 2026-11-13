@@ -5,6 +5,7 @@ import { restaurantsMock } from '../../mocks/restaurants.mock.ts';
 import { menuItemsMock } from '../../mocks/menus.mock.ts';
 import {
   getCartOrderRestriction,
+  getPlaceOrderAvailability,
   getMenuItemOrderRestriction,
   getRestaurantOrderRestriction,
   ORDER_ERROR_FADE_DELAY_MS,
@@ -56,6 +57,30 @@ describe('R-ORD-02 - ORD restaurant order restriction', () => {
       code: ORDER_RESTRICTION_CODE,
       message: 'Orders are unavailable at Café Nord because it is paused.',
     });
+  });
+});
+
+describe('R-DASH-04 - Place Order availability', () => {
+  it('disables Place Order for paused or closed restaurants', () => {
+    for (const status of ['paused', 'closed'] as const) {
+      const restriction = getRestaurantOrderRestriction({ ...restaurantsMock[0], status });
+      const availability = getPlaceOrderAvailability(restriction, [true]);
+      assert.equal(availability.disabled, true);
+      assert.match(availability.hint ?? '', new RegExp(status));
+    }
+  });
+
+  it('disables Place Order when every selected item is sold out', () => {
+    const availability = getPlaceOrderAvailability(null, [false, false]);
+    assert.deepEqual(availability, { disabled: true, hint: 'All items in your cart are sold out.' });
+  });
+
+  it('keeps Place Order enabled when at least one selected item is available', () => {
+    assert.deepEqual(getPlaceOrderAvailability(null, [false, true]), { disabled: false, hint: undefined });
+  });
+
+  it('disables Place Order for an empty selection', () => {
+    assert.deepEqual(getPlaceOrderAvailability(null, []), { disabled: true, hint: 'Add a menu item before placing an order.' });
   });
 });
 
