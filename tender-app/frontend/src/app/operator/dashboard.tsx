@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/AuthContext';
 import { ApiError } from '@/api/client';
 import { appendOperatorSection, fetchOperatorSection, fetchOperatorSummary, fetchRestaurantOptions } from '@/lib/operatorDashboard';
-import type { OperatorOrder, OperatorOrderFilters, OperatorOrderStatus, OperatorSection, OperatorSectionName, OperatorSummary, RestaurantStatus } from '@/types/operator';
-import type { MapRestaurant } from '@/types/dash';
+import type { OperatorOrderFilters, OperatorOrderStatus, OperatorSection, OperatorSectionName, OperatorSummary, RestaurantStatus } from '@/types/operator';
+import type { MapData, MapRestaurant } from '@/types/dash';
+import { MONTREAL_MAP_BOUNDS, type MapMarker } from '@/lib/cityMap';
 import { styles } from './dashboard.styles';
 import RestaurantList from './components/resraurantList';
 import OrdersList from './components/ordersList';
@@ -13,6 +14,7 @@ import CustomerList from './components/customersList';
 import CourrierList from './components/courriersList';
 import OperatorProfile from './components/operatorProfile';
 import CityMap from '@/components/dash/CityMap';
+import MapDirectory from './components/MapDirectory';
 import { getOperatorDisplayName, toOperatorUser } from './operatorLogic';
 import { changeRestaurantStatus, resetDemoSeed } from './operatorApi';
 
@@ -46,14 +48,14 @@ export default function OperatorHome() {
   const [error, setError] = useState<string | null>(null);
   const [changingId, setChangingId] = useState<number | null>(null);
   const [mapRefreshKey, setMapRefreshKey] = useState(0);
+  const [mapKinds, setMapKinds] = useState<OperatorSectionName[]>(['restaurants', 'customers', 'couriers']);
+  const [directorySections, setDirectorySections] = useState<Partial<Record<OperatorSectionName, OperatorSection>>>({});
+  const [directoryDetail, setDirectoryDetail] = useState<{ title: string; detail: string } | null>(null);
   const [filters, setFilters] = useState<OperatorOrderFilters>(emptyFilters);
   const [restaurantOptions, setRestaurantOptions] = useState<{ id: number; name: string }[]>([]);
   const [fromDraft, setFromDraft] = useState('');
   const [toDraft, setToDraft] = useState('');
   const [mapRestaurant, setMapRestaurant] = useState<MapRestaurant | null>(null);
-  const [mapQueue, setMapQueue] = useState<OperatorOrder[]>([]);
-  const [mapQueueLoading, setMapQueueLoading] = useState(false);
-  const mapQueueRequest = useRef(0);
   const requestId = useRef(0);
   const changing = useRef(false);
   const loadingRef = useRef(false);
@@ -63,10 +65,7 @@ export default function OperatorHome() {
     if (!token || changing.current || (quiet && loadingRef.current)) return;
     const version = ++requestId.current;
     if (!quiet) { loadingRef.current = true; setLoading(true); setError(null); }
-    if (page === 0 && !quiet) {
-      setSection(null);
-      setSummary(null);
-    }
+    if (page === 0 && !quiet) { setSummary(null); setSection(null); }
     try {
       const [counts, next] = await Promise.all([
         fetchOperatorSummary(token), fetchOperatorSection(activeFilter, page, token, filters),
@@ -77,8 +76,8 @@ export default function OperatorHome() {
     } catch (cause) {
       if (version !== requestId.current) return;
       if (cause instanceof ApiError && cause.status === 401) {
-        setSection(null);
         setSummary(null);
+        setSection(null);
         signOut();
       } else {
         setError(cause instanceof Error ? cause.message : 'Unable to load dashboard');
@@ -102,10 +101,29 @@ export default function OperatorHome() {
   }, [token]);
 
   useEffect(() => {
-    if (activeFilter !== 'restaurants') return;
+    if (!token) return;
+    let active = true;
+    const refreshDirectory = () => {
+      void Promise.all(tabs.map(async ({ kind }) => {
+        const first = await fetchOperatorSection(kind, 0, token);
+        let combined = first;
+        while ((combined.data.page + 1) * combined.data.size < combined.data.total) {
+          combined = appendOperatorSection(combined, await fetchOperatorSection(kind, combined.data.page + 1, token));
+        }
+        return combined;
+      })).then((results) => {
+        if (active) setDirectorySections(Object.fromEntries(results.map((item) => [item.kind, item])));
+      }).catch((cause) => { if (active) setError(cause instanceof Error ? cause.message : 'Unable to load dashboard sections'); });
+    };
+    refreshDirectory();
+    const timer = setInterval(refreshDirectory, 15000);
+    return () => { active = false; clearInterval(timer); };
+  }, [token, mapRefreshKey]);
+
+  useEffect(() => {
     const timer = setInterval(() => { void loadPage(0, true); }, 15000);
     return () => clearInterval(timer);
-  }, [activeFilter, loadPage]);
+  }, [loadPage]);
 
   const toggleStatus = (status: OperatorOrderStatus) => setFilters((current) => ({ ...current,
     statuses: current.statuses.includes(status) ? current.statuses.filter((item) => item !== status) : [...current.statuses, status],
@@ -131,9 +149,7 @@ export default function OperatorHome() {
     setError(null);
     try {
       await resetDemoSeed(token);
-      setMapQueue([]);
       setMapRestaurant(null);
-      mapQueueRequest.current += 1;
       setMapRefreshKey((key) => key + 1);
       Alert.alert('Demo seed restored', 'Sign in again with the demo operator account to continue.');
       signOut();
@@ -169,26 +185,25 @@ export default function OperatorHome() {
     }
   };
 
-  const openMapRestaurant = async (id: number, restaurant: MapRestaurant) => {
+  const openMapRestaurant = (_id: number, restaurant: MapRestaurant) => {
     setMapRestaurant(restaurant);
-    setMapQueue([]);
-    if (!token) return;
-    const request = ++mapQueueRequest.current;
-    setMapQueueLoading(true);
-    try {
-      const result = await fetchOperatorSection('orders', 0, token, {
-        statuses: ['accepted', 'preparing'], restaurantIds: [id], from: '', to: '',
-      });
-      if (request === mapQueueRequest.current && result.kind === 'orders') setMapQueue(result.data.items);
-    } catch (cause) {
-      if (request === mapQueueRequest.current) setError(cause instanceof Error ? cause.message : 'Unable to load restaurant queue');
-    } finally {
-      if (request === mapQueueRequest.current) setMapQueueLoading(false);
-    }
   };
+  const updateMapRestaurant = useCallback((data: MapData) => {
+    setMapRestaurant((current) => current ? data.restaurants.find((item) => item.id === current.id) ?? current : null);
+  }, []);
 
   const visible = section?.kind === activeFilter ? section : null;
   const busy = loading || changingId !== null;
+  const queueCounts: Record<number, number> | undefined = directorySections.orders?.kind === 'orders'
+    ? directorySections.orders.data.items.reduce<Record<number, number>>((counts, order) => {
+      if (order.restaurantId != null && ['placed', 'accepted', 'preparing'].includes(order.status)) {
+        counts[order.restaurantId] = (counts[order.restaurantId] ?? 0) + 1;
+      }
+      return counts;
+    }, {}) : undefined;
+  const mapQueue = directorySections.orders?.kind === 'orders' && mapRestaurant
+    ? directorySections.orders.data.items.filter((order) => order.restaurantId === mapRestaurant.id
+      && ['placed', 'accepted', 'preparing'].includes(order.status)) : [];
 
   return (
     <SafeAreaView style={styles.page} edges={['top']}>
@@ -219,14 +234,22 @@ export default function OperatorHome() {
         )} style={styles.action}>
           <Text style={styles.profileText}>Reset demo seed</Text>
         </TouchableOpacity>}
-        <CityMap refreshKey={mapRefreshKey} onRestaurantPress={openMapRestaurant} />
+        <MapDirectory visible={mapKinds}
+          onToggle={(kind) => setMapKinds((current) => current.includes(kind) ? current.filter((item) => item !== kind) : [...current, kind])} />
+        <CityMap refreshKey={mapRefreshKey} boundsOverride={MONTREAL_MAP_BOUNDS} onRestaurantPress={openMapRestaurant} onData={updateMapRestaurant} queueCounts={queueCounts}
+          visibleKinds={[
+            ...(mapKinds.includes('restaurants') ? ['restaurant' as const] : []),
+            ...(mapKinds.includes('couriers') ? ['courier' as const] : []),
+            ...(mapKinds.includes('customers') ? ['customer' as const] : []),
+          ]}
+          onMarkerPress={(marker: MapMarker) => { if (marker.kind !== 'restaurant') setDirectoryDetail({ title: marker.name, detail: `${marker.kind} · ${marker.state}` }); }} />
         {mapRestaurant && <View style={styles.mapDetails}>
           <View style={styles.mapDetailsHeader}>
             <View>
-              <Text style={styles.filterTitle}>{mapRestaurant.name} · {mapRestaurant.queueCount} queued</Text>
+              <Text style={styles.filterTitle}>{mapRestaurant.name} · {queueCounts?.[mapRestaurant.id] ?? (queueCounts ? 0 : mapRestaurant.queueCount)} queued</Text>
               <Text style={styles.filterHint}>Preparation queue · {mapRestaurant.status}</Text>
             </View>
-            <TouchableOpacity accessibilityRole="button" onPress={() => { setMapRestaurant(null); setMapQueue([]); mapQueueRequest.current += 1; }} style={styles.action}>
+            <TouchableOpacity accessibilityRole="button" onPress={() => setMapRestaurant(null)} style={styles.action}>
               <Text style={styles.profileText}>Close</Text>
             </TouchableOpacity>
           </View>
@@ -235,16 +258,15 @@ export default function OperatorHome() {
               <Text style={styles.profileText}>{mapRestaurant.status === 'open' ? 'Pause restaurant' : 'Reopen restaurant'}</Text>
             </TouchableOpacity>
           </View>
-          <Text style={styles.filterTitle}>Orders being prepared</Text>
-          {mapQueueLoading ? <ActivityIndicator accessibilityLabel="Loading restaurant queue" /> : mapQueue.length === 0
-            ? <Text style={styles.filterHint}>No accepted or preparing orders.</Text>
+          <Text style={styles.filterTitle}>Queued orders</Text>
+          {mapQueue.length === 0
+            ? <Text style={styles.filterHint}>No queued orders.</Text>
             : mapQueue.map((order) => <Text key={order.id} style={styles.mapQueueItem}>Order #{order.id} · {order.status}</Text>)}
-          <Text style={styles.filterHint}>Queue size {mapRestaurant.queueCount} · {mapQueue.length} orders shown</Text>
+          <Text style={styles.filterHint}>Queue size {queueCounts?.[mapRestaurant.id] ?? (queueCounts ? 0 : mapRestaurant.queueCount)} · {mapQueue.length} orders shown</Text>
         </View>}
         {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
-        {(activeFilter === 'orders' || activeFilter === 'restaurants') && <View style={styles.filterPanel}>
+        {activeFilter === 'orders' && <View style={styles.filterPanel}>
           <Text style={styles.filterTitle}>Restaurants</Text>
-          <Text style={styles.filterHint}>Choose restaurants to show. All are shown when none are selected.</Text>
           <View style={styles.filterChoices}>
             {restaurantOptions.map((restaurant) => <TouchableOpacity key={restaurant.id} accessibilityRole="checkbox"
               accessibilityState={{ checked: filters.restaurantIds.includes(restaurant.id) }}
@@ -252,7 +274,6 @@ export default function OperatorHome() {
               <Text style={styles.filterChoiceText}>{filters.restaurantIds.includes(restaurant.id) ? '☑' : '□'} {restaurant.name}</Text>
             </TouchableOpacity>)}
           </View>
-          {activeFilter === 'orders' && <>
             <Text style={styles.filterTitle}>Order status</Text>
             <Text style={styles.filterHint}>All statuses are shown when none are selected.</Text>
             <View style={styles.filterChoices}>
@@ -272,10 +293,11 @@ export default function OperatorHome() {
                 <Text style={styles.profileText}>Apply dates</Text>
               </TouchableOpacity>
             </View>
-          </>}
         </View>}
         {loading && <ActivityIndicator accessibilityLabel="Loading dashboard" color="#D42F50" />}
-        {visible?.kind === 'restaurants' && <RestaurantList restaurants={visible.data.items} onStatusChange={updateStatus} changingId={changingId} disabled={busy} />}
+        {visible?.kind === 'restaurants' && <RestaurantList restaurants={visible.data.items.map((restaurant) => ({
+          ...restaurant, queueCount: queueCounts?.[restaurant.id] ?? (queueCounts ? 0 : restaurant.queueCount),
+        }))} onStatusChange={updateStatus} changingId={changingId} disabled={busy} />}
         {visible?.kind === 'orders' && <OrdersList orders={visible.data.items} />}
         {visible?.kind === 'customers' && <CustomerList customers={visible.data.items} />}
         {visible?.kind === 'couriers' && <CourrierList couriers={visible.data.items} />}
@@ -289,6 +311,13 @@ export default function OperatorHome() {
       </ScrollView>
       <OperatorProfile visible={showProfileMenu} operatorUser={operator} onClose={() => setShowProfileMenu(false)}
         onLogout={() => { setShowProfileMenu(false); signOut(); }} />
+      <Modal visible={directoryDetail !== null} transparent animationType="fade" onRequestClose={() => setDirectoryDetail(null)}>
+        <View style={styles.modalBackdrop}><View style={styles.modalCard}>
+          <Text style={styles.filterTitle}>{directoryDetail?.title}</Text>
+          <Text style={styles.filterHint}>{directoryDetail?.detail}</Text>
+          <TouchableOpacity accessibilityRole="button" onPress={() => setDirectoryDetail(null)} style={styles.action}><Text style={styles.profileText}>Close</Text></TouchableOpacity>
+        </View></View>
+      </Modal>
     </SafeAreaView>
   );
 }
