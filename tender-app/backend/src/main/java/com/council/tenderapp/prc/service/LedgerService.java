@@ -5,6 +5,7 @@ import java.util.Locale;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.council.tenderapp.ord.entities.Order;
 import com.council.tenderapp.prc.entities.LedgerEntry;
 import com.council.tenderapp.prc.repositories.LedgerEntryRepository;
 
@@ -54,7 +55,13 @@ public class LedgerService
         return ledgerEntryRepository.save(ledgerEntry);
     }
 
-    private String getTransactionType(String orderStatus)
+    @Transactional
+    public LedgerEntry createRefundEntry(Order order) {
+        billService.ensureBillForRefund(order);
+        return createLedgerEntry(order.getId(), "REFUNDED");
+    }
+
+    private String getTransactionType(String orderStatus) 
     {
         return switch (orderStatus) {
             case "PLACED", "ACCEPTED", "PREPARING", "READY", "PICKED_UP", "DELIVERED", "CANCELLED" -> "Payment";

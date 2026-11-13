@@ -77,12 +77,18 @@ describe('operator dashboard data', () => {
   });
 
   it('pressing refund sends the operator request for the selected order', async () => {
-    const fetch = response({ status: 'refunded' });
+    const fetch = response({ status: 'REFUNDED' });
     await refundOperatorOrder(20, 'operator-token');
     const [url, init] = fetch.mock.calls[0].arguments as [string, RequestInit];
     assert.equal(url, `${API_URL}/api/operator/orders/20/refund`);
     assert.equal(init.method, 'POST');
     assert.equal((init.headers as Record<string, string>).Authorization, 'Bearer operator-token');
+  });
+
+  it('does not report success unless the server confirms the refunded status', async () => {
+    response({ status: 'DELIVERED' });
+    await assert.rejects(refundOperatorOrder(20, 'operator-token'),
+      (error: ApiError) => error.status === 502 && error.message === 'The server did not confirm the refund');
   });
 
   it('updates the loaded order in place after refund and respects a status filter', () => {
