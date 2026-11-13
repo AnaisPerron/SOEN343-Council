@@ -1,7 +1,7 @@
 # Operator backend integration
 
-This document records the contracts for `feature/operator-backend`. Dashboard reads and restaurant status updates are implemented.
-Courier reassignment, billing ledgers, and restoration are deferred outside the current Phase II scope. The dashboard now reads authenticated API data;
+This document records the contracts for `feature/operator-backend`. Dashboard reads, restaurant status updates, and delivered-order refunds are implemented.
+Courier reassignment and initial-state restoration are deferred outside the current Phase II scope. The dashboard now reads authenticated API data;
 API helper tests mock HTTP responses and do not prove those routes exist.
 
 ## Existing endpoints to reuse
@@ -31,7 +31,7 @@ The frontend must not report them as successful or silently send an ignored fiel
 ## Operator endpoint access
 
 The security filter now requires the existing bearer session with
-`ROLE_OPERATOR` for all `/api/operator/**` routes. Dashboard reads and restaurant status updates are implemented; courier reassignment, billing ledgers, and restoration are deferred. No caller-supplied role or customer ID can grant access.
+`ROLE_OPERATOR` for all `/api/operator/**` routes. Dashboard reads, restaurant status updates, and refunds are implemented; courier reassignment and restoration are deferred. No caller-supplied role or customer ID can grant access.
 Return 401 for missing/invalid/expired tokens, 403 for other account roles,
 400 for invalid inputs, 404 for missing targets, and 409 for state conflicts.
 Reuse the existing error response conventions (`message`, optional `fieldErrors`).
@@ -90,6 +90,20 @@ and notifies observers after commit. Operators cannot use this endpoint and have
 no separate cancellation endpoint. The unused operator cancellation API and
 eligibility helpers were removed from the frontend.
 
+### Operator refund
+
+`POST /api/operator/orders/{orderId}/refund` is operator-only. It locks the order
+and accepts only a delivered order; a repeat refund or any other status is
+rejected. The operation credits the customer in Tender Cash (not PayPal),
+persists an `order_refunded` order event with its generated database event ID,
+and creates a separate `Refund` ledger entry without changing the original
+`Payment` entry. Older orders without a bill receive a zero-fee bill based on
+their stored order total so the refund remains ledgered.
+
+The operator orders list shows the refund action only for delivered orders. On
+success it updates the displayed status to Refunded; the customer's order
+history receives the same status from the order record.
+
 ## Phase II boundary and deferred features
 
 - Operator login and restored sessions now route to `/operator/dashboard`. The
@@ -103,10 +117,9 @@ eligibility helpers were removed from the frontend.
   a defined eligible order state, and transaction/locking rules. Order already
   maps `courier_id`; courier profiles currently have no dedicated backend entity
   on this branch. Define the request/response after inspecting that model.
-- Billing currently uses `MockPaymentGateway`: it returns a generated payment
-  reference and logs approval, but provides no persistent billing ledger or
-  refund operation. Do not present mock totals as a billing ledger. Define its
-  schema and migration before implementing ledger reads or refund accounting.
+- `MockPaymentGateway` remains the configured payment adapter in development.
+  Order charges and refunds are recorded in the ledger; delivered-order refunds
+  are credited in Tender Cash and do not initiate PayPal transactions.
 - Restoration needs an explicit initial-state definition, table/dependency scope,
   environment restrictions, and confirmation behavior before exposing an endpoint.
   It must be tested only in a disposable database. Do not execute the demo seed
@@ -120,13 +133,14 @@ eligibility helpers were removed from the frontend.
 4. Implement dashboard read endpoints and connect the frontend without mocks (done).
 5. Implement restaurant pause/reopen and connect frontend controls (done).
 6. Customer cancellation remains supported; operator cancellation was removed from this Phase II scope.
-Courier reassignment, billing-ledger implementation, and initial-state restoration
-are not next steps for this Phase II checkpoint. The Phase II instructions limit
+Courier reassignment and initial-state restoration are not next steps for this
+Phase II checkpoint. The Phase II instructions limit
 implementation to REG and ORD and explicitly exclude DLV and the full role-scoped
 command surface. Verify the referenced Moodle requirements before expanding scope.
 
-The read and restaurant status UI integration is complete. The remaining work is
-command/error logging verification and live demo verification.
+The read, restaurant status, and refund UI integrations are complete. Command
+and error logging is provided by the request filter; live demo verification
+remains.
 See [operator-checkpoint.md](operator-checkpoint.md) for the current scope and state.
 
 

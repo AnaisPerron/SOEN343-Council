@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import com.council.tenderapp.operator.dto.CourierSummary;
@@ -46,6 +47,7 @@ public class OperatorDashboardController {
     }
 
     @PostMapping("/orders/{orderId}/refund")
+    @PreAuthorize("hasRole('OPERATOR')")
     public OrderResponse refund(@PathVariable Long orderId) {
         Long restaurantId = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"))
