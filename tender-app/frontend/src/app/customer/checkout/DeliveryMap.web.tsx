@@ -23,7 +23,7 @@ export default function DeliveryMap({ address, destination, restaurants }: Deliv
 }
 
 function MapContent({ address, destination, restaurants }: DeliveryMapProps) {
-  const [geocoded, setGeocoded] = useState<Point | null>(null);
+  const [geocoded, setGeocoded] = useState<{ address: string; point: Point | null } | null>(null);
   const [fullScreen, setFullScreen] = useState(false);
   const geocoding = useMapsLibrary('geocoding');
   useEffect(() => {
@@ -38,16 +38,15 @@ function MapContent({ address, destination, restaurants }: DeliveryMapProps) {
     };
   }, [fullScreen]);
   useEffect(() => {
-    setGeocoded(null);
     if (destination || !address || !geocoding) return;
     let active = true;
     new geocoding.Geocoder().geocode({ address }).then(({ results }) => {
       const location = results[0]?.geometry.location;
-      if (active) setGeocoded(location ? { latitude: location.lat(), longitude: location.lng() } : null);
-    }).catch(() => { if (active) setGeocoded(null); });
+      if (active) setGeocoded({ address, point: location ? { latitude: location.lat(), longitude: location.lng() } : null });
+    }).catch(() => { if (active) setGeocoded({ address, point: null }); });
     return () => { active = false; };
   }, [address, destination, geocoding]);
-  const target = destination ?? geocoded;
+  const target = destination ?? (geocoded?.address === address ? geocoded.point : null);
   const center = target ?? restaurants[0] ?? { latitude: 45.5017, longitude: -73.5673 };
   const map = <MapScene center={center} destination={target} restaurants={restaurants} />;
   return <>

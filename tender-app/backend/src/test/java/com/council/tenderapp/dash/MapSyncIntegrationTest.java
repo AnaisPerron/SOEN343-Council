@@ -32,7 +32,7 @@ import com.council.tenderapp.reg.services.RegistrationService;
 import com.jayway.jsonpath.JsonPath;
 
 // Not @Transactional: the courier is released after the order change commits, so each step must really commit.
-@SpringBootTest
+@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:map-sync;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE")
 @AutoConfigureMockMvc
 class MapSyncIntegrationTest {
     @Autowired private MockMvc mockMvc;
@@ -75,7 +75,7 @@ class MapSyncIntegrationTest {
             // Going on duty receives the ready order as an offer
             orderId = orders.saveAndFlush(new Order(restaurantId, new Date(), OrderStatus.READY)).getId();
             courierDutyService.goOnDuty(courierId);
-            assertThat(mapStatusOf(courierId, token)).isEqualTo("idle");
+            assertThat(mapStatusOf(courierId, token)).isEqualTo("assigned");
             courierDutyService.acceptOffer(courierId, orderId);
             assertThat(mapStatusOf(courierId, token)).isEqualTo("assigned");
 

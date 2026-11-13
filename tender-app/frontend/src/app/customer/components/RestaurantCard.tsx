@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import {
   Image,
+  Pressable,
   type ImageSourcePropType,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import type { Restaurant } from '../../../types/restaurant';
+import { queueBand, queueBandColor } from '@/lib/queueBands';
 import { styles } from './RestaurantCard.styles';
 
 export interface RestaurantCardData {
@@ -15,10 +16,12 @@ export interface RestaurantCardData {
   rating?: number;
   reviewCount?: number;
   coverOptions: ImageSourcePropType[];
+  queueCount?: number;
 }
 
 interface RestaurantCardProps extends RestaurantCardData {
   onPress: () => void;
+  onHover?: (hovered: boolean) => void;
 }
 
 export default function RestaurantCard({
@@ -27,6 +30,8 @@ export default function RestaurantCard({
   reviewCount,
   coverOptions,
   onPress,
+  onHover,
+  queueCount,
 }: RestaurantCardProps) {
   // Choose once per mounted card so scrolling or rerendering does not reshuffle covers.
   const [cover] = useState<ImageSourcePropType | undefined>(() =>
@@ -47,8 +52,10 @@ export default function RestaurantCard({
       : styles.statusClosed;
 
   return (
-    <TouchableOpacity
+    <Pressable
       onPress={onPress}
+      onHoverIn={() => onHover?.(true)}
+      onHoverOut={() => onHover?.(false)}
       style={styles.card}
       accessibilityRole="button"
       accessibilityLabel={`${restaurant.name}, ${restaurant.status}`}
@@ -77,6 +84,10 @@ export default function RestaurantCard({
           <Text numberOfLines={1} style={styles.cardTitle}>{restaurant.name}</Text>
         </View>
         <Text style={[styles.cardDetail, statusStyle]}>{statusText}</Text>
+        {queueCount != null && <View style={styles.queueRow}>
+          <View style={[styles.queueDot, { backgroundColor: queueBandColor[queueBand(queueCount, restaurant.status)] }]} />
+          <Text style={styles.queueLabel}>(Queue Length: {queueCount})</Text>
+        </View>}
         {rating != null && (
           <View style={styles.ratingRow}>
             <Text style={styles.ratingStar}>★</Text>
@@ -85,6 +96,6 @@ export default function RestaurantCard({
           </View>
         )}
       </View>
-    </TouchableOpacity>
+    </Pressable>
   );
 }

@@ -8,8 +8,12 @@ import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.council.tenderapp.dlv.services.CourierDutyService;
+import com.council.tenderapp.dlv.entities.AssignmentStatus;
+import com.council.tenderapp.dlv.repositories.AssignmentRepository;
+import com.council.tenderapp.dlv.services.AssignmentService;
 import com.council.tenderapp.ord.entities.Order;
 import com.council.tenderapp.ord.entities.OrderEvent;
 import com.council.tenderapp.ord.entities.OrderStatus;
@@ -25,7 +29,7 @@ import com.council.tenderapp.reg.repositories.CourierProfileRepository;
 import com.council.tenderapp.reg.services.RegistrationService;
 
 // Not @Transactional: the courier is released after the order change commits, so each step must really commit.
-@SpringBootTest
+@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:courier-release;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE")
 class CourierDeliveryReleaseIntegrationTest {
     @Autowired private RegistrationService registrationService;
     @Autowired private CourierDutyService courierDutyService;
@@ -34,6 +38,8 @@ class CourierDeliveryReleaseIntegrationTest {
     @Autowired private RestaurantRepository restaurants;
     @Autowired private OrderRepository orders;
     @Autowired private OrderEventRepository orderEvents;
+    @Autowired private JdbcTemplate jdbc;
+    @Autowired private AssignmentRepository assignments;
 
     private CourierStatus statusOf(Long courierId) {
         return couriers.findById(courierId).orElseThrow().getStatus();
@@ -51,14 +57,16 @@ class CourierDeliveryReleaseIntegrationTest {
             orderService.markReady(restaurantId, orderId);
 
             assertThat(orders.findById(orderId).orElseThrow().getCourierId()).isEqualTo(courierId);
-            assertThat(statusOf(courierId)).isEqualTo(CourierStatus.IDLE);
+            assertThat(statusOf(courierId)).isEqualTo(CourierStatus.ASSIGNED);
             assertThat(orderEvents.findAll()).anySatisfy(event -> {
                 assertThat(event.getOrderId()).isEqualTo(orderId);
                 assertThat(event.getEventType()).isEqualTo("order_ready");
                 assertThat(event.getNewStatus()).isEqualTo("ready");
             });
         } finally {
+            if (statusOf(courierId) == CourierStatus.ASSIGNED) courierDutyService.declineOffer(courierId, orderId);
             if (statusOf(courierId) == CourierStatus.IDLE) courierDutyService.goOffDuty(courierId);
+            jdbc.update("DELETE FROM assignments WHERE order_id = ?", orderId);
             orders.deleteById(orderId);
         }
     }
@@ -95,6 +103,7 @@ class CourierDeliveryReleaseIntegrationTest {
                 orderService.markDeliveredByCourier(courierId, orderId);
             }
             if (statusOf(courierId) == CourierStatus.IDLE) courierDutyService.goOffDuty(courierId);
+            jdbc.update("DELETE FROM assignments WHERE order_id = ?", orderId);
             orders.deleteById(orderId);
         }
     }
@@ -126,7 +135,7 @@ class CourierDeliveryReleaseIntegrationTest {
 
             // Freed by the delivery, then immediately handed the order that was waiting
             assertThat(orders.findById(second).orElseThrow().getCourierId()).isEqualTo(courierId);
-            assertThat(statusOf(courierId)).isEqualTo(CourierStatus.IDLE);
+            assertThat(statusOf(courierId)).isEqualTo(CourierStatus.ASSIGNED);
             assertThat(orders.findById(first).orElseThrow().getCourierId()).isEqualTo(courierId);
             assertThat(orderService.getAllOrders(restaurantId))
                     .filteredOn(order -> order.getId().equals(first))
@@ -134,6 +143,7 @@ class CourierDeliveryReleaseIntegrationTest {
                     .extracting(order -> order.getCourierName())
                     .isEqualTo("Release Tester");
 
+            courierDutyService.acceptOffer(courierId, second);
             orderService.markPickedUpByCourier(courierId, second);
             orderService.markDeliveredByCourier(courierId, second);
             assertThat(statusOf(courierId)).isEqualTo(CourierStatus.IDLE);
@@ -141,10 +151,13 @@ class CourierDeliveryReleaseIntegrationTest {
             // Leave no idle courier or waiting order behind for other tests' dispatch runs
             orders.findById(second).filter(o -> o.getStatus() == OrderStatus.READY && o.getCourierId() != null)
                     .ifPresent(o -> {
+                        var assignment = assignments.findByOrderIdAndStatusIn(second, AssignmentService.ACTIVE).orElseThrow();
+                        if (assignment.getStatus() == AssignmentStatus.OFFERED) courierDutyService.acceptOffer(courierId, second);
                         orderService.markPickedUpByCourier(courierId, second);
                         orderService.markDeliveredByCourier(courierId, second);
                     });
             if (statusOf(courierId) == CourierStatus.IDLE) courierDutyService.goOffDuty(courierId);
+            jdbc.update("DELETE FROM assignments WHERE order_id IN (?, ?)", first, second);
             orders.deleteById(first);
             orders.deleteById(second);
         }

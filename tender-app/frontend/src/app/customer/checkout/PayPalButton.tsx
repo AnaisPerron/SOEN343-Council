@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Text, TouchableOpacity, View } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { capturePayPalOrder, createPayPalOrder, fetchPayPalConfig } from '@/api/paypal';
@@ -20,11 +20,14 @@ const returnUrl = 'tender-mobile-app://customer/checkout/confirm-order';
 export default function PayPalButton({ token, orders, disabled, onBegin, onSuccess, onFailure, onCancel }: PayPalButtonProps) {
   const [configured, setConfigured] = useState(false);
   const [loading, setLoading] = useState(false);
+  const onFailureRef = useRef(onFailure);
+
+  useEffect(() => { onFailureRef.current = onFailure; }, [onFailure]);
 
   useEffect(() => {
     let active = true;
     fetchPayPalConfig(token).then((config) => { if (active) setConfigured(config.enabled); })
-      .catch((error) => { if (active) onFailure(error instanceof Error ? error.message : 'Could not load PayPal checkout.'); });
+      .catch((error) => { if (active) onFailureRef.current(error instanceof Error ? error.message : 'Could not load PayPal checkout.'); });
     return () => { active = false; };
   }, [token]);
 

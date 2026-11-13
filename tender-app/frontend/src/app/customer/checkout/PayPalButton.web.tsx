@@ -49,7 +49,9 @@ export default function PayPalButton({ token, orders, disabled, onBegin, onSucce
   const [loading, setLoading] = useState(false);
   const checkoutOrderId = useRef('');
   const callbacks = useRef({ onSuccess, onFailure, onCancel });
-  callbacks.current = { onSuccess, onFailure, onCancel };
+  useEffect(() => {
+    callbacks.current = { onSuccess, onFailure, onCancel };
+  }, [onSuccess, onFailure, onCancel]);
 
   useEffect(() => {
     let active = true;

@@ -19,5 +19,5 @@ public record SummaryDto (
     List<ChargeDto> charges,
     Double totalCharge,
     Double itemSubtotal
-) 
+)
 {}

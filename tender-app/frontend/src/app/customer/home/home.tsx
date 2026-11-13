@@ -3,7 +3,9 @@ import { useRouter } from 'expo-router';
 import {
   Animated,
   Image,
+  Modal,
   Platform,
+  Pressable,
   ScrollView,
   Text,
   TextInput,
@@ -16,7 +18,10 @@ import { useCart } from '@/context/CartContext';
 import { useCatalog } from '@/context/CatalogContext';
 import { useAuth } from '@/context/AuthContext';
 import { fetchTenderCash } from '@/api/tenderCash';
+import { useOrders } from '@/context/OrdersContext';
+import type { CustomerOrder } from '../services/orderLifecycle';
 import type { Restaurant } from '@/types/restaurant';
+import type { MapData } from '@/types/dash';
 import { styles } from './home.styles';
 import { searchRestaurants } from '../services/restaurantSearch';
 import RestaurantSection from '../components/RestaurantSection';
@@ -24,6 +29,7 @@ import CartIconButton from '../components/CartIconButton';
 import AccountMenu from '@/components/AccountMenu';
 import CityMap from '@/components/dash/CityMap';
 import type { RestaurantCardData } from '../components/RestaurantCard';
+import RestaurantDetails from '../restaurant/[id]';
 import {
   getRestaurantOrderRestriction,
   ORDER_ERROR_FADE_DELAY_MS,
@@ -47,9 +53,10 @@ const sections = [
 const rotate = <T,>(list: T[], offset: number) =>
   list.length === 0 ? list : [...list.slice(offset % list.length), ...list.slice(0, offset % list.length)];
 
-const toCardData = (restaurant: Restaurant): RestaurantCardData => ({
+const toCardData = (restaurant: Restaurant, mapData?: MapData | null): RestaurantCardData => ({
   restaurant,
   coverOptions: restaurant.photoUrl ? [{ uri: restaurant.photoUrl }] : [],
+  queueCount: mapData?.restaurants.find((item) => item.id === restaurant.id)?.queueCount,
 });
 
 export default function CustomerHome() {
@@ -64,11 +71,18 @@ export default function CustomerHome() {
       .catch(() => { if (active) setTenderBalance(0); });
     return () => { active = false; };
   }, [token]);
+  const { orders, refreshOrders } = useOrders();
   const { restaurants, restaurantsStatus, restaurantsError, reloadRestaurants } = useCatalog();
   const cartCount = lines.reduce((count, line) => count + line.quantity, 0);
   const { width } = useWindowDimensions();
   // Full screen shows the map with the restaurants in a side panel, like a maps app; too narrow for a panel, it's just the map
   const [mapFullScreen, setMapFullScreen] = useState(false);
+  const [mapData, setMapData] = useState<MapData | null>(null);
+  const [highlightedKeys, setHighlightedKeys] = useState<string[]>([]);
+  const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
+  const mapOffset = useRef(0);
   const toggleMapFullScreen = () => setMapFullScreen((current) => !current);
   const split = mapFullScreen && width >= SPLIT_MIN_WIDTH;
   const mapOnly = mapFullScreen && !split;
@@ -82,11 +96,21 @@ export default function CustomerHome() {
   const normalizedQuery = searchQuery.trim().toLocaleLowerCase();
   const isMobileSearch = Platform.OS !== 'web' && (isSearchFocused || normalizedQuery.length > 0);
   // Search the full restaurant list so matches are not limited to one curated row.
-  const searchResults: RestaurantCardData[] = searchRestaurants(restaurants, normalizedQuery).map(toCardData);
+  const searchResults: RestaurantCardData[] = searchRestaurants(restaurants, normalizedQuery).map((item) => toCardData(item, mapData));
+  const awaitingOrders = orders.filter((order) => ['placed', 'accepted', 'preparing', 'ready', 'picked_up'].includes(order.status));
+  const selectedOrder = awaitingOrders.find((order) => order.id === selectedOrderId);
+  const mapOrderKeys = (restaurantId: number, courierId?: number | null) => [
+    `restaurant-${restaurantId}`, ...(courierId == null ? [] : [`courier-${courierId}`]),
+  ];
   useEffect(() => () => {
     // Clear the pending dismissal if the home screen unmounts while the alert is visible.
     if (toastTimer.current) clearTimeout(toastTimer.current);
   }, []);
+  useEffect(() => {
+    refreshOrders();
+    const timer = setInterval(refreshOrders, 15000);
+    return () => clearInterval(timer);
+  }, [refreshOrders]);
 
   const handleRestaurantPress = (restaurant: Restaurant) => {
     const restriction = getRestaurantOrderRestriction(restaurant);
@@ -114,6 +138,11 @@ export default function CustomerHome() {
   // The map only shows open restaurants, but this keeps the same checks and messages as tapping a card
   const openRestaurantFromMap = (restaurantId: number) => {
     const restaurant = restaurants.find((r) => r.id === restaurantId);
+    if (split && restaurant) {
+      setSelectedRestaurant(restaurant);
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
+      return;
+    }
     if (restaurant) handleRestaurantPress(restaurant);
     // Not loaded in the list yet: the restaurant page loads it and handles a closed restaurant itself
     else router.push({ pathname: '/customer/restaurant/[id]', params: { id: String(restaurantId) } });
@@ -122,15 +151,21 @@ export default function CustomerHome() {
   return (
     <SafeAreaView style={styles.page} edges={['top']}>
       <View style={split ? styles.splitRow : styles.single}>
-        {!mapOnly && <ScrollView
+        {split && selectedRestaurant ? (
+          <View style={styles.sidePanel}>
+            <RestaurantDetails restaurantId={selectedRestaurant.id} onBack={() => setSelectedRestaurant(null)} />
+          </View>
+        ) : !mapOnly && <ScrollView
+          ref={scrollRef}
           style={split && styles.sidePanel}
-          stickyHeaderIndices={[isMobileSearch ? 1 : 2]}
+          stickyHeaderIndices={[1]}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={[
             styles.content,
             { paddingHorizontal: compact ? 20 : 48 },
           ]}
         >
+          <View>
           <View style={[styles.topbar, compact && styles.mobileTopbar]}>
             {/* TODO: Restore the delivery location control when location selection is implemented.
             <TouchableOpacity
@@ -145,6 +180,9 @@ export default function CustomerHome() {
               </View>
             </TouchableOpacity>
             */}
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Go to city map" style={styles.mapJump} onPress={() => mapFullScreen ? setMapFullScreen(false) : scrollRef.current?.scrollTo({ y: mapOffset.current, animated: true })}>
+              <Text style={styles.mapJumpIcon}>⌖</Text>
+            </TouchableOpacity>
             <CartIconButton count={cartCount} onPress={() => router.push('/customer/cart/cart')} />
             <AccountMenu />
           </View>
@@ -176,6 +214,7 @@ export default function CustomerHome() {
             </TouchableOpacity>
             </View>
           )}
+          </View>
 
           {/* Keep the search background opaque while rows scroll underneath it. */}
           <View style={styles.stickySearch}>
@@ -229,9 +268,10 @@ export default function CustomerHome() {
               compact={compact}
               index={0}
               onRestaurantPress={handleRestaurantPress}
+              onRestaurantHover={(id) => setHighlightedKeys(id == null ? [] : [`restaurant-${id}`])}
             />
           ) : sections.map((section, index) => {
-            const items: RestaurantCardData[] = rotate(restaurants, index).map(toCardData);
+            const items: RestaurantCardData[] = rotate(restaurants, index).map((item) => toCardData(item, mapData));
 
             return (
               <RestaurantSection
@@ -242,22 +282,35 @@ export default function CustomerHome() {
                 compact={compact}
                 index={index}
                 onRestaurantPress={handleRestaurantPress}
+                onRestaurantHover={(id) => setHighlightedKeys(id == null ? [] : [`restaurant-${id}`])}
               />
             );
           })}
 
           {!mapFullScreen && (
-            <View style={styles.cityMap}>
-              <CityMap onToggleFullScreen={toggleMapFullScreen} onRestaurantPress={openRestaurantFromMap} />
+            <View style={styles.cityMap} onLayout={(event) => { mapOffset.current = event.nativeEvent.layout.y; }}>
+              <CityMap onToggleFullScreen={toggleMapFullScreen} onRestaurantPress={openRestaurantFromMap} highlightedKeys={highlightedKeys} onData={setMapData} />
+              <AwaitingOrders orders={awaitingOrders} mapData={mapData} onHover={setHighlightedKeys} onSelect={setSelectedOrderId} mapOrderKeys={mapOrderKeys} />
             </View>
           )}
         </ScrollView>}
         {mapFullScreen && (
           <View style={styles.mapPane}>
-            <CityMap fill onToggleFullScreen={toggleMapFullScreen} onRestaurantPress={openRestaurantFromMap} />
+            <CityMap fill onToggleFullScreen={toggleMapFullScreen} onRestaurantPress={openRestaurantFromMap} highlightedKeys={highlightedKeys} onData={setMapData} />
+            {split && <AwaitingOrders orders={awaitingOrders} mapData={mapData} onHover={setHighlightedKeys} onSelect={setSelectedOrderId} mapOrderKeys={mapOrderKeys} />}
           </View>
         )}
       </View>
+      <Modal visible={!!selectedOrder} transparent animationType="fade" onRequestClose={() => setSelectedOrderId(null)}>
+        <View style={styles.orderModalBackdrop}><View style={styles.orderModal}>
+          <Text style={styles.selectedEyebrow}>ORDER SUMMARY</Text>
+          <Text style={styles.selectedTitle}>Order #{selectedOrder?.id}</Text>
+          <Text style={styles.selectedMeta}>{selectedOrder?.restaurantName} · {selectedOrder?.status.replace('_', ' ')}</Text>
+          {selectedOrder?.items?.map((item, index) => <Text key={index} style={styles.selectedMeta}>{item.quantity} × {item.name}</Text>)}
+          <Text style={styles.selectedMeta}>Total ${selectedOrder?.total.toFixed(2)}</Text>
+          <TouchableOpacity accessibilityRole="button" onPress={() => setSelectedOrderId(null)} style={styles.selectedAction}><Text style={styles.selectedActionText}>Close</Text></TouchableOpacity>
+        </View></View>
+      </Modal>
       {orderError && (
         <View style={styles.orderErrorOverlay} pointerEvents="none">
           <Animated.View
@@ -272,4 +325,26 @@ export default function CustomerHome() {
       )}
     </SafeAreaView>
   );
+}
+
+function AwaitingOrders({ orders, mapData, onHover, onSelect, mapOrderKeys }: {
+  orders: CustomerOrder[];
+  mapData: MapData | null;
+  onHover: (keys: string[]) => void;
+  onSelect: (id: string) => void;
+  mapOrderKeys: (restaurantId: number, courierId?: number | null) => string[];
+}) {
+  if (orders.length === 0) return null;
+  return <View style={styles.awaitingPanel}>
+    <Text style={styles.awaitingTitle}>Awaiting orders</Text>
+    {orders.map((order) => {
+      const courier = mapData?.couriers.find((item) => item.courierId === order.courierId);
+      return <Pressable key={order.id} accessibilityRole="button" onPress={() => onSelect(order.id)}
+        onHoverIn={() => onHover(mapOrderKeys(order.restaurantId, order.courierId))} onHoverOut={() => onHover([])} style={styles.awaitingRow}>
+        <View style={styles.awaitingColumn}><Text style={styles.awaitingCaption}>COURIER ON THE WAY</Text><Text style={styles.awaitingName}>{courier?.name ?? (order.courierId ? `Courier #${order.courierId}` : 'Awaiting assignment')}</Text></View>
+        <View style={styles.awaitingColumn}><Text style={styles.awaitingCaption}>RESTAURANT</Text><Text style={styles.awaitingName}>{order.restaurantName ?? `Restaurant #${order.restaurantId}`}</Text></View>
+        <Text style={styles.awaitingNumber}>#{order.id}</Text>
+      </Pressable>;
+    })}
+  </View>;
 }

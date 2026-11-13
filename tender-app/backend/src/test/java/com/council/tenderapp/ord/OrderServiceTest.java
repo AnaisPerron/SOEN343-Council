@@ -19,6 +19,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.council.tenderapp.dlv.services.AssignmentService;
+import com.council.tenderapp.dlv.services.DispatchService;
+import com.council.tenderapp.dlv.entities.Assignment;
+import com.council.tenderapp.dlv.repositories.AssignmentRepository;
 import com.council.tenderapp.ord.dtos.OrderResponse;
 import com.council.tenderapp.ord.entities.MenuItem;
 import com.council.tenderapp.ord.entities.Order;
@@ -64,6 +68,9 @@ class OrderServiceTest {
 
     @Mock
     private LedgerService ledgerService;
+    @Mock private AssignmentService assignments;
+    @Mock private DispatchService dispatch;
+    @Mock private AssignmentRepository assignmentHistory;
 
     @InjectMocks
     private OrderService orderService;
@@ -130,6 +137,10 @@ class OrderServiceTest {
         assertThat(orderService.getAllOrders(restaurantId).get(0).getCourierName()).isNull();
 
         duty.setStatus(CourierStatus.ASSIGNED);
+        Assignment offer = new Assignment(ready.getId(), courierId, java.time.Instant.now());
+        when(assignmentHistory.findByOrderIdInOrderByAssignedAtDescIdDesc(List.of(ready.getId()))).thenReturn(List.of(offer));
+        assertThat(orderService.getAllOrders(restaurantId).get(0).getCourierName()).isNull();
+        offer.accept(java.time.Instant.now());
         assertThat(orderService.getAllOrders(restaurantId).get(0).getCourierName()).isEqualTo("Jordan Courier");
     }
 

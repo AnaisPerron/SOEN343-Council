@@ -8,6 +8,7 @@ import java.util.List;
 public record CustomerOrderDto(
     Long orderId,
     Long restaurantId,
+    Long courierId,
     String restaurantName,
     String status,
     BigDecimal total,

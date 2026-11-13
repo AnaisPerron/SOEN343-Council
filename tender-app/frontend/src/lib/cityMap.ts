@@ -1,7 +1,10 @@
 import type { MapBounds, MapData } from '../types/dash.ts';
+import { queueBand, queueBandColor } from './queueBands.ts';
 
 // Same area as the backend's MapService.DEFAULT_BOUNDS (central Montreal)
 export const DEFAULT_MAP_BOUNDS: MapBounds = { minLatitude: 45.49, minLongitude: -73.62, maxLatitude: 45.54, maxLongitude: -73.55 };
+/** Montreal Island and its immediate surroundings, used for the operator's city view. */
+export const MONTREAL_MAP_BOUNDS: MapBounds = { minLatitude: 45.40, minLongitude: -73.97, maxLatitude: 45.73, maxLongitude: -73.38 };
 
 /** Fills in anything missing from the response so an empty dataset still draws a map instead of failing. */
 export function normalizeMapData(data: Partial<MapData> | null | undefined): MapData {
@@ -78,13 +81,14 @@ export type MapMarker = {
   y: number;
   /** Overrides the state colour, for views whose legend uses one colour per kind. */
   color?: string;
+  queueCount?: number;
 };
 
 /** Every location as a positioned marker; couriers last so they draw on top of where they are going. */
 export function toMarkers(data: MapData, aspect?: number): MapMarker[] {
   const { project } = createProjection(data.bounds, aspect);
   return [
-    ...data.restaurants.map((r) => ({ key: `restaurant-${r.id}`, id: r.id, kind: 'restaurant' as const, name: r.name, state: r.status, latitude: r.latitude, longitude: r.longitude, ...project(r.latitude, r.longitude) })),
+    ...data.restaurants.map((r) => ({ key: `restaurant-${r.id}`, id: r.id, kind: 'restaurant' as const, name: r.name, state: r.status, queueCount: r.queueCount, color: queueBandColor[queueBand(r.queueCount, r.status)], latitude: r.latitude, longitude: r.longitude, ...project(r.latitude, r.longitude) })),
     ...data.customers.map((c) => ({ key: `customer-${c.customerId}`, id: c.customerId, kind: 'customer' as const, name: c.name, state: 'customer', latitude: c.latitude, longitude: c.longitude, ...project(c.latitude, c.longitude) })),
     ...data.couriers.map((c) => ({ key: `courier-${c.courierId}`, id: c.courierId, kind: 'courier' as const, name: c.name, state: c.status, latitude: c.latitude, longitude: c.longitude, ...project(c.latitude, c.longitude) })),
   ];

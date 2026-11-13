@@ -12,4 +12,3 @@ The backend reads these values from `tender-app/backend/src/main/resources/appli
 The items subtotal is the sum of each ordered quantity multiplied by its menu price plus selected add-on prices. The backend calculates the straight-line (Haversine) distance between the restaurant and the selected delivery address, rounds kilometres to two decimals using half-up rounding, multiplies by $0.80, then rounds the delivery fee to cents using half-up rounding. The surcharge applies only when the items subtotal is **strictly below** $10.00. Each order is priced separately, including a cart containing multiple restaurants. The charged amount, stored order total, and bill all use the same calculation. Order address and location are snapshotted at placement, so later profile changes do not change that order's fare.
 
 Example: $9.00 items + $1.50 service + (2.00 km × $0.80/km = $1.60) delivery + $2.00 small-order surcharge = **$14.10**.
-
