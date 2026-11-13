@@ -3,6 +3,9 @@ import type { Restaurant, RestaurantStatus } from '../../types/restaurant';
 import type { ProfileResponse, ProfileUpdateRequest } from './operatorApi';
 import type { AuthUser } from '../../types/auth';
 import type { CustomerProfile, User } from '../../types/users';
+import type { OperatorOrder } from '../../types/operator';
+
+
 
 export const ACTIVE_ORDER_STATUSES: Order['status'][] = [
   'placed',
@@ -67,6 +70,19 @@ export function applyRestaurantStatus(
   return restaurants.map((r) => (r.id === restaurantId ? { ...r, status } : r));
 }
 
+export type OrderStatus=OperatorOrder['status'];
+const REASSIGNABLE_STATUSES: OrderStatus[] = ['accepted', 'preparing', 'ready', 'picked_up'];
+
+export function canRefundOrder(order: Pick<OperatorOrder, 'status'>): boolean {
+  return order.status === 'delivered';
+}
+export function canReassignOrder(order: {status: OrderStatus; courierId: number | null; courierOnline?: boolean | null | undefined; }): boolean {
+  return (
+    order.courierId != null &&
+    order.courierOnline === false &&
+    REASSIGNABLE_STATUSES.includes(order.status)
+  );
+}
 
 export type ProfileErrors = Partial<Record<'phone' | 'password' | 'form', string>>;
 export type ProfileValidation =
