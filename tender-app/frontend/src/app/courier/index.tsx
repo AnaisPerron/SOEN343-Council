@@ -4,6 +4,8 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AccountMenu from '@/components/AccountMenu';
 import CityMap from '@/components/dash/CityMap';
+import type { MapData } from '@/types/dash';
+import { queueBand, queueBandColor } from '@/lib/queueBands';
 import { useAuth } from '@/context/AuthContext';
 import { acceptOrder, declineOrder, fetchCourierDuty, goOffDuty, goOnDuty, markOrderDelivered, markOrderPickedUp, type CourierDuty } from '@/api/courierDuty';
 import { canGoOffDuty, canGoOnDuty, isOnDuty, stateLabel } from '@/lib/courierDuty';
@@ -20,7 +22,9 @@ export default function CourierDashboard() {
   const [message, setMessage] = useState('');
   // Going on or off duty changes the courier's map presence, so refresh it immediately.
   const [mapRefreshKey, setMapRefreshKey] = useState(0);
+  const [mapData, setMapData] = useState<MapData | null>(null);
   const order = duty?.assignedOrder;
+  const pickupRestaurant = order && mapData?.restaurants.find((item) => item.name === order.restaurantName);
 
   useEffect(() => {
     if (!token || user?.role !== 'courier') return;
@@ -94,6 +98,7 @@ export default function CourierDashboard() {
         {order ? <View style={styles.orderCard}>
           <View style={styles.orderRow}><Text style={styles.orderTitle}>Order #{order.orderId}</Text><Text style={styles.orderStatus}>{order.status.replace('_', ' ')}</Text></View>
           {!!order.restaurantName && <Text style={styles.orderLine}>Pick up at {order.restaurantName}</Text>}
+          {pickupRestaurant && <View style={styles.queueRow}><View style={[styles.queueDot, { backgroundColor: queueBandColor[queueBand(pickupRestaurant.queueCount, pickupRestaurant.status)] }]} /><Text style={styles.orderMuted}>(Queue Length: {pickupRestaurant.queueCount})</Text></View>}
           {!!order.restaurantAddress && <Text style={styles.orderMuted}>{order.restaurantAddress}</Text>}
           {!!order.deliveryAddress && <Text style={styles.orderLine}>Deliver to {order.deliveryAddress}</Text>}
           {order.totalPrice != null && <Text style={styles.orderMuted}>Order total {money(order.totalPrice)}</Text>}
@@ -120,12 +125,14 @@ export default function CourierDashboard() {
       </Pressable>
       {!deliveryEnabled && <Text style={styles.hint}>{deliveryHint}</Text>}
       {!!message && <Text style={styles.message}>{message}</Text>}
-      <View style={styles.map}><CityMap refreshKey={mapRefreshKey} /></View>
+      <View style={styles.map}><CityMap refreshKey={mapRefreshKey} onData={setMapData} /></View>
     </ScrollView>
   </SafeAreaView>;
 }
 
 const styles = StyleSheet.create({
+  queueRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  queueDot: { width: 9, height: 9, borderRadius: 5 },
   page: { flex: 1, backgroundColor: '#FFFAF9' },
   header: { height: 70, width: '100%', maxWidth: 1000, alignSelf: 'center', paddingHorizontal: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', zIndex: 10 },
   brand: { color: '#D42F50', fontSize: 25, fontWeight: '900' },

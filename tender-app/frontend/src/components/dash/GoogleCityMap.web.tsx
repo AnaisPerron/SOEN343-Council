@@ -14,8 +14,10 @@ export const googleMapsAvailable = apiKey !== '';
 
 export interface GoogleCityMapProps {
   bounds: MapBounds;
+  restrictBounds?: boolean;
   markers: MapMarker[];
   activeKey: string | null;
+  highlightedKeys: string[];
   /** Changing this fits the map to the dataset bounds again; polling alone leaves the view where the user put it. */
   fitKey: number;
   onHover: (key: string | null) => void;
@@ -32,7 +34,7 @@ const toLiteral = (bounds: MapBounds) => ({
 });
 
 /** City map (DASH) on Google Maps: same markers, colours and tooltips as the built-in map. */
-export default function GoogleCityMap({ bounds, markers, activeKey, fitKey, onHover, onSelect, onFail }: GoogleCityMapProps) {
+export default function GoogleCityMap({ bounds, restrictBounds = false, markers, activeKey, highlightedKeys, fitKey, onHover, onSelect, onFail }: GoogleCityMapProps) {
   useEffect(() => {
     // Google calls this global when the key is invalid or not allowed for this site
     const w = window as typeof window & { gm_authFailure?: () => void };
@@ -45,6 +47,7 @@ export default function GoogleCityMap({ bounds, markers, activeKey, fitKey, onHo
       <Map
         mapId={mapId}
         defaultBounds={{ ...toLiteral(bounds), padding: PADDING }}
+        restriction={restrictBounds ? { latLngBounds: toLiteral(bounds), strictBounds: true } : undefined}
         gestureHandling="cooperative"
         clickableIcons={false}
         disableDefaultUI
@@ -61,12 +64,12 @@ export default function GoogleCityMap({ bounds, markers, activeKey, fitKey, onHo
               : `${marker.name}, ${markerStateLabel(marker)}`}
             anchorLeft="-50%"
             anchorTop="-50%"
-            zIndex={marker.key === activeKey ? 2 : marker.kind === 'courier' ? 1 : 0}
+            zIndex={marker.key === activeKey || highlightedKeys.includes(marker.key) ? 2 : marker.kind === 'courier' ? 1 : 0}
             onClick={() => onSelect(marker.key)}
             onMouseEnter={() => onHover(marker.key)}
             onMouseLeave={() => onHover(null)}
           >
-            <MarkerIcon marker={marker} active={marker.key === activeKey} />
+            <MarkerIcon marker={marker} active={marker.key === activeKey || highlightedKeys.includes(marker.key)} />
           </AdvancedMarker>
         ))}
       </Map>
@@ -109,7 +112,7 @@ function MarkerIcon({ marker, active }: { marker: MapMarker; active: boolean }) 
             padding: '6px 10px',
             borderRadius: 8,
             backgroundColor: '#111827',
-            fontFamily: 'system-ui, sans-serif',
+            fontFamily: 'Gotham Rounded, system-ui, sans-serif',
             pointerEvents: 'none',
           }}
         >
