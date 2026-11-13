@@ -78,6 +78,10 @@ class CourierOrderControllerTest {
         Account courier = register("pickup-happy@example.com", Role.COURIER);
         Order order = orderFor(courier, OrderStatus.READY);
         setStatus(courier, CourierStatus.ASSIGNED);
+        mockMvc.perform(post("/api/courier/duty/orders/" + order.getId() + "/accept")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + courier.token()))
+                .andExpect(status().isOk());
+
 
         mockMvc.perform(post(pickupUrl(order.getId())).header(HttpHeaders.AUTHORIZATION, "Bearer " + courier.token()))
                 .andExpect(status().isOk())
@@ -95,6 +99,17 @@ class CourierOrderControllerTest {
             assertThat(event.getPreviousStatus()).isEqualTo("ready");
             assertThat(event.getNewStatus()).isEqualTo("picked_up");
         });
+    }
+
+    @Test
+    void refusesPickupUntilTheCourierAcceptsTheOffer() throws Exception {
+        Account courier = register("pickup-unaccepted@example.com", Role.COURIER);
+        Order order = orderFor(courier, OrderStatus.READY);
+        setStatus(courier, CourierStatus.ASSIGNED);
+        mockMvc.perform(post(pickupUrl(order.getId())).header(HttpHeaders.AUTHORIZATION, "Bearer " + courier.token()))
+                .andExpect(status().isConflict());
+        assertThat(orders.findById(order.getId()).orElseThrow().getStatus()).isEqualTo(OrderStatus.READY);
+        assertThat(couriers.findById(courier.id()).orElseThrow().getStatus()).isEqualTo(CourierStatus.ASSIGNED);
     }
 
     @Test

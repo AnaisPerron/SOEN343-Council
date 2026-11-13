@@ -16,7 +16,7 @@ import com.council.tenderapp.dlv.dtos.DeliveryConfirmationDto;
 import com.council.tenderapp.dlv.dtos.PickupConfirmationDto;
 import com.council.tenderapp.dlv.services.CourierDeliveryService;
 import com.council.tenderapp.dlv.services.CourierDutyService;
-import com.council.tenderapp.dlv.dtos.DeliveryConfirmationDto;
+
 
 
 @RestController

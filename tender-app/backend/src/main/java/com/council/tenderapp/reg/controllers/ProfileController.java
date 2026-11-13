@@ -55,13 +55,30 @@ public class ProfileController {
         Profile profile = currentProfile(authentication);
         if (profile.getRole() == Role.OPERATOR) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Operator accounts cannot be deleted here");
         Long id = profile.getId();
+        jdbc.queryForList("SELECT user_id FROM courier_profiles ORDER BY user_id FOR UPDATE", Long.class);
+        if (profile.getRole() == Role.CUSTOMER && Boolean.TRUE.equals(jdbc.queryForObject(
+                "SELECT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = ? AND ("
+                + "(o.courier_id IS NOT NULL AND o.status IN ('ready', 'picked_up')) OR EXISTS "
+                + "(SELECT 1 FROM assignments a WHERE a.order_id = o.id AND a.status IN ('offered', 'accepted'))))",
+                Boolean.class, id))) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Resolve active deliveries before deleting this account");
+        }
+        if (profile.getRole() == Role.COURIER && Boolean.TRUE.equals(jdbc.queryForObject(
+                "SELECT EXISTS (SELECT 1 FROM assignments WHERE courier_id = ? AND status IN ('offered', 'accepted')) "
+                + "OR EXISTS (SELECT 1 FROM orders WHERE courier_id = ? AND status IN ('ready', 'picked_up'))",
+                Boolean.class, id, id))) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Resolve active deliveries before deleting this account");
+        }
         if (profile.getRole() == Role.CUSTOMER) {
+            jdbc.update("DELETE FROM assignments WHERE order_id IN (SELECT id FROM orders WHERE customer_id = ?)", id);
+            jdbc.update("DELETE FROM order_events WHERE order_id IN (SELECT id FROM orders WHERE customer_id = ?)", id);
             jdbc.update("DELETE FROM order_line_options WHERE order_line_id IN (SELECT id FROM order_lines WHERE order_id IN (SELECT id FROM orders WHERE customer_id = ?))", id);
             jdbc.update("DELETE FROM order_lines WHERE order_id IN (SELECT id FROM orders WHERE customer_id = ?)", id);
             jdbc.update("DELETE FROM order_items WHERE order_id IN (SELECT id FROM orders WHERE customer_id = ?)", id);
             jdbc.update("DELETE FROM orders WHERE customer_id = ?", id);
             jdbc.update("DELETE FROM customer_profiles WHERE user_id = ?", id);
         } else if (profile.getRole() == Role.COURIER) {
+            jdbc.update("DELETE FROM assignments WHERE courier_id = ?", id);
             jdbc.update("UPDATE orders SET courier_id = NULL WHERE courier_id = ?", id);
             jdbc.update("DELETE FROM courier_profiles WHERE user_id = ?", id);
         } else {

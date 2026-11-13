@@ -70,11 +70,10 @@ for short queues, amber for three to five orders, and red for six or more or a
 paused restaurant. Selecting an operator's restaurant marker opens its live
 preparation queue and pause/reopen action.
 
-To show the operator's **Reset demo seed** action, set
-`EXPO_PUBLIC_DEMO_SEED_RESET_ENABLED=true` and run the backend with its `demo`
-profile against a dedicated demo database. The reset endpoint is registered
-only under that backend profile. Resetting clears demo activity and sessions;
-the operator must sign in again after the reset.
+The operator's **Reset system** action requires confirmation and calls
+`POST /api/operator/reset`. Reset is disabled unless the backend explicitly
+sets `app.operator.reset-enabled=true`. Use a dedicated demo database; the
+operator must sign in again after a successful reset. Docker disables reset.
 
 ## Restaurant demo accounts
 

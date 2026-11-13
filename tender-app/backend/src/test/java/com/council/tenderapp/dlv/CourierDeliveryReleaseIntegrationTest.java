@@ -25,7 +25,7 @@ import com.council.tenderapp.reg.repositories.CourierProfileRepository;
 import com.council.tenderapp.reg.services.RegistrationService;
 
 // Not @Transactional: the courier is released after the order change commits, so each step must really commit.
-@SpringBootTest
+@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:courier-release;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE")
 class CourierDeliveryReleaseIntegrationTest {
     @Autowired private RegistrationService registrationService;
     @Autowired private CourierDutyService courierDutyService;
@@ -51,7 +51,7 @@ class CourierDeliveryReleaseIntegrationTest {
             orderService.markReady(restaurantId, orderId);
 
             assertThat(orders.findById(orderId).orElseThrow().getCourierId()).isEqualTo(courierId);
-            assertThat(statusOf(courierId)).isEqualTo(CourierStatus.IDLE);
+            assertThat(statusOf(courierId)).isEqualTo(CourierStatus.ASSIGNED);
             assertThat(orderEvents.findAll()).anySatisfy(event -> {
                 assertThat(event.getOrderId()).isEqualTo(orderId);
                 assertThat(event.getEventType()).isEqualTo("order_ready");
@@ -124,7 +124,7 @@ class CourierDeliveryReleaseIntegrationTest {
 
             // Freed by the delivery, then immediately handed the order that was waiting
             assertThat(orders.findById(second).orElseThrow().getCourierId()).isEqualTo(courierId);
-            assertThat(statusOf(courierId)).isEqualTo(CourierStatus.IDLE);
+            assertThat(statusOf(courierId)).isEqualTo(CourierStatus.ASSIGNED);
             assertThat(orders.findById(first).orElseThrow().getCourierId()).isEqualTo(courierId);
             assertThat(orderService.getAllOrders(restaurantId))
                     .filteredOn(order -> order.getId().equals(first))

@@ -7,13 +7,14 @@ export const canGoOffDuty = (state: CourierState) => state === 'idle';
 
 export const canGoOnDuty = (state: CourierState) => state === 'offline';
 
-export function getOrderActionAvailability(duty: CourierState | undefined, orderStatus: string | undefined) {
-  const pickupEnabled = duty === 'assigned' && orderStatus === 'ready';
+export function getOrderActionAvailability(duty: CourierState | undefined, orderStatus: string | undefined, assignmentStatus?: 'offered' | 'accepted') {
+  const pickupEnabled = duty === 'assigned' && orderStatus === 'ready' && assignmentStatus !== 'offered';
   const deliveryEnabled = duty === 'carrying' && orderStatus === 'picked_up';
   return {
     pickupEnabled,
     pickupHint: pickupEnabled ? undefined
       : !orderStatus ? 'Available when you have a ready order offer.'
+        : assignmentStatus === 'offered' ? 'Accept the delivery offer before confirming pickup.'
         : orderStatus !== 'ready' ? 'Pickup is available after the restaurant marks the order ready.'
           : 'Accept the delivery offer before confirming pickup.',
     deliveryEnabled,
