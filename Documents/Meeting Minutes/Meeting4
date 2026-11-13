@@ -1,0 +1,14 @@
+Meeting date:05 November 2026  |  Time: 1:30 pm  |  Location: Discord
+Present: Anais,Gayane,Becky,Zeynep, Zein, Colin
+
+Purpose: discussing comments about phase 2, phase 3 discussions, reviewing tasks
+
+The members discussed the future modifications to be made for phase 3 suggesting APIs for restaurant and map data
+Google Maps platform:
+https://developers.google.com/maps/documentation?_gl=1*uabnqi*_up*MQ..*_ga*ODY4NjM5ODg4LjE3OTM5MDI3MDU.*_ga_SM8HXJ53K2*czE3OTM5MDI3MDQkbzEkZzAkdDE3OTM5MDI3MDQkajYwJGwwJGgw*_ga_NRWSTWS78N*czE3OTM5MDI3MDUkbzEkZzAkdDE3OTM5MDI3MDUkajYwJGwwJGgw#places-documentation 
+Possible payment integrations were discussed
+Implementations and changes to the user and operator profiles for location and  addresses were discussed 
+The design pattern that was chosen was reviewed for implementation.
+Github issues were reviewed and new tasks were distributed for phase 3.
+The diagrams and models from previous phases were discussed for them to be updated with the new changes.
+Pdf document for phase 3 was reviewed and will be finalized by assigned members.
