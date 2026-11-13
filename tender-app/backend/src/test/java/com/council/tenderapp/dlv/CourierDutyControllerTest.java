@@ -51,6 +51,12 @@ class CourierDutyControllerTest {
         return new Account(id, loginService.login(new LoginRequest(email, "secret123")).token());
     }
 
+    private Order orderFor(Account courier, Restaurant restaurant, OrderStatus status) {
+        Order order = new Order(restaurant.getId(), new java.util.Date(), status);
+        order.setCourierId(courier.id());
+        return orders.saveAndFlush(order);
+    }
+
     private CourierStatus statusOf(Account courier) {
         return couriers.findById(courier.id()).orElseThrow().getStatus();
     }
@@ -228,5 +234,39 @@ class CourierDutyControllerTest {
         assertThat(statusOf(courier)).isEqualTo(CourierStatus.IDLE);
         mockMvc.perform(post("/api/courier/duty/off").header(HttpHeaders.AUTHORIZATION, "Bearer " + courier.token()))
                         .andExpect(status().isOk());
+    }
+     @Test
+    void deliveryBeforePickupIsRefused() throws Exception {
+        Account courier = register("duty-early-delivery@example.com", Role.COURIER);
+        Restaurant restaurant = restaurants.saveAndFlush(new Restaurant("Early Cafe", "open", 45.50, -73.57));
+        Order ready = orderFor(courier, restaurant, OrderStatus.READY);
+        setStatus(courier, CourierStatus.ASSIGNED);
+
+        mockMvc.perform(post("/api/courier/duty/orders/" + ready.getId() + "/delivered")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + courier.token()))
+                .andExpect(status().isBadRequest());
+
+        assertThat(orders.findById(ready.getId()).orElseThrow().getStatus()).isEqualTo(OrderStatus.READY);
+        assertThat(statusOf(courier)).isEqualTo(CourierStatus.ASSIGNED);
+    }
+
+    @Test
+    void anotherCourierCannotConfirmPickup() throws Exception {
+        Account owner = register("duty-pickup-owner@example.com", Role.COURIER);
+        Account other = register("duty-pickup-other@example.com", Role.COURIER);
+        Restaurant restaurant = restaurants.saveAndFlush(new Restaurant("Owner Cafe", "open", 45.50, -73.57));
+        Order ownersOrder = orderFor(owner, restaurant, OrderStatus.READY);
+        Order othersOrder = orderFor(other, restaurant, OrderStatus.READY);
+        setStatus(owner, CourierStatus.ASSIGNED);
+        setStatus(other, CourierStatus.ASSIGNED);
+
+        mockMvc.perform(post("/api/courier/duty/orders/" + ownersOrder.getId() + "/picked-up")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + other.token()))
+                .andExpect(status().isConflict());
+
+        assertThat(orders.findById(ownersOrder.getId()).orElseThrow().getStatus()).isEqualTo(OrderStatus.READY);
+        assertThat(orders.findById(othersOrder.getId()).orElseThrow().getStatus()).isEqualTo(OrderStatus.READY);
+        assertThat(statusOf(owner)).isEqualTo(CourierStatus.ASSIGNED);
+        assertThat(statusOf(other)).isEqualTo(CourierStatus.ASSIGNED);
     }
 }
