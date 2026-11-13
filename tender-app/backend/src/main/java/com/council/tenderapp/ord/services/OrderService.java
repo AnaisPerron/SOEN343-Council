@@ -178,7 +178,18 @@ public class OrderService {
 
         OrderStatus previousStatus = order.getStatus();
         transitionOrder(order, OrderStatus.DELIVERED, "mark delivered");
+
+        Instant now = Instant.now();
+        order.setDateDelivered(Date.from(now));
         Order savedOrder = orderRepository.save(order);
+
+        orderEventRepository.save(new OrderEvent(
+        savedOrder.getId(),
+        previousStatus.name().toLowerCase(Locale.ROOT),
+        OrderStatus.DELIVERED.name().toLowerCase(Locale.ROOT),
+        "order_delivered",
+        now));
+        
         publishStatusChange(savedOrder, previousStatus, "marked delivered", null);
         return toResponse(savedOrder);
     }
