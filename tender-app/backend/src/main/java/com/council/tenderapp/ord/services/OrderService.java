@@ -1,5 +1,6 @@
 package com.council.tenderapp.ord.services;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -19,6 +20,7 @@ import com.council.tenderapp.ord.dtos.OrderLineResponse;
 import com.council.tenderapp.ord.dtos.OrderResponse;
 import com.council.tenderapp.ord.dtos.OrderLineDto;
 import com.council.tenderapp.ord.entities.Order;
+import com.council.tenderapp.ord.entities.OrderEvent;
 import com.council.tenderapp.ord.entities.OrderStatus;
 import com.council.tenderapp.ord.repositories.OrderEventRepository;
 import com.council.tenderapp.ord.repositories.OrderLineRepository;
@@ -28,6 +30,7 @@ import com.council.tenderapp.reg.entities.CourierProfile;
 import com.council.tenderapp.reg.entities.CourierStatus;
 import com.council.tenderapp.reg.repositories.CourierProfileRepository;
 import com.council.tenderapp.reg.repositories.ProfileRepository;
+import com.council.tenderapp.prc.service.LedgerService;
 import com.council.tenderapp.technicalservices.payment.TenderCash;
 
 @Service
@@ -44,6 +47,7 @@ public class OrderService {
     private final OrderLineRepository orderLineRepository;
     private final TenderCash tenderCash;
     private final CourierProfileRepository courierProfileRepository;
+    private final LedgerService ledgerService;
 
     public OrderService(
         OrderRepository orderRepository,
@@ -52,7 +56,8 @@ public class OrderService {
         ProfileRepository profileRepository,
         OrderLineRepository orderLineRepository,
         TenderCash tenderCash,
-        CourierProfileRepository courierProfileRepository
+        CourierProfileRepository courierProfileRepository,
+        LedgerService ledgerService
     ) {
         this.orderRepository = orderRepository;
         this.orderStatusPublisher = orderStatusPublisher;
@@ -61,6 +66,7 @@ public class OrderService {
         this.orderLineRepository = orderLineRepository;
         this.tenderCash = tenderCash;
         this.courierProfileRepository = courierProfileRepository;
+        this.ledgerService = ledgerService;
     }
 
     @Transactional(readOnly = true)
@@ -203,6 +209,14 @@ public class OrderService {
         transitionOrder(order, OrderStatus.REFUNDED, "refund");
         tenderCash.refunded(order);
         Order savedOrder = orderRepository.save(order);
+        ledgerService.createRefundEntry(savedOrder);
+        orderEventRepository.saveAndFlush(new OrderEvent(
+            orderId,
+            previousStatus.name().toLowerCase(java.util.Locale.ROOT),
+            OrderStatus.REFUNDED.name().toLowerCase(java.util.Locale.ROOT),
+            "order_refunded",
+            Instant.now()
+        ));
         publishStatusChange(savedOrder, previousStatus, "refunded", null);
         return toResponse(savedOrder);
     }

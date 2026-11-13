@@ -5,6 +5,7 @@ import java.util.Locale;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.council.tenderapp.ord.entities.Order;
 import com.council.tenderapp.prc.entities.LedgerEntry;
 import com.council.tenderapp.prc.repositories.LedgerEntryRepository;
 
@@ -52,6 +53,12 @@ public class LedgerService
         ledgerEntry.setTimestamp(OffsetDateTime.now());
 
         return ledgerEntryRepository.save(ledgerEntry);
+    }
+
+    @Transactional
+    public LedgerEntry createRefundEntry(Order order) {
+        billService.ensureBillForRefund(order);
+        return createLedgerEntry(order.getId(), "REFUNDED");
     }
 
     private String getTransactionType(String orderStatus) 
