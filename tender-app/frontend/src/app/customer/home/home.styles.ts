@@ -253,7 +253,6 @@ export const styles = StyleSheet.create({
   mapPane: { flex: 1 },
   mapJump: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFF0F2', alignItems: 'center', justifyContent: 'center' },
   mapJumpIcon: { fontFamily: roundedFont, color: '#D42F50', fontSize: 27, lineHeight: 31 },
-  selectedRestaurant: { padding: 16, marginBottom: 16, borderRadius: 16, backgroundColor: '#fff', borderWidth: 1, borderColor: '#F3D1D7' },
   selectedEyebrow: { fontFamily: roundedFont, color: '#B44159', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
   selectedTitle: { fontFamily: 'LoveLight', color: '#2D2023', fontSize: 29, marginTop: 4 },
   selectedMeta: { fontFamily: roundedFont, color: '#66575B', fontSize: 13, marginTop: 8 },

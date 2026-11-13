@@ -27,6 +27,7 @@ import CartIconButton from '../components/CartIconButton';
 import AccountMenu from '@/components/AccountMenu';
 import CityMap from '@/components/dash/CityMap';
 import type { RestaurantCardData } from '../components/RestaurantCard';
+import RestaurantDetails from '../restaurant/[id]';
 import {
   getRestaurantOrderRestriction,
   ORDER_ERROR_FADE_DELAY_MS,
@@ -139,7 +140,11 @@ export default function CustomerHome() {
   return (
     <SafeAreaView style={styles.page} edges={['top']}>
       <View style={split ? styles.splitRow : styles.single}>
-        {!mapOnly && <ScrollView
+        {split && selectedRestaurant ? (
+          <View style={styles.sidePanel}>
+            <RestaurantDetails restaurantId={selectedRestaurant.id} onBack={() => setSelectedRestaurant(null)} />
+          </View>
+        ) : !mapOnly && <ScrollView
           ref={scrollRef}
           style={split && styles.sidePanel}
           stickyHeaderIndices={[isMobileSearch ? 1 : 2]}
@@ -169,13 +174,6 @@ export default function CustomerHome() {
             <CartIconButton count={cartCount} onPress={() => router.push('/customer/cart/cart')} />
             <AccountMenu />
           </View>
-
-          {split && selectedRestaurant && <View style={styles.selectedRestaurant}>
-            <Text style={styles.selectedEyebrow}>SELECTED ON MAP</Text>
-            <Text style={styles.selectedTitle}>{selectedRestaurant.name}</Text>
-            <Text style={styles.selectedMeta}>Queue Length: {mapData?.restaurants.find((item) => item.id === selectedRestaurant.id)?.queueCount ?? '—'}</Text>
-            <TouchableOpacity accessibilityRole="button" onPress={() => handleRestaurantPress(selectedRestaurant)} style={styles.selectedAction}><Text style={styles.selectedActionText}>View menu</Text></TouchableOpacity>
-          </View>}
 
           {!isMobileSearch && (
             <View style={styles.pointsPanel}>
