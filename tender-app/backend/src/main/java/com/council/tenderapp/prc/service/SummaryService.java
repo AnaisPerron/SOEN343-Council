@@ -72,11 +72,11 @@ public class SummaryService {
         return date == null ? null : date.toInstant().atOffset(ZoneOffset.UTC);
     }
 
-    public List<ChargeDto> getChargesForOrder(Long orderId) 
+    public List<ChargeDto> getChargesForOrder(Long orderId)
     {
         Optional<Bill> bill = billRepository.findByOrderId(orderId);
         if (bill.isEmpty()) return List.of();
-        
+
         return List.of(
             new ChargeDto("Service Fee", bill.get().getServiceFee()),
             new ChargeDto("Delivery Fee", bill.get().getDeliveryFee()),

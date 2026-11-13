@@ -4,5 +4,5 @@ public class OrderNotFinishedException extends RuntimeException {
     public OrderNotFinishedException(String message) {
         super(message);
     }
-    
+
 }

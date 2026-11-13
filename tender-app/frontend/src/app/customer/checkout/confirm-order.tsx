@@ -8,14 +8,13 @@ import { useCatalog } from '@/context/CatalogContext';
 import { useAuth } from '@/context/AuthContext';
 import { fetchPricingRules, type PricingRules } from '@/api/pricing';
 import { fetchTenderCash } from '@/api/tenderCash';
-import type { OrderSubmissionResult } from '../services/orderApi';
 import { API_URL } from '@/api/client';
 import AddressAutocomplete, { type AddressLookup, type PickedAddress } from '@/components/AddressAutocomplete';
 import DeliveryMap from './DeliveryMap';
 import PayPalButton from './PayPalButton';
 import { groupCartLinesByRestaurant } from '../cart/cartStore';
 import { getCartOrderRestriction, type RestaurantOrderRestriction } from '../services/restaurantOrderRules';
-import { fetchOrderQuote, toOrderSubmission, type OrderQuote } from '../services/orderApi';
+import { fetchOrderQuote, toOrderSubmission, type OrderQuote, type OrderSubmissionResult } from '../services/orderApi';
 import { styles } from './confirm-order.styles';
 
 type OrderPhase = 'review' | 'submitting' | 'success';
@@ -94,29 +93,35 @@ export default function ConfirmOrderScreen() {
   useEffect(() => {
     if (!token) return;
     let active = true;
-    setPricingLoading(true);
-    setPricingError('');
-    fetchPricingRules(token)
-      .then((rules) => { if (active) setPricingRules(rules); })
-      .catch((error) => { if (active) setPricingError(error instanceof Error ? error.message : 'Could not load pricing rules.'); })
-      .finally(() => { if (active) setPricingLoading(false); });
+    void Promise.resolve().then(() => {
+      if (!active) return;
+      setPricingLoading(true);
+      setPricingError('');
+      return fetchPricingRules(token)
+        .then((rules) => { if (active) setPricingRules(rules); })
+        .catch((error) => { if (active) setPricingError(error instanceof Error ? error.message : 'Could not load pricing rules.'); })
+        .finally(() => { if (active) setPricingLoading(false); });
+    });
     return () => { active = false; };
   }, [token, pricingRetry]);
 
   useEffect(() => {
-    if (!token || groups.length === 0) { setQuoteLoading(false); return; }
-    const changed = deliveryAddress !== savedAddress.trim();
-    if (!addressLine.trim() || !city.trim() || !country.trim() || (changed && !destination)) {
-      setQuotes({}); setQuoteLoading(false); setQuoteError(''); return;
-    }
     let active = true;
-    setQuotes({}); setQuoteLoading(true); setQuoteError('');
-    const override = destination ? { address: deliveryAddress, ...destination } : undefined;
-    Promise.all(groups.map(async (group) => [group.restaurantId,
-      await fetchOrderQuote(`${API_URL}/api/orders/quote`, token, toOrderSubmission(group, override))] as const))
-      .then((entries) => { if (active) setQuotes(Object.fromEntries(entries)); })
-      .catch((error) => { if (active) setQuoteError(error instanceof Error ? error.message : 'Could not calculate the order total.'); })
-      .finally(() => { if (active) setQuoteLoading(false); });
+    const changed = deliveryAddress !== savedAddress.trim();
+    void Promise.resolve().then(() => {
+      if (!active) return;
+      if (!token || groups.length === 0) { setQuoteLoading(false); return; }
+      if (!addressLine.trim() || !city.trim() || !country.trim() || (changed && !destination)) {
+        setQuotes({}); setQuoteLoading(false); setQuoteError(''); return;
+      }
+      setQuotes({}); setQuoteLoading(true); setQuoteError('');
+      const override = destination ? { address: deliveryAddress, ...destination } : undefined;
+      return Promise.all(groups.map(async (group) => [group.restaurantId,
+        await fetchOrderQuote(`${API_URL}/api/orders/quote`, token, toOrderSubmission(group, override))] as const))
+        .then((entries) => { if (active) setQuotes(Object.fromEntries(entries)); })
+        .catch((error) => { if (active) setQuoteError(error instanceof Error ? error.message : 'Could not calculate the order total.'); })
+        .finally(() => { if (active) setQuoteLoading(false); });
+    });
     return () => { active = false; };
   }, [token, groups, deliveryAddress, savedAddress, addressLine, city, country, destination, quoteRetry]);
 
@@ -378,7 +383,7 @@ export default function ConfirmOrderScreen() {
               <View style={styles.pricingRow}><Text style={styles.pricingName}>Delivery</Text><Text style={styles.pricingAmount}>${Number(pricingRules.deliveryFeePerKm).toFixed(2)} / km</Text></View>
               <View style={styles.pricingRow}><Text style={styles.pricingName}>Service fee</Text><Text style={styles.pricingAmount}>${Number(pricingRules.serviceFee).toFixed(2)} per order</Text></View>
               <View style={styles.pricingRow}><Text style={styles.pricingName}>Small-order surcharge</Text><Text style={styles.pricingAmount}>${Number(pricingRules.smallOrderSurcharge).toFixed(2)}</Text></View>
-              <Text style={styles.pricingNote}>Applies when a restaurant's items subtotal is below ${Number(pricingRules.smallOrderThreshold).toFixed(2)}.</Text>
+              <Text style={styles.pricingNote}>Applies when a restaurant&apos;s items subtotal is below ${Number(pricingRules.smallOrderThreshold).toFixed(2)}.</Text>
               <Text style={styles.pricingNote}>Delivery uses the straight-line distance on the map, rounded to 0.01 km. Each restaurant order is charged separately.</Text>
             </>}
           </View>

@@ -9,7 +9,7 @@ import com.council.tenderapp.prc.entities.LedgerEntry;
 import com.council.tenderapp.prc.repositories.LedgerEntryRepository;
 
 @Service
-public class LedgerService 
+public class LedgerService
 {
     private final LedgerEntryRepository ledgerEntryRepository;
     private final BillService billService;
@@ -54,7 +54,7 @@ public class LedgerService
         return ledgerEntryRepository.save(ledgerEntry);
     }
 
-    private String getTransactionType(String orderStatus) 
+    private String getTransactionType(String orderStatus)
     {
         return switch (orderStatus) {
             case "PLACED", "ACCEPTED", "PREPARING", "READY", "PICKED_UP", "DELIVERED", "CANCELLED" -> "Payment";

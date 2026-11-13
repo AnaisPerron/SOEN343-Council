@@ -17,14 +17,18 @@ export default function CustomerOrderSummary() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!id || !token) { setError('Order summary is unavailable.'); setLoading(false); return; }
     let active = true;
-    setLoading(true);
-    setError(null);
-    fetchCustomerOrderSummary(id, token)
-      .then((result) => { if (active) setSummary(result); })
-      .catch((cause) => { if (active) setError(cause instanceof Error ? cause.message : 'Could not load order summary.'); })
-      .finally(() => { if (active) setLoading(false); });
+    void Promise.resolve().then(() => {
+      if (!active) return;
+      if (!id || !token) { setError('Order summary is unavailable.'); setLoading(false); return; }
+      setLoading(true);
+      setError(null);
+      setSummary(null);
+      return fetchCustomerOrderSummary(id, token)
+        .then((result) => { if (active) setSummary(result); })
+        .catch((cause) => { if (active) setError(cause instanceof Error ? cause.message : 'Could not load order summary.'); })
+        .finally(() => { if (active) setLoading(false); });
+    });
     return () => { active = false; };
   }, [id, token]);
 

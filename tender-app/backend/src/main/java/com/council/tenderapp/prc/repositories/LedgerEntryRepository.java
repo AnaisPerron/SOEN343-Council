@@ -13,12 +13,12 @@ public interface LedgerEntryRepository extends JpaRepository<LedgerEntry, Long>
 {
     @Query(value = """
         SELECT l.final_order_status
-        FROM ledger_entries l 
-        JOIN bill b 
+        FROM ledger_entries l
+        JOIN bill b
         ON l.bill_id = b.id
         WHERE b.order_id = :orderId
         ORDER BY l.timestamp DESC
-        LIMIT 1; 
+        LIMIT 1;
     """, nativeQuery = true)
     String findFinalOrderStatusByOrderId(@Param("orderId") Long orderId);
 

@@ -10,9 +10,9 @@ import com.council.tenderapp.ord.entities.Order;
 import com.council.tenderapp.ord.repositories.OrderRepository;
 
 @Service
-public class OrderBelongingService 
+public class OrderBelongingService
 {
-    
+
     private final OrderRepository orderRepository;
 
     public OrderBelongingService(OrderRepository orderRepository) {
