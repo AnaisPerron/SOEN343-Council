@@ -30,6 +30,8 @@ import com.council.tenderapp.ord.exceptions.OrderNotFoundException;
 import com.council.tenderapp.ord.exceptions.RestaurantClosedException;
 import com.council.tenderapp.ord.exceptions.RestaurantNotFoundException;
 import com.council.tenderapp.ord.exceptions.UnauthorizedMenuAccessException;
+import com.council.tenderapp.prc.exceptions.OrderNotFinishedException;
+import com.council.tenderapp.prc.exceptions.UnauthorizedOrderAccessException;
 import com.council.tenderapp.reg.dtos.ErrorResponse;
 import com.council.tenderapp.technicalservices.payment.PaymentDeclinedException;
 
@@ -192,4 +194,17 @@ public class GlobalExceptionHandler {
         log.warn("Payment declined: {}", ex.getMessage());
         return build(HttpStatus.PAYMENT_REQUIRED, ex.getMessage(), Map.of());
     }
+
+    @ExceptionHandler(UnauthorizedOrderAccessException.class)
+    public ResponseEntity<ErrorResponse> handleUnauthorizedOrderAccess(UnauthorizedOrderAccessException ex) {
+        log.warn("Unauthorized order access: {}", ex.getMessage());
+        return build(HttpStatus.FORBIDDEN, ex.getMessage(), Map.of());
+    }
+
+    @ExceptionHandler(OrderNotFinishedException.class)
+    public ResponseEntity<ErrorResponse> handleOrderNotFinished(OrderNotFinishedException ex) {
+        log.warn("Order is still being processed: {}", ex.getMessage());
+        return build(HttpStatus.FORBIDDEN, ex.getMessage(), Map.of());
+    }
+
 }

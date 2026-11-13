@@ -9,11 +9,13 @@ import { queueBand, queueBandColor } from '@/lib/queueBands';
 import { styles } from './couriers.styles';
 import { useAuth } from '@/context/AuthContext';
 import { ApiError } from '@/api/client';
-import { acceptCourierOffer, declineOrder, markOrderPickedUp, markOrderDelivered, fetchCourierDuty, goOffDuty, goOnDuty, type CourierDuty } from '@/api/courierDuty';
-import { canGoOffDuty, canGoOnDuty, isOnDuty, stateLabel, getOrderActionAvailability } from '@/lib/courierDuty';
+import { acceptCourierOffer, declineOrder, fetchCourierDuty, goOffDuty, goOnDuty, markOrderDelivered, markOrderPickedUp, type CourierDuty } from '@/api/courierDuty';
+import { fetchLedgerHistory, type LedgerHistoryEntry } from '@/api/orderHistory';
+import { canGoOffDuty, canGoOnDuty, getOrderActionAvailability, isOnDuty, stateLabel } from '@/lib/courierDuty';
 
 // Orders can be assigned at any time, so the panel refreshes itself while open
 const REFRESH_MS = 15000;
+const money = (value: number) => `$${value.toFixed(2)}`;
 
 export default function CourierDashboard() {
   const { user, token, ready, signOut } = useAuth();
@@ -21,11 +23,11 @@ export default function CourierDashboard() {
   const [loading, setLoading] = useState(true);
   const [switching, setSwitching] = useState(false);
   const [message, setMessage] = useState('');
+  const [history, setHistory] = useState<LedgerHistoryEntry[]>([]);
   const [accepting, setAccepting] = useState(false);
   const [updatingOrder, setUpdatingOrder] = useState(false);
   const mutating = useRef(false);
   const requestId = useRef(0);
-  // Going on or off duty puts the courier on or takes them off the map, so it reloads at once
   const [mapRefreshKey, setMapRefreshKey] = useState(0);
   const [mapData, setMapData] = useState<MapData | null>(null);
 
@@ -38,6 +40,15 @@ export default function CourierDashboard() {
       try {
         const loaded = await fetchCourierDuty(token);
         if (active && version === requestId.current) { setDuty(loaded); setMessage(''); }
+        try {
+          const previous = await fetchLedgerHistory(token);
+          if (active && version === requestId.current) setHistory(previous);
+        } catch (error) {
+          if (active && version === requestId.current) {
+            if (error instanceof ApiError && error.status === 401) signOut();
+            else setMessage(error instanceof Error ? error.message : 'Could not load delivery history.');
+          }
+        }
       } catch (error) {
         if (active && version === requestId.current) {
           if (error instanceof ApiError && error.status === 401) signOut();
@@ -96,7 +107,10 @@ export default function CourierDashboard() {
     } finally { mutating.current = false; if (version === requestId.current) setAccepting(false); }
   };
 
-  const performOrderAction = async (action: (token: string, orderId: number) => Promise<CourierDuty>) => {
+  const performOrderAction = async (
+    action: (token: string, orderId: number) => Promise<CourierDuty>,
+    refreshHistory = false,
+  ) => {
     const current = duty?.assignedOrder;
     if (!token || !current || mutating.current) return;
     mutating.current = true;
@@ -106,6 +120,17 @@ export default function CourierDashboard() {
       const next = await action(token, current.orderId);
       if (version !== requestId.current) return;
       setDuty(next); setMapRefreshKey((key) => key + 1);
+      if (refreshHistory) {
+        try {
+          setHistory(await fetchLedgerHistory(token));
+          if (version === requestId.current) setMessage(`Order #${current.orderId} delivered.`);
+        } catch (error) {
+          if (version === requestId.current) {
+            if (error instanceof ApiError && error.status === 401) signOut();
+            else setMessage(`Order #${current.orderId} delivered, but the ledger history could not be refreshed.`);
+          }
+        }
+      }
     } catch (error) {
       if (version !== requestId.current) return;
       if (error instanceof ApiError && error.status === 401) signOut();
@@ -183,13 +208,20 @@ export default function CourierDashboard() {
             </Pressable>
             <Pressable accessibilityRole="button" disabled={!deliveryEnabled} accessibilityState={{ disabled: !deliveryEnabled }}
               accessibilityHint={availability.deliveryHint}
-              onPress={() => void performOrderAction(markOrderDelivered)} style={[styles.actionButton, !deliveryEnabled && styles.toggleDisabled]}>
+              onPress={() => void performOrderAction(markOrderDelivered, true)} style={[styles.actionButton, !deliveryEnabled && styles.toggleDisabled]}>
               <Text style={styles.deliveredButtonText}>{updatingOrder ? 'Updating…' : 'Confirm delivery'}</Text>
             </Pressable>
           </View>
           {!pickupEnabled && !deliveryEnabled && <Text style={styles.hint}>{availability.pickupHint}</Text>}
-        </View> : <Text style={styles.empty}>{onDuty ? 'No order yet. You will be assigned the next ready order nearby.' : 'Go on duty to start receiving orders.'}</Text>}
+        </View> : <Text style={styles.empty}>{onDuty ? 'No order is currently offered. You will receive the oldest ready order nearby.' : 'Go on duty to receive delivery offers.'}</Text>}
       </>}
+      <Text style={styles.sectionHeading}>Delivered orders</Text>
+      {history.length === 0 ? <Text style={styles.empty}>No completed deliveries yet.</Text> : history.map((entry) =>
+        <View key={entry.orderId} style={styles.orderCard}>
+          <Text style={styles.orderTitle}>Order #{entry.orderId}</Text>
+          <Text style={styles.orderMuted}>{entry.status.replaceAll('_', ' ').toLowerCase()} · {entry.deliveredAt ? new Date(entry.deliveredAt).toLocaleString() : 'Delivery time unavailable'}</Text>
+          <Text style={styles.orderLine}>Total charge {money(entry.totalCharge)}</Text>
+        </View>)}
       {!!message && <Text accessibilityRole="alert" style={styles.message}>{message}</Text>}
       <View style={styles.map}><CityMap refreshKey={mapRefreshKey} onData={setMapData} /></View>
     </ScrollView>

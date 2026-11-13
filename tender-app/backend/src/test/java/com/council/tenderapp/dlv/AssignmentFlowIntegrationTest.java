@@ -226,6 +226,10 @@ class AssignmentFlowIntegrationTest {
     @Test
     void refundEndsOfferAndReleasesCourierInTheSameOperation() {
         long id = readyOffer();
+        Order delivered = orders.findById(order.getId()).orElseThrow();
+        delivered.transitionTo(OrderStatus.PICKED_UP);
+        delivered.transitionTo(OrderStatus.DELIVERED);
+        orders.saveAndFlush(delivered);
         orderService.refundOrder(restaurant.getId(), order.getId());
         assertThat(assignments.findById(id).orElseThrow().getStatus()).isEqualTo(AssignmentStatus.ENDED);
         assertThat(couriers.findById(11L).orElseThrow().getStatus()).isEqualTo(CourierStatus.IDLE);
@@ -317,7 +321,10 @@ class AssignmentFlowIntegrationTest {
         mvc.perform(delete("/api/profile").header(HttpHeaders.AUTHORIZATION, token)).andExpect(status().isConflict());
         new TransactionTemplate(transactions).executeWithoutResult(tx -> {
             assignments.findById(assignment.getId()).orElseThrow().end();
-            orders.findById(order.getId()).orElseThrow().transitionTo(OrderStatus.REFUNDED);
+            Order delivered = orders.findById(order.getId()).orElseThrow();
+            delivered.transitionTo(OrderStatus.PICKED_UP);
+            delivered.transitionTo(OrderStatus.DELIVERED);
+            delivered.transitionTo(OrderStatus.REFUNDED);
         });
         mvc.perform(delete("/api/profile").header(HttpHeaders.AUTHORIZATION, token)).andExpect(status().isNoContent());
         assertThat(assignments.findById(assignment.getId())).isEmpty();

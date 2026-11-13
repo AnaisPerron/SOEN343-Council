@@ -106,7 +106,7 @@ export default function CartScreen() {
             </View>;
           })}
           {/* Sum the restaurant bills for the cart's displayed total. */}
-          <View style={styles.totalRow}><Text style={styles.totalLabel}>Estimated total</Text><Text style={styles.totalValue}>${grandTotal.toFixed(2)}</Text></View>
+          <View style={styles.totalRow}><Text style={styles.totalLabel}>Total</Text><Text style={styles.totalValue}>${grandTotal.toFixed(2)}</Text></View>
         </>}
       </ScrollView>
       <View style={styles.footer}>

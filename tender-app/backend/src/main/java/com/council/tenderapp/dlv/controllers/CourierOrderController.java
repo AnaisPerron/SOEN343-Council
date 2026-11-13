@@ -58,4 +58,4 @@ public class CourierOrderController {
 
         return ResponseEntity.ok(new DeliveryConfirmationDto(order.orderId(), order.status(), duty.status()));
     }
-}    
+}

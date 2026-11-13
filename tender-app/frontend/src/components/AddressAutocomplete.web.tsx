@@ -35,6 +35,7 @@ function SuggestingInput({ value, onChangeText, onPick, onLookup, ...inputProps 
   // The text the shown suggestions were found for, so "no match" is only said about the current text
   const [searchedFor, setSearchedFor] = useState<string | null>(null);
   const [lookupError, setLookupError] = useState(false);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const requestId = useRef(0);
   // One token per search-and-pick, which Google bills as a single session
@@ -142,8 +143,10 @@ function SuggestingInput({ value, onChangeText, onPick, onLookup, ...inputProps 
             <Pressable
               key={prediction.placeId}
               onPress={() => void pick(prediction)}
+              onHoverIn={() => setHoveredId(prediction.placeId)}
+              onHoverOut={() => setHoveredId((current) => current === prediction.placeId ? null : current)}
               accessibilityRole="button"
-              style={({ hovered }) => [styles.row, hovered && styles.rowHovered]}
+              style={[styles.row, hoveredId === prediction.placeId && styles.rowHovered]}
             >
               <Text style={styles.main}>{prediction.mainText?.text ?? prediction.text.text}</Text>
               {!!prediction.secondaryText?.text && <Text style={styles.secondary}>{prediction.secondaryText.text}</Text>}

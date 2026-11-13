@@ -15,10 +15,25 @@ import com.council.tenderapp.ord.entities.OrderStatus;
 import com.council.tenderapp.ord.events.OrderStatusEvent;
 import com.council.tenderapp.ord.observers.OrderObserver;
 import com.council.tenderapp.ord.services.OrderStatusPublisher;
+import com.council.tenderapp.prc.observers.LedgerOrderEventListener;
+import com.council.tenderapp.prc.service.LedgerService;
 
 import org.junit.jupiter.api.Test;
 
 class OrderStatusPublisherTest {
+
+    @Test
+    void sendsStatusChangesToLedgerObserver() {
+        LedgerService ledgerService = mock(LedgerService.class);
+        OrderStatusPublisher publisher = new OrderStatusPublisher(
+            List.of(new LedgerOrderEventListener(ledgerService)));
+        Order order = new Order(42L, new Date(), OrderStatus.ACCEPTED);
+        order.setId(17L);
+
+        publisher.publish(order, OrderStatus.PLACED, "accepted", null);
+
+        verify(ledgerService).createLedgerEntry(17L, "ACCEPTED");
+    }
 
     @Test
     void notifiesEveryObserverWithSequentialStatusEvents() {

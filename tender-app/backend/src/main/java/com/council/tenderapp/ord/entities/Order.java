@@ -153,6 +153,12 @@ public class Order {
         if (transitionedStatus == OrderStatus.ACCEPTED && acceptedAt == null) {
             acceptedAt = new Date();
         }
+        if (transitionedStatus == OrderStatus.PICKED_UP && pickupDate == null) {
+            pickupDate = new Date();
+        }
+        if (transitionedStatus == OrderStatus.DELIVERED && dateDelivered == null) {
+            dateDelivered = new Date();
+        }
         this.status = transitionedStatus;
     }
 

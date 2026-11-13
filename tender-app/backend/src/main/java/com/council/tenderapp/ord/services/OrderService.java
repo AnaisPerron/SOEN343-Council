@@ -23,19 +23,20 @@ import com.council.tenderapp.dlv.services.DispatchService;
 import com.council.tenderapp.dlv.entities.Assignment;
 import com.council.tenderapp.dlv.repositories.AssignmentRepository;
 import com.council.tenderapp.ord.entities.OrderEvent;
-import java.time.Instant;
 import com.council.tenderapp.ord.dtos.OrderLineResponse;
 import com.council.tenderapp.ord.dtos.OrderResponse;
+import com.council.tenderapp.ord.dtos.OrderLineDto;
 import com.council.tenderapp.ord.entities.Order;
 import com.council.tenderapp.ord.entities.OrderStatus;
 import com.council.tenderapp.ord.repositories.OrderEventRepository;
+import com.council.tenderapp.ord.repositories.OrderLineRepository;
 import com.council.tenderapp.ord.repositories.OrderRepository;
 import com.council.tenderapp.reg.entities.Profile;
 import com.council.tenderapp.reg.entities.CourierProfile;
 import com.council.tenderapp.reg.entities.CourierStatus;
 import com.council.tenderapp.reg.repositories.CourierProfileRepository;
 import com.council.tenderapp.reg.repositories.ProfileRepository;
-import com.council.tenderapp.ord.entities.OrderEvent;
+import com.council.tenderapp.technicalservices.payment.TenderCash;
 
 @Service
 public class OrderService {
@@ -48,6 +49,8 @@ public class OrderService {
     private final OrderStatusPublisher orderStatusPublisher;
     private final OrderEventRepository orderEventRepository;
     private final ProfileRepository profileRepository;
+    private final OrderLineRepository orderLineRepository;
+    private final TenderCash tenderCash;
     private final CourierProfileRepository courierProfileRepository;
     private final AssignmentService assignments;
     private final DispatchService dispatch;
@@ -58,13 +61,18 @@ public class OrderService {
         OrderStatusPublisher orderStatusPublisher,
         OrderEventRepository orderEventRepository,
         ProfileRepository profileRepository,
-        CourierProfileRepository courierProfileRepository, AssignmentService assignments,
+        OrderLineRepository orderLineRepository,
+        TenderCash tenderCash,
+        CourierProfileRepository courierProfileRepository,
+        AssignmentService assignments,
         DispatchService dispatch, AssignmentRepository assignmentHistory
     ) {
         this.orderRepository = orderRepository;
         this.orderStatusPublisher = orderStatusPublisher;
         this.orderEventRepository = orderEventRepository;
         this.profileRepository = profileRepository;
+        this.orderLineRepository = orderLineRepository;
+        this.tenderCash = tenderCash;
         this.courierProfileRepository = courierProfileRepository;
         this.assignments = assignments;
         this.dispatch = dispatch;
@@ -117,6 +125,7 @@ public class OrderService {
         Order order = getOwnedOrderForUpdate(restaurantId, orderId);
         OrderStatus previousStatus = order.getStatus();
         transitionOrder(order, OrderStatus.REJECTED, "reject");
+        tenderCash.refunded(order);
         order.setRejectionReason(trimmedReason.isEmpty() ? null : trimmedReason);
         Order savedOrder = orderRepository.save(order);
         log.info("Restaurant order rejected: orderId={}, restaurantId={}", orderId, restaurantId);
@@ -130,6 +139,7 @@ public class OrderService {
         Order order = getOwnedOrderForUpdate(restaurantId, orderId);
         OrderStatus previousStatus = order.getStatus();
         transitionOrder(order, OrderStatus.CANCELLED, "cancel");
+        tenderCash.refunded(order);
         Order savedOrder = orderRepository.save(order);
         assignments.finish(savedOrder, false);
         orderRepository.flush();
@@ -224,12 +234,30 @@ public class OrderService {
     }
 
     @Transactional
+    public OrderResponse confirmDelivery(Long courierId, Long orderId) {
+        Order order = orderRepository.findByIdForUpdate(orderId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+        if (!Objects.equals(order.getCourierId(), courierId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Order is not assigned to this courier");
+        }
+        OrderStatus previousStatus = order.getStatus();
+        transitionOrder(order, OrderStatus.DELIVERED, "confirm delivery");
+        Order savedOrder = orderRepository.save(order);
+        publishStatusChange(savedOrder, previousStatus, "confirmed delivery", null);
+        return toResponse(savedOrder);
+    }
+
+    @Transactional
     public OrderResponse refundOrder(Long restaurantId, Long orderId) {
         assignments.lockCouriers();
         Order order = getOwnedOrderForUpdate(restaurantId, orderId);
         OrderStatus previousStatus = order.getStatus();
+        if (previousStatus != OrderStatus.DELIVERED) {
+            throw invalidTransition(previousStatus, "refund");
+        }
         assignments.current(order);
         transitionOrder(order, OrderStatus.REFUNDED, "refund");
+        tenderCash.refunded(order);
         Order savedOrder = orderRepository.save(order);
         assignments.finish(savedOrder, false);
         orderRepository.flush();
@@ -399,5 +427,17 @@ public class OrderService {
             order.getDeliveryAddress(),
             orderLines
         );
+    }
+
+    public List<OrderLineDto> getOrderLinesForOrder(Long orderId) {
+        return orderLineRepository.findByOrderId(orderId).stream()
+            .map(line -> new OrderLineDto(
+                line.getMenuItem().getId(),
+                line.getMenuItem().getName(),
+                line.getQuantity(),
+                line.getUnitPrice(),
+                line.getUnitPrice().multiply(java.math.BigDecimal.valueOf(line.getQuantity()))
+            ))
+            .toList();
     }
 }

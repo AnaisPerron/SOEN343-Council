@@ -8,6 +8,7 @@ node_modules/
 dist/
 build/
 coverage/
+paypal-sandbox-output/
 
 # Expo-generated files
 .expo/

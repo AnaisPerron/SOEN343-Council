@@ -82,6 +82,9 @@ export const styles = StyleSheet.create({
     marginTop: 6,
     fontStyle: 'italic',
   },
+  refundButton: { alignSelf: 'flex-start', backgroundColor: '#B42343', borderRadius: 10,
+    paddingHorizontal: 16, paddingVertical: 12, marginTop: 14 },
+  refundButtonText: { color: '#FFFFFF', fontFamily: roundedFont, fontWeight: '800', fontSize: 13 },
 
   /* --- Status Chips & Text --- */
   chip: {
@@ -158,7 +161,6 @@ export const styles = StyleSheet.create({
   chipTextPickedUp: {
     color: '#283593',
   },
-
   /* --- Status Action Buttons --- */
   actionsRow: {
     flexDirection: 'row',
