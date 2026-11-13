@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCart } from '@/context/CartContext';
 import { groupCartLinesByRestaurant } from './cartStore';
 import { useCatalog } from '@/context/CatalogContext';
-import { getCartOrderRestriction, ORDER_ERROR_FADE_DELAY_MS, ORDER_ERROR_FADE_DURATION_MS, type RestaurantOrderRestriction } from '../services/restaurantOrderRules';
+import { getCartOrderRestriction, getPlaceOrderAvailability, ORDER_ERROR_FADE_DELAY_MS, ORDER_ERROR_FADE_DURATION_MS, type RestaurantOrderRestriction } from '../services/restaurantOrderRules';
 import { styles } from './cart.styles';
 
 export default function CartScreen() {
@@ -20,9 +20,8 @@ export default function CartScreen() {
   const groups = groupCartLinesByRestaurant(lines);
   const grandTotal = groups.reduce((total, group) => total + group.total, 0);
   const placeRestriction = getCartOrderRestriction(groups.map((group) => group.restaurantId), restaurants);
-  const everySelectedItemSoldOut = lines.length > 0 && lines.every((line) => findItem(line.itemId)?.available === false);
-  const placeOrderDisabled = lines.length === 0 || placeRestriction !== null || everySelectedItemSoldOut;
-  const placeOrderHint = placeRestriction?.message ?? (everySelectedItemSoldOut ? 'All items in your cart are sold out.' : lines.length === 0 ? 'Add a menu item before placing an order.' : undefined);
+  const placeOrderAvailability = getPlaceOrderAvailability(placeRestriction, lines.map((line) => findItem(line.itemId)?.available));
+  const { disabled: placeOrderDisabled, hint: placeOrderHint } = placeOrderAvailability;
   const goBack = () => router.canGoBack() ? router.back() : router.replace('/customer/home/home');
 
   useEffect(() => () => {

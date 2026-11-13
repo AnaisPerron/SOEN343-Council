@@ -3,7 +3,7 @@ import { afterEach, describe, it, mock } from 'node:test';
 
 import { API_URL } from '../../api/client.ts';
 import { acceptOrder, declineOrder, fetchCourierDuty, goOffDuty, goOnDuty, markOrderDelivered, markOrderPickedUp } from '../../api/courierDuty.ts';
-import { canGoOffDuty, canGoOnDuty, isOnDuty } from '../../lib/courierDuty.ts';
+import { canGoOffDuty, canGoOnDuty, getOrderActionAvailability, isOnDuty } from '../../lib/courierDuty.ts';
 
 describe('courier duty toggle', () => {
   it('only allows going off duty while idle', () => {
@@ -21,6 +21,26 @@ describe('courier duty toggle', () => {
   it('treats every state but offline as on duty', () => {
     assert.equal(isOnDuty('offline'), false);
     for (const state of ['idle', 'assigned', 'carrying'] as const) assert.equal(isOnDuty(state), true);
+  });
+});
+
+describe('R-DASH-05 - courier order action availability', () => {
+  it('disables Confirm Pickup until an assigned order is ready', () => {
+    assert.equal(getOrderActionAvailability('assigned', 'preparing').pickupEnabled, false);
+    assert.equal(getOrderActionAvailability('assigned', 'ready').pickupEnabled, true);
+    assert.equal(getOrderActionAvailability('idle', 'ready').pickupEnabled, false);
+  });
+
+  it('disables Confirm Delivery until the courier carries a picked-up order', () => {
+    assert.equal(getOrderActionAvailability('carrying', 'ready').deliveryEnabled, false);
+    assert.equal(getOrderActionAvailability('carrying', 'picked_up').deliveryEnabled, true);
+    assert.equal(getOrderActionAvailability('assigned', 'picked_up').deliveryEnabled, false);
+  });
+
+  it('provides reasons for disabled actions', () => {
+    const unavailable = getOrderActionAvailability('assigned', 'preparing');
+    assert.equal(unavailable.pickupHint, 'Pickup is available after the restaurant marks the order ready.');
+    assert.equal(unavailable.deliveryHint, 'Delivery confirmation is available after pickup.');
   });
 });
 

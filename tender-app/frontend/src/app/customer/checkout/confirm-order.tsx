@@ -6,7 +6,7 @@ import { useCart } from '@/context/CartContext';
 import { useOrders, type OrderFailure } from '@/context/OrdersContext';
 import { useCatalog } from '@/context/CatalogContext';
 import { groupCartLinesByRestaurant } from '../cart/cartStore';
-import { getCartOrderRestriction, type RestaurantOrderRestriction } from '../services/restaurantOrderRules';
+import { getCartOrderRestriction, getPlaceOrderAvailability, type RestaurantOrderRestriction } from '../services/restaurantOrderRules';
 import { styles } from './confirm-order.styles';
 
 type OrderPhase = 'review' | 'submitting' | 'success';
@@ -28,9 +28,8 @@ export default function ConfirmOrderScreen() {
   const groups = groupCartLinesByRestaurant(lines);
   const total = groups.reduce((sum, group) => sum + group.total, 0);
   const currentRestriction = getCartOrderRestriction(groups.map((group) => group.restaurantId), restaurants);
-  const everySelectedItemSoldOut = lines.length > 0 && lines.every((line) => findItem(line.itemId)?.available === false);
-  const placeOrderDisabled = phase === 'submitting' || lines.length === 0 || currentRestriction !== null || everySelectedItemSoldOut;
-  const placeOrderHint = currentRestriction?.message ?? (everySelectedItemSoldOut ? 'All items in your cart are sold out.' : lines.length === 0 ? 'Add a menu item before placing an order.' : undefined);
+  const placeOrderAvailability = getPlaceOrderAvailability(currentRestriction, lines.map((line) => findItem(line.itemId)?.available), phase === 'submitting');
+  const { disabled: placeOrderDisabled, hint: placeOrderHint } = placeOrderAvailability;
   const placedOrders = orders.filter((order) => placedIds.includes(order.id));
 
   useEffect(() => () => {

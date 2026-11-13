@@ -8,7 +8,7 @@ import type { MapData } from '@/types/dash';
 import { queueBand, queueBandColor } from '@/lib/queueBands';
 import { useAuth } from '@/context/AuthContext';
 import { acceptOrder, declineOrder, fetchCourierDuty, goOffDuty, goOnDuty, markOrderDelivered, markOrderPickedUp, type CourierDuty } from '@/api/courierDuty';
-import { canGoOffDuty, canGoOnDuty, isOnDuty, stateLabel } from '@/lib/courierDuty';
+import { canGoOffDuty, canGoOnDuty, getOrderActionAvailability, isOnDuty, stateLabel } from '@/lib/courierDuty';
 
 // Orders can be assigned at any time, so the panel refreshes itself while open
 const REFRESH_MS = 15000;
@@ -69,10 +69,8 @@ export default function CourierDashboard() {
 
   const onDuty = duty != null && isOnDuty(duty.status);
   const toggleEnabled = duty != null && !updating && (onDuty ? canGoOffDuty(duty.status) : canGoOnDuty(duty.status));
-  const pickupEnabled = duty?.status === 'assigned' && order?.status === 'ready';
-  const deliveryEnabled = duty?.status === 'carrying' && order?.status === 'picked_up';
-  const pickupHint = pickupEnabled ? undefined : !order ? 'Available when you have a ready order offer.' : order.status !== 'ready' ? 'Pickup is available after the restaurant marks the order ready.' : 'Accept the delivery offer before confirming pickup.';
-  const deliveryHint = deliveryEnabled ? undefined : order?.status === 'picked_up' ? 'Delivery confirmation is available once you are carrying the picked-up order.' : 'Delivery confirmation is available after pickup.';
+  const orderActions = getOrderActionAvailability(duty?.status, order?.status);
+  const { pickupEnabled, pickupHint, deliveryEnabled, deliveryHint } = orderActions;
 
   return <SafeAreaView style={styles.page}>
     <View style={styles.header}><Text style={styles.brand}>Tender</Text><AccountMenu /></View>
