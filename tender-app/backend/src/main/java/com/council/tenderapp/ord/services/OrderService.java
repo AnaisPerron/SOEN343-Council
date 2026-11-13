@@ -27,7 +27,6 @@ import com.council.tenderapp.ord.dtos.OrderLineResponse;
 import com.council.tenderapp.ord.dtos.OrderResponse;
 import com.council.tenderapp.ord.dtos.OrderLineDto;
 import com.council.tenderapp.ord.entities.Order;
-import com.council.tenderapp.ord.entities.OrderEvent;
 import com.council.tenderapp.ord.entities.OrderStatus;
 import com.council.tenderapp.ord.repositories.OrderEventRepository;
 import com.council.tenderapp.ord.repositories.OrderLineRepository;
@@ -67,7 +66,7 @@ public class OrderService {
         OrderLineRepository orderLineRepository,
         TenderCash tenderCash,
         CourierProfileRepository courierProfileRepository,
-        LedgerService ledgerService
+        LedgerService ledgerService,
         AssignmentService assignments,
         DispatchService dispatch, AssignmentRepository assignmentHistory
     ) {

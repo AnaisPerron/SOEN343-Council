@@ -21,7 +21,6 @@ import com.council.tenderapp.ord.entities.OrderStatus;
 import com.council.tenderapp.ord.entities.Restaurant;
 import com.council.tenderapp.ord.repositories.OrderRepository;
 import com.council.tenderapp.ord.repositories.RestaurantRepository;
-import com.council.tenderapp.ord.services.OrderService;
 import com.council.tenderapp.dlv.services.DispatchService;
 import com.council.tenderapp.reg.dtos.LoginRequest;
 import com.council.tenderapp.reg.dtos.RegisterRequest;
@@ -43,7 +42,6 @@ class CourierDutyControllerTest {
     @Autowired private RestaurantRepository restaurants;
     @Autowired private OrderRepository orders;
     @Autowired private DispatchService dispatchService;
-    @Autowired private OrderService orderService;
     @Autowired private JdbcTemplate jdbc;
 
     private record Account(Long id, String token) {}
