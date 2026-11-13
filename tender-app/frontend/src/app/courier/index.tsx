@@ -4,6 +4,8 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AccountMenu from '@/components/AccountMenu';
 import CityMap from '@/components/dash/CityMap';
+import type { MapData } from '@/types/dash';
+import { queueBand, queueBandColor } from '@/lib/queueBands';
 import { useAuth } from '@/context/AuthContext';
 import { acceptOrder, declineOrder, fetchCourierDuty, goOffDuty, goOnDuty, markOrderDelivered, markOrderPickedUp, type CourierDuty } from '@/api/courierDuty';
 import { canConfirmDelivery, canConfirmPickup, canGoOffDuty, canGoOnDuty, hasActiveDelivery, isOnDuty, stateLabel } from '@/lib/courierDuty';
@@ -21,7 +23,9 @@ export default function CourierDashboard() {
   const [message, setMessage] = useState('');
   // Going on or off duty changes the courier's map presence, so refresh it immediately.
   const [mapRefreshKey, setMapRefreshKey] = useState(0);
+  const [mapData, setMapData] = useState<MapData | null>(null);
   const order = duty?.assignedOrder;
+  const pickupRestaurant = order && mapData?.restaurants.find((item) => item.name === order.restaurantName);
 
   useEffect(() => {
     if (!token || user?.role !== 'courier') return;
@@ -66,6 +70,8 @@ export default function CourierDashboard() {
 
   const onDuty = duty != null && isOnDuty(duty.status);
   const toggleEnabled = duty != null && !updating && (onDuty ? canGoOffDuty(duty.status) : canGoOnDuty(duty.status));
+  const orderActions = getOrderActionAvailability(duty?.status, order?.status);
+  const { pickupEnabled, pickupHint, deliveryEnabled, deliveryHint } = orderActions;
   const showDeliveryActions = duty != null && order != null && hasActiveDelivery(duty.status);
   const pickupEnabled = duty != null && !updating && canConfirmPickup(duty.status, order?.status);
   const deliveryEnabled = duty != null && !updating && canConfirmDelivery(duty.status, order?.status);
@@ -97,6 +103,7 @@ export default function CourierDashboard() {
         {order ? <View style={styles.orderCard}>
           <View style={styles.orderRow}><Text style={styles.orderTitle}>Order #{order.orderId}</Text><Text style={styles.orderStatus}>{order.status.replace('_', ' ')}</Text></View>
           {!!order.restaurantName && <Text style={styles.orderLine}>Pick up at {order.restaurantName}</Text>}
+          {pickupRestaurant && <View style={styles.queueRow}><View style={[styles.queueDot, { backgroundColor: queueBandColor[queueBand(pickupRestaurant.queueCount, pickupRestaurant.status)] }]} /><Text style={styles.orderMuted}>(Queue Length: {pickupRestaurant.queueCount})</Text></View>}
           {!!order.restaurantAddress && <Text style={styles.orderMuted}>{order.restaurantAddress}</Text>}
           {!!order.deliveryAddress && <Text style={styles.orderLine}>Deliver to {order.deliveryAddress}</Text>}
           {order.totalPrice != null && <Text style={styles.orderMuted}>Order total {money(order.totalPrice)}</Text>}
@@ -107,7 +114,8 @@ export default function CourierDashboard() {
             <Pressable accessibilityRole="button" disabled={updating} onPress={() => void performOrderAction(declineOrder, 'Could not decline this order.')} style={[styles.declineButton, updating && styles.toggleDisabled]}>
               <Text style={styles.declineButtonText}>Decline and go off duty</Text>
             </Pressable>
-          </View>}
+          </View>
+          }
           {showDeliveryActions && <>
           <View style={styles.actionRow}>
             <Pressable
@@ -132,10 +140,58 @@ export default function CourierDashboard() {
           
         </View> : <Text style={styles.empty}>{onDuty ? 'No order is currently offered. You will receive the oldest ready order nearby.' : 'Go on duty to receive delivery offers.'}</Text>}
       </>}
+      <Pressable accessibilityRole="button" accessibilityHint={pickupHint} accessibilityState={{ disabled: updating || !pickupEnabled }} disabled={updating || !pickupEnabled}
+        onPress={() => void performOrderAction(markOrderPickedUp, 'Could not confirm pickup.')}
+        style={[styles.deliveredButton, (updating || !pickupEnabled) && styles.toggleDisabled]}>
+        <Text style={styles.deliveredButtonText}>{updating ? 'Updating…' : 'Confirm pickup'}</Text>
+      </Pressable>
+      {!pickupEnabled && <Text style={styles.hint}>{pickupHint}</Text>}
+      <Pressable accessibilityRole="button" accessibilityHint={deliveryHint} accessibilityState={{ disabled: updating || !deliveryEnabled }} disabled={updating || !deliveryEnabled}
+        onPress={() => void performOrderAction(markOrderDelivered, 'Could not confirm delivery.')}
+        style={[styles.deliveredButton, (updating || !deliveryEnabled) && styles.toggleDisabled]}>
+        <Text style={styles.deliveredButtonText}>{updating ? 'Updating…' : 'Confirm delivery'}</Text>
+      </Pressable>
+      {!deliveryEnabled && <Text style={styles.hint}>{deliveryHint}</Text>}
       {!!message && <Text style={styles.message}>{message}</Text>}
-      <View style={styles.map}><CityMap refreshKey={mapRefreshKey} /></View>
+      <View style={styles.map}><CityMap refreshKey={mapRefreshKey} onData={setMapData} /></View>
     </ScrollView>
   </SafeAreaView>;
 }
 
-
+const styles = StyleSheet.create({
+  queueRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  queueDot: { width: 9, height: 9, borderRadius: 5 },
+  page: { flex: 1, backgroundColor: '#FFFAF9' },
+  header: { height: 70, width: '100%', maxWidth: 1000, alignSelf: 'center', paddingHorizontal: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', zIndex: 10 },
+  brand: { color: '#D42F50', fontSize: 25, fontWeight: '900' },
+  content: { padding: 24, width: '100%', maxWidth: 1000, alignSelf: 'center' },
+  title: { color: '#302629', fontFamily: 'LoveLight', fontSize: 42, fontWeight: '400' },
+  subtitle: { color: '#887B7E', marginTop: 6, marginBottom: 28 },
+  stateCard: { backgroundColor: '#F7F3F3', borderRadius: 18, padding: 24 },
+  stateCardOn: { backgroundColor: '#D42F50' },
+  stateEyebrow: { color: '#887B7E', fontSize: 11, fontWeight: '800', letterSpacing: 2 },
+  stateValue: { color: '#302629', fontSize: 23, fontWeight: '900', marginTop: 8 },
+  onText: { color: '#FFF' },
+  toggle: { borderRadius: 14, alignItems: 'center', padding: 16, marginTop: 14 },
+  toggleOn: { backgroundColor: '#D42F50' },
+  toggleOff: { borderWidth: 1, borderColor: '#D42F50', backgroundColor: '#FFF' },
+  toggleDisabled: { opacity: 0.4 },
+  toggleText: { color: '#FFF', fontWeight: '800' },
+  toggleOffText: { color: '#D42F50' },
+  hint: { color: '#887B7E', fontSize: 12, marginTop: 8, textAlign: 'center' },
+  sectionHeading: { color: '#302629', fontSize: 18, fontWeight: '800', marginTop: 32, marginBottom: 12 },
+  orderCard: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#EDE6E6', borderRadius: 18, padding: 20 },
+  deliveredButton: { backgroundColor: '#D42F50', borderRadius: 14, alignItems: 'center', padding: 16, marginTop: 16 },
+  deliveredButtonText: { color: '#FFF', fontWeight: '800' },
+  offerActions: { gap: 8 },
+  declineButton: { borderWidth: 1, borderColor: '#887B7E', borderRadius: 14, alignItems: 'center', padding: 14, marginTop: 8 },
+  declineButtonText: { color: '#62585A', fontWeight: '800' },
+  orderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  orderTitle: { color: '#302629', fontSize: 18, fontWeight: '800' },
+  orderStatus: { color: '#D42F50', fontWeight: '800', textTransform: 'capitalize' },
+  orderLine: { color: '#302629', marginTop: 10 },
+  orderMuted: { color: '#887B7E', marginTop: 4 },
+  empty: { color: '#887B7E' },
+  message: { color: '#302629', marginTop: 16 },
+  map: { marginTop: 32 },
+});
