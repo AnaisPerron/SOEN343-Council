@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Redirect } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AccountMenu from '@/components/AccountMenu';
 import CityMap from '@/components/dash/CityMap';
@@ -8,7 +8,8 @@ import type { MapData } from '@/types/dash';
 import { queueBand, queueBandColor } from '@/lib/queueBands';
 import { useAuth } from '@/context/AuthContext';
 import { acceptOrder, declineOrder, fetchCourierDuty, goOffDuty, goOnDuty, markOrderDelivered, markOrderPickedUp, type CourierDuty } from '@/api/courierDuty';
-import { canGoOffDuty, canGoOnDuty, getOrderActionAvailability, isOnDuty, stateLabel } from '@/lib/courierDuty';
+import { canConfirmDelivery, canConfirmPickup, canGoOffDuty, canGoOnDuty, hasActiveDelivery, isOnDuty, stateLabel } from '@/lib/courierDuty';
+import { styles } from './couriers.styles';
 
 // Orders can be assigned at any time, so the panel refreshes itself while open
 const REFRESH_MS = 15000;
@@ -71,6 +72,12 @@ export default function CourierDashboard() {
   const toggleEnabled = duty != null && !updating && (onDuty ? canGoOffDuty(duty.status) : canGoOnDuty(duty.status));
   const orderActions = getOrderActionAvailability(duty?.status, order?.status);
   const { pickupEnabled, pickupHint, deliveryEnabled, deliveryHint } = orderActions;
+  const showDeliveryActions = duty != null && order != null && hasActiveDelivery(duty.status);
+  const pickupEnabled = duty != null && !updating && canConfirmPickup(duty.status, order?.status);
+  const deliveryEnabled = duty != null && !updating && canConfirmDelivery(duty.status, order?.status);
+  const actionHint = duty?.status === 'assigned'
+    ? (order?.status === 'ready' ? 'Confirm delivery unlocks after pickup.' : 'Confirm pickup unlocks once the restaurant marks the order ready.')
+    : '';
 
   return <SafeAreaView style={styles.page}>
     <View style={styles.header}><Text style={styles.brand}>Tender</Text><AccountMenu /></View>
@@ -107,7 +114,30 @@ export default function CourierDashboard() {
             <Pressable accessibilityRole="button" disabled={updating} onPress={() => void performOrderAction(declineOrder, 'Could not decline this order.')} style={[styles.declineButton, updating && styles.toggleDisabled]}>
               <Text style={styles.declineButtonText}>Decline and go off duty</Text>
             </Pressable>
-          </View>}
+          </View>
+          }
+          {showDeliveryActions && <>
+          <View style={styles.actionRow}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !pickupEnabled }}
+              disabled={!pickupEnabled}
+              onPress={() => void performOrderAction(markOrderPickedUp, 'Could not confirm pickup.')}
+              style={[styles.actionButton, !pickupEnabled && styles.toggleDisabled]}>
+              <Text style={styles.deliveredButtonText}>{updating ? 'Updating…' : 'Confirm pickup'}</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !deliveryEnabled }}
+              disabled={!deliveryEnabled}
+              onPress={() => void performOrderAction(markOrderDelivered, 'Could not confirm delivery.')}
+              style={[styles.actionButton, !deliveryEnabled && styles.toggleDisabled]}>
+              <Text style={styles.deliveredButtonText}>{updating ? 'Updating…' : 'Confirm delivery'}</Text>
+            </Pressable>
+          </View>
+          {!!actionHint && <Text style={styles.hint}>{actionHint}</Text>}
+        </>}
+          
         </View> : <Text style={styles.empty}>{onDuty ? 'No order is currently offered. You will receive the oldest ready order nearby.' : 'Go on duty to receive delivery offers.'}</Text>}
       </>}
       <Pressable accessibilityRole="button" accessibilityHint={pickupHint} accessibilityState={{ disabled: updating || !pickupEnabled }} disabled={updating || !pickupEnabled}
