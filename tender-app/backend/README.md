@@ -120,6 +120,18 @@ console.
 Courier acceptance is recorded as a `courier_accepted` row in `order_events`;
 the restaurant order response uses that record to show the courier name even
 after the courier's current duty status changes.
+`POST /api/courier/orders/{orderId}/pickup` lets the assigned courier confirm pickup
+(Task 72, US.14). It requires the `COURIER` role and moves the order from `READY` to
+`PICKED_UP`, which moves the courier from `ASSIGNED` to `CARRYING`. The call is refused
+with `404` if the order does not exist, `403` if the authenticated courier is not the
+order's assigned courier or the caller is not a courier, `409` if the order is not
+`READY`, and `401` without a session. On success it returns
+`{"orderId": 12, "orderStatus": "picked_up", "courierStatus": "carrying"}`. The
+transition reuses `OrderService.markPickedUpByCourier`, which also sets the order's
+`pickup_date` and records an `order_picked_up` row in `order_events` (`ready` to
+`picked_up`) in the same transaction. The older
+`POST /api/courier/duty/orders/{orderId}/picked-up` route shares that method, so it
+records the same event.
 
 The current project has no authentication/authorization integration. The local
 restaurant profile is a demo context, not an authenticated account. Actions
