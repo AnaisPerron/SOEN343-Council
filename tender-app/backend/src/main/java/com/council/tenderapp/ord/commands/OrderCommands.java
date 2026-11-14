@@ -42,11 +42,4 @@ public final class OrderCommands {
             return receiver.markReady(restaurantId, orderId);
         }
     }
-
-    public record Refund(Long restaurantId, Long orderId) implements OrderCommand {
-        @Override
-        public OrderResponse execute(OrderService receiver) {
-            return receiver.refundOrder(restaurantId, orderId);
-        }
-    }
 }

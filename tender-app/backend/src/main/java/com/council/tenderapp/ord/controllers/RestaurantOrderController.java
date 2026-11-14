@@ -92,9 +92,4 @@ public class RestaurantOrderController {
     public OrderResponse markReady(@PathVariable Long restaurantId, @PathVariable Long orderId) {
         return commandInvoker.execute(new OrderCommands.MarkReady(restaurantId, orderId));
     }
-
-    @PostMapping("/{orderId}/refund")
-    public OrderResponse refundOrder(@PathVariable Long restaurantId, @PathVariable Long orderId) {
-        return commandInvoker.execute(new OrderCommands.Refund(restaurantId, orderId));
-    }
 }

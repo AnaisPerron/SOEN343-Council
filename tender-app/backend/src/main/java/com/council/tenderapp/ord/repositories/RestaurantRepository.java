@@ -15,11 +15,12 @@ public interface RestaurantRepository extends JpaRepository<Restaurant, Long> {
     
     @Query(value = """
             SELECT r.id, r.name, r.status, r.latitude, r.longitude,
-            (SELECT mi.photo_url
+            COALESCE(NULLIF(TRIM(r.cover_url), ''), (SELECT mi.photo_url
             FROM menu_items mi
             JOIN menus m ON mi.menu_id = m.id
-            WHERE m.restaurant_id= r.id AND mi.photo_url IS NOT NULL
-            LIMIT 1) AS photo_url
+            WHERE m.restaurant_id= r.id AND NULLIF(TRIM(mi.photo_url), '') IS NOT NULL
+            ORDER BY mi.id
+            LIMIT 1)) AS photo_url
             FROM restaurants r
             WHERE r.status = :status
             """, nativeQuery = true)

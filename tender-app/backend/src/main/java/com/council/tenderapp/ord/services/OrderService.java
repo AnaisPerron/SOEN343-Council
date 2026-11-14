@@ -254,6 +254,7 @@ public class OrderService {
         transitionOrder(order, OrderStatus.REFUNDED, "refund");
         tenderCash.refunded(order);
         Order savedOrder = orderRepository.save(order);
+        // Close any assignment still open on the order and free its courier, then let them take a waiting order
         assignments.finish(savedOrder, false);
         orderRepository.flush();
         dispatch.retryQueue();

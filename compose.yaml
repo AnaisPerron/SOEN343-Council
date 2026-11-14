@@ -1,11 +1,15 @@
 name: tender
 services:
   backend:
+    image: tender-backend:${TENDER_IMAGE_TAG:-demo}
     build: ./tender-app/backend
     environment:
       DB_URL: ${DB_URL:?set DB_URL in the root .env file}
       DB_USER: ${DB_USER:?set DB_USER in the root .env file}
       DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in the root .env file}
+      PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID:?set PAYPAL_CLIENT_ID in the root .env file}
+      PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET:?set PAYPAL_CLIENT_SECRET in the root .env file}
+      PAYPAL_BASE_URL: ${PAYPAL_BASE_URL:-https://api-m.sandbox.paypal.com}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8081}
       SPRING_PROFILES_ACTIVE: ""
       SPRING_SQL_INIT_MODE: never
@@ -19,11 +23,12 @@ services:
       start_period: 40s
       retries: 6
   frontend:
+    image: tender-frontend:${TENDER_IMAGE_TAG:-demo}
     build:
       context: ./tender-app/frontend
       args:
         EXPO_PUBLIC_API_URL: ${EXPO_PUBLIC_API_URL:-http://localhost:8080}
-        EXPO_PUBLIC_GOOGLE_MAPS_API_KEY: ${EXPO_PUBLIC_GOOGLE_MAPS_API_KEY:-}
+        EXPO_PUBLIC_GOOGLE_MAPS_API_KEY: ${EXPO_PUBLIC_GOOGLE_MAPS_API_KEY:?set EXPO_PUBLIC_GOOGLE_MAPS_API_KEY in the root .env file}
         EXPO_PUBLIC_GOOGLE_MAPS_MAP_ID: ${EXPO_PUBLIC_GOOGLE_MAPS_MAP_ID:-}
     ports:
       - "${FRONTEND_PORT:-8081}:8081"

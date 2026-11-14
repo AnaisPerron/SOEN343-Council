@@ -199,17 +199,17 @@ your configured database.
 
 ### Menu photos
 
-The SQL seed uses the same seven dishes and image files as the frontend mocks.
-Maven copies `../frontend/src/mocks/menu-items-imgs/*.jpg` into the backend's
-static resources when building, so the images are included in the packaged JAR.
-Unauthenticated GET requests can load `/menu-items-imgs/<filename>.jpg`.
+The seven demo photos are bundled in `src/main/resources/static/menu-items-imgs`,
+so they are included in local and Docker builds. Public URLs such as
+`/menu-items-imgs/truffle.jpg` are stored in the seed; the frontend resolves them
+against `EXPO_PUBLIC_API_URL`. Restaurant covers use the same bundled photos.
+The backend must be reachable from the browser or device to serve these URLs.
 
-Seeded `photo_url` values are full backend URLs, for example
-`http://localhost:8080/menu-items-imgs/truffle.jpg`. These work when the browser
-and backend run on the same computer. For a phone, another computer, or deployment,
-replace the `http://localhost:8080` prefix in the seed with the reachable backend
-origin before seeding. The images require the backend to be running and are not
-uploaded to Supabase Storage.
+For an already reset database, apply
+[docs/migrations/2026-11-13-demo-image-urls.sql](docs/migrations/2026-11-13-demo-image-urls.sql)
+to restore missing demo covers and normalize old localhost photo URLs without
+reseeding. Existing custom cover URLs are preserved. Uploaded images removed by
+a reset must be uploaded again; the seed restores only the bundled demo photos.
 
 The seed matches the public Supabase schema inspected on November 13, 2026:
 menus have no name column, restaurants use `opening_hour` and `closing_hour`,
