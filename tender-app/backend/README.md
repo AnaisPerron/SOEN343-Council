@@ -23,6 +23,41 @@ The `local` profile uses an in-memory H2 database and seeds a demo
 restaurant (`restaurantId=1`) with orders in `PLACED`, `ACCEPTED`, and
 `PREPARING` states. Data (including accounts) is reset when the backend restarts.
 
+## Demo Data
+
+The `demo` Spring profile automatically loads `src/main/resources/demo/seed.sql` into PostgreSQL at startup.
+
+**Warning:** Every demo startup clears and reseeds the 20 tables listed in the seed. Use a dedicated demo database/branch. Normal startup preserves existing data.
+
+### Setup
+
+1. Copy `backend/.env.example` to `backend/.env` and configure the database credentials.
+2. Ensure the database schema already exists.
+3. From `tender-app/backend`, run:
+
+```sh
+./mvnw spring-boot:run -Dspring-boot.run.profiles=demo
+```
+
+Alternatively, add `--spring.profiles.active=demo` to your IDE's run configuration.
+
+### Seeded Data
+
+Includes 9 users, 4 restaurants, 7 menu items, and 8 orders, covering REG/ORD scenarios such as restaurant availability, sold out items, order lifecycles, and preparation queues.
+
+**Demo accounts:**
+
+| Role | Email |
+-----------------------------
+| Customer | alice@demo.test |
+| Staff | sam@demo.test |
+| Courier | leo@demo.test |
+| Operator | operator@demo.test |
+
+**Password:** `DemoPass123!` (verify BCrypt compatibility when implementing authentication).
+
+**Remove the `demo` profile to run without resetting the database.**
+
 ## Restaurant order queues
 
 `GET /api/restaurants/{restaurantId}/orders/preparation` returns that restaurant's
@@ -161,41 +196,6 @@ Apply [`docs/restaurant-profile.sql`](docs/restaurant-profile.sql) before deploy
 restaurant contact profiles to an existing database.
 The test suite uses an in-memory H2 database and does not apply this script to
 your configured database.
-
-## Demo Data
-
-The `demo` Spring profile automatically loads `src/main/resources/demo/seed.sql` into PostgreSQL at startup.
-
-**Warning:** Every demo startup clears and reseeds the 20 tables listed in the seed. Use a dedicated demo database/branch. Normal startup preserves existing data.
-
-### Setup
-
-1. Copy `backend/.env.example` to `backend/.env` and configure the database credentials.
-2. Ensure the database schema already exists.
-3. From `tender-app/backend`, run:
-
-```sh
-./mvnw spring-boot:run -Dspring-boot.run.profiles=demo
-```
-
-Alternatively, add `--spring.profiles.active=demo` to your IDE's run configuration.
-
-### Seeded Data
-
-Includes 9 users, 4 restaurants, 7 menu items, and 8 orders, covering REG/ORD scenarios such as restaurant availability, sold out items, order lifecycles, and preparation queues.
-
-**Demo accounts:**
-
-| Role | Email |
------------------------------
-| Customer | alice@demo.test |
-| Staff | sam@demo.test |
-| Courier | leo@demo.test |
-| Operator | operator@demo.test |
-
-**Password:** `DemoPass123!` (verify BCrypt compatibility when implementing authentication).
-
-**Remove the `demo` profile to run without resetting the database.**
 
 ### Menu photos
 
