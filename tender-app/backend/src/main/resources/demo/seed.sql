@@ -1,5 +1,5 @@
--- Demo seed for REG and ORD. Requires the existing database schema.
--- warning deletes and replaces all data in the seventeen tables below
+-- Demo baseline for REG, ORD, DLV, and PRC. Requires the existing database schema.
+-- warning deletes and replaces all data in the twenty tables below
 -- Run ONLY against a demo database.
 -- TRUNCATE RESTART IDENTITY ensures consistent data on every run.
 -- Executed in a transaction; errors roll back all changes.
@@ -12,6 +12,9 @@
 BEGIN;
 
 TRUNCATE TABLE
+    ledger_entries,
+    bill,
+    tender_cash_transactions,
     assignments,
     auth_sessions,
     operator_profiles,
@@ -86,6 +89,22 @@ INSERT INTO menu_items (menu_id, name, price, status, photo_url) VALUES
 (3, 'Smoked salmon bagel', 12.50, 'available', 'http://localhost:8080/menu-items-imgs/smoked-salmon-bagel.jpg'), -- 6
 (4, 'Margherita pizza', 17.00, 'available', 'http://localhost:8080/menu-items-imgs/margherita-pizza.jpg'); -- 7
 
+UPDATE menu_items SET category = CASE id
+    WHEN 1 THEN 'Popular' WHEN 2 THEN 'Sides' WHEN 3 THEN 'Desserts'
+    WHEN 4 THEN 'Bowls' WHEN 5 THEN 'Bowls' WHEN 6 THEN 'Popular'
+    WHEN 7 THEN 'Pizza' END,
+    description = CASE id
+    WHEN 1 THEN 'Tender chicken, maple glaze and crisp greens.'
+    WHEN 2 THEN 'Golden fries tossed with fragrant truffle.'
+    WHEN 3 THEN 'Warm apples under a buttery crumble.'
+    WHEN 4 THEN 'Seasonal vegetables, grains and house dressing.'
+    WHEN 5 THEN 'Miso tofu with fresh vegetables and rice.'
+    WHEN 6 THEN 'Smoked salmon, cream cheese and a toasted bagel.'
+    WHEN 7 THEN 'Tomato, mozzarella and fresh basil.' END;
+
+UPDATE restaurants SET opening_hour = TIME '09:00',
+    closing_hour = CASE WHEN id IN (1, 4) THEN TIME '22:00' ELSE TIME '17:00' END;
+
 INSERT INTO menu_item_options (menu_item_id, name, additional_cost) VALUES
 (1, 'Add avocado', 2.00), -- 1
 (1, 'Gluten-free bun', 1.50), -- 2
@@ -130,7 +149,7 @@ INSERT INTO order_line_options
 (8, 5, 4, 2.50); -- Delivered tofu bowl with extra tofu
 
 -- Historical status events with distinct event IDs assigned automatically
--- tiimestamps intentionally reflect the status progression for each order
+-- timestamps intentionally reflect the status progression for each order
 INSERT INTO order_events
 (order_id, previous_status, new_status, event_type, created_at) VALUES
 (1, NULL, 'placed', 'order_placed', CURRENT_TIMESTAMP - INTERVAL '5 minutes'),
@@ -155,6 +174,38 @@ INSERT INTO order_events
 (7, 'picked_up', 'delivered', 'order_delivered', CURRENT_TIMESTAMP - INTERVAL '2 hours 10 minutes'),
 (8, NULL, 'placed', 'order_placed', CURRENT_TIMESTAMP - INTERVAL '90 minutes'),
 (8, 'placed', 'cancelled', 'order_cancelled', CURRENT_TIMESTAMP - INTERVAL '88 minutes');
+
+-- Persist snapshots used by current order history, delivery, and pricing screens.
+UPDATE order_lines SET item_snapshot = menu_items.name
+FROM menu_items WHERE menu_items.id = order_lines.menu_item_id;
+
+UPDATE orders SET
+    total_price = (SELECT SUM(line.quantity * (line.unit_price + COALESCE(
+        (SELECT SUM(opt.additional_cost) FROM order_line_options opt
+         WHERE opt.order_line_id = line.id), 0)))
+        FROM order_lines line WHERE line.order_id = orders.id),
+    customer_name = profile_user.name,
+    customer_phone = profile_user.phone,
+    delivery_address = profile.address,
+    delivery_latitude = profile.latitude,
+    delivery_longitude = profile.longitude,
+    status_changed_at = (SELECT MAX(event.created_at) FROM order_events event
+                         WHERE event.order_id = orders.id)
+FROM customer_profiles profile JOIN users profile_user ON profile_user.id = profile.user_id
+WHERE profile.user_id = orders.customer_id;
+
+UPDATE orders SET pickup_date = created_at + INTERVAL '30 minutes',
+    date_delivered = created_at + INTERVAL '50 minutes'
+WHERE id = 7;
+
+-- Historical demo orders retain their original totals with no added fees.
+INSERT INTO bill (order_id, customer_id, amount, date, service_fee, delivery_fee, small_order_fee)
+SELECT id, customer_id, total_price, created_at, 0, 0, 0 FROM orders ORDER BY id;
+
+INSERT INTO ledger_entries (bill_id, transaction_type, timestamp, final_order_status, total_charge)
+SELECT bill.id, CASE WHEN orders.status = 'rejected' THEN 'Refund' ELSE 'Payment' END,
+    orders.status_changed_at, orders.status, orders.total_price
+FROM bill JOIN orders ON orders.id = bill.order_id ORDER BY orders.id;
 
 COMMIT;
 

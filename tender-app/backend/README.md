@@ -166,7 +166,7 @@ your configured database.
 
 The `demo` Spring profile automatically loads `src/main/resources/demo/seed.sql` into PostgreSQL at startup.
 
-**Warning:** Every demo startup clears and reseeds the 17 tables listed in the seed. Use a dedicated demo database/branch. Normal startup preserves existing data.
+**Warning:** Every demo startup clears and reseeds the 20 tables listed in the seed. Use a dedicated demo database/branch. Normal startup preserves existing data.
 
 ### Setup
 
@@ -211,7 +211,7 @@ replace the `http://localhost:8080` prefix in the seed with the reachable backen
 origin before seeding. The images require the backend to be running and are not
 uploaded to Supabase Storage.
 
-The seed matches the public Supabase schema inspected on October 29, 2026:
+The seed matches the public Supabase schema inspected on November 13, 2026:
 menus have no name column, restaurants use `opening_hour` and `closing_hour`,
 and `operator_profiles.user_id` references `users.id`. Olivia's operator profile
 links to demo user 8. No table creation or schema migration is performed by the seed.
@@ -221,7 +221,11 @@ implement automatic opening/closing behavior.
 
 The reset list also includes `order_items` because its foreign key references
 orders, and `auth_sessions` to remove stale persisted demo sessions. Those two
-tables are cleared but not populated. The `health_check` table is preserved.
+tables are cleared but not populated. Reset also clears assignments, uploaded menu
+photos, and Tender Cash transactions. Bills and ledger entries are rebuilt for
+the eight demo orders; balances return to the seeded customer balances. Menu
+categories, descriptions, opening hours, and order snapshots are populated.
+The baseline restores the original demo. The `health_check` table is preserved.
 The current schema snapshot is recorded in [docs/schema.txt](docs/schema.txt).
 The backend maps its Java `dateOrdered` field to `orders.created_at`, preserving
 the existing API field name. Dashboard queries also read `created_at`, so there
@@ -248,16 +252,42 @@ tests that intentionally exercise the mock payment gateway.
 ## Operator actions
 
 - `POST /api/operator/orders/{orderId}/reassign`: operator-only reassignment.
-- `POST /api/operator/reset`: operator-only reset, disabled by default.
-- Enable reset with `app.operator.reset-enabled=true`. The baseline defaults to
+- `POST /api/operator/reset`: operator-only reset after `{ "confirmation": "RESET" }`.
+- Reset is enabled by default for both local backend runs and Docker Compose. Set
+  `APP_OPERATOR_RESET_ENABLED=false` to disable it. Normal startup does not seed.
+- Successful reset clears all sessions; sign in again with a demo account.
+- The baseline defaults to
   `classpath:demo/seed.sql`; override it with `app.operator.reset-seed`.
 - The demo-profile alias `POST /api/operator/reset-seed` uses the same reset guard,
   transaction, and `{ "confirmation": "RESET" }` request as `/api/operator/reset`.
-- A successful reset invalidates all sessions.
-- Tests use isolated fixtures; the real demo seed has not been verified.
+- Tests verify the actual seed against an isolated PostgreSQL schema, including
+  repeated resets and rollback on failure.
+
+## Repair existing stale assignments
+
+Apply [docs/migrations/2026-11-13-close-stale-assignments.sql](docs/migrations/2026-11-13-close-stale-assignments.sql)
+after deploying the delivery/refund cleanup fix. It closes active assignments
+for finished orders and releases affected couriers only when they have no
+other active assignment or delivery. It preserves order and assignment history,
+and can be run again safely. No database reset is needed.
 
 ## Courier offers
 
 Apply [docs/assignments.sql](docs/assignments.sql) before using courier offers.
 Ready orders are dispatched automatically. Couriers accept offers from their
 dashboard through `POST /api/courier/offers/{assignmentId}/accept`.
+
+### Verify the reset seed locally
+
+The PostgreSQL seed regression tests are opt-in and accept only a localhost
+connection. They create and remove an isolated schema using `docs/schema.txt`;
+no Supabase database is used. With a disposable local PostgreSQL instance:
+
+```sh
+RESET_TEST_DATABASE_URL=jdbc:postgresql://127.0.0.1:55439/postgres \
+RESET_TEST_DATABASE_USER=tender_reset_test \
+./mvnw -Dtest=OperatorResetSeedIntegrationTest test
+```
+
+They execute the actual seed twice, check the new foreign-key tables and order
+snapshots, and verify rollback and session preservation if the seed fails.

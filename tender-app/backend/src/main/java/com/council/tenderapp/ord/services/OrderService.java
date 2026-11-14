@@ -239,16 +239,7 @@ public class OrderService {
 
     @Transactional
     public OrderResponse confirmDelivery(Long courierId, Long orderId) {
-        Order order = orderRepository.findByIdForUpdate(orderId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
-        if (!Objects.equals(order.getCourierId(), courierId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Order is not assigned to this courier");
-        }
-        OrderStatus previousStatus = order.getStatus();
-        transitionOrder(order, OrderStatus.DELIVERED, "confirm delivery");
-        Order savedOrder = orderRepository.save(order);
-        publishStatusChange(savedOrder, previousStatus, "confirmed delivery", null);
-        return toResponse(savedOrder);
+        return markDeliveredByCourier(courierId, orderId);
     }
 
     @Transactional
