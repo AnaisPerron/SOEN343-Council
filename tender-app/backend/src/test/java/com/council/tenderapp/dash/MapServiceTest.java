@@ -48,7 +48,7 @@ class MapServiceTest {
 
     @Test
     void boundsWrapEveryRestaurantAndCourier() {
-        when(mapRepository.restaurants()).thenReturn(List.of(new MapRestaurantDto(1L, "Maple & Main", "open", 45.51, -73.57)));
+        when(mapRepository.restaurants()).thenReturn(List.of(new MapRestaurantDto(1L, "Maple & Main", "open", 45.51, -73.57, 0)));
         when(mapRepository.onDutyCouriers()).thenReturn(List.of(new MapCourierDto(6L, "Leo", "idle", 45.53, -73.60)));
 
         assertThat(new MapService(mapRepository).getMapData(OPERATOR).bounds())
@@ -66,7 +66,7 @@ class MapServiceTest {
 
     @Test
     void aCustomerSeesTheOpenRestaurantsTheirCouriersAndThemselves() {
-        when(mapRepository.openRestaurants()).thenReturn(List.of(new MapRestaurantDto(1L, "Maple & Main", "open", 45.51, -73.57)));
+        when(mapRepository.openRestaurants()).thenReturn(List.of(new MapRestaurantDto(1L, "Maple & Main", "open", 45.51, -73.57, 0)));
         when(mapRepository.couriersOfCustomerOrders(3L)).thenReturn(List.of(new MapCourierDto(6L, "Leo", "carrying", 45.52, -73.58)));
         when(mapRepository.customer(3L)).thenReturn(List.of(new MapCustomerDto(3L, "Cara", 45.53, -73.59)));
 
@@ -82,7 +82,7 @@ class MapServiceTest {
 
     @Test
     void aCourierSeesThemselvesAndTheirPickupAndDropOff() {
-        when(mapRepository.restaurantsOfCourierOrders(6L)).thenReturn(List.of(new MapRestaurantDto(1L, "Maple & Main", "open", 45.51, -73.57)));
+        when(mapRepository.restaurantsOfCourierOrders(6L)).thenReturn(List.of(new MapRestaurantDto(1L, "Maple & Main", "open", 45.51, -73.57, 0)));
         when(mapRepository.onDutyCourier(6L)).thenReturn(List.of(new MapCourierDto(6L, "Leo", "assigned", 45.52, -73.58)));
         when(mapRepository.customersOfCourierOrders(6L)).thenReturn(List.of(new MapCustomerDto(3L, "Cara", 45.53, -73.59)));
 
@@ -97,7 +97,7 @@ class MapServiceTest {
 
     @Test
     void aRestaurantSeesItselfAndTheCouriersOnItsOrdersButNoCustomers() {
-        when(mapRepository.restaurant(1L)).thenReturn(List.of(new MapRestaurantDto(1L, "Maple & Main", "open", 45.51, -73.57)));
+        when(mapRepository.restaurant(1L)).thenReturn(List.of(new MapRestaurantDto(1L, "Maple & Main", "open", 45.51, -73.57, 0)));
         when(mapRepository.couriersOfRestaurantOrders(1L)).thenReturn(List.of(new MapCourierDto(6L, "Leo", "assigned", 45.52, -73.58)));
 
         MapDataDto data = new MapService(mapRepository).getMapData(viewer(Role.STAFF, 2L, 1L));

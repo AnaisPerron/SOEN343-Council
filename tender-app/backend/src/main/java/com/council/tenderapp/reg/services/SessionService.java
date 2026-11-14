@@ -71,6 +71,8 @@ public class SessionService {
         sessions.remove(token);
     }
 
+    public void invalidateAll() { sessions.clear(); }
+
     public void invalidateAccount(Long accountId) {
         sessions.values().removeIf(session -> session.accountId().equals(accountId));
     }

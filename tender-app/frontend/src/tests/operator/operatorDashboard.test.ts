@@ -2,10 +2,11 @@ import assert from 'node:assert/strict';
 import { afterEach, describe, it, mock } from 'node:test';
 import { API_URL, ApiError } from '../../api/client.ts';
 import { appendOperatorSection, fetchOperatorSection, fetchOperatorSummary } from '../../lib/operatorDashboard.ts';
-import { changeRestaurantStatus } from '../../app/operator/operatorApi.ts';
+import { changeRestaurantStatus, refundOperatorOrder } from '../../app/operator/operatorApi.ts';
+import { markOperatorOrderRefunded, queueBand } from '../../app/operator/operatorLogic.ts';
 import type { OperatorSection } from '../../types/operator.ts';
 
-const restaurant = { id: 1, name: 'Live Restaurant', status: 'open', latitude: null, longitude: null, address: null, phone: null };
+const restaurant = { id: 1, name: 'Live Restaurant', status: 'open', latitude: null, longitude: null, address: null, phone: null, queueCount: 0 };
 const envelope = (items: unknown[], page = 0, total = items.length) => ({ items, page, total, size: 50 });
 function response(body: unknown, status = 200) {
   return mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify(body), { status }));
@@ -49,6 +50,59 @@ describe('operator dashboard data', () => {
     response(envelope([order]));
     const result = await fetchOperatorSection('orders', 0, 'token');
     assert.deepEqual(result.data.items, [order]);
+  });
+
+  it('sends status, restaurant, and date filters with every order page', async () => {
+    const fetch = response(envelope([], 2));
+    await fetchOperatorSection('orders', 2, 'token', {
+      statuses: ['delivered', 'refunded'], restaurantIds: [4, 8], from: '2026-11-01', to: '2026-11-11',
+    });
+    const url = new URL(fetch.mock.calls[0].arguments[0] as string);
+    assert.equal(url.pathname, '/api/operator/orders');
+    assert.equal(url.searchParams.get('page'), '2');
+    assert.deepEqual(url.searchParams.getAll('statuses'), ['delivered', 'refunded']);
+    assert.deepEqual(url.searchParams.getAll('restaurantIds'), ['4', '8']);
+    assert.equal(url.searchParams.get('from'), '2026-11-01');
+    assert.equal(url.searchParams.get('to'), '2026-11-11');
+    assert.equal(url.searchParams.get('timeZone'), Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
+  });
+
+  it('uses R-DASH-03 queue thresholds and paused override', () => {
+    assert.equal(queueBand(0, 'open'), 'short');
+    assert.equal(queueBand(2, 'open'), 'short');
+    assert.equal(queueBand(3, 'open'), 'building');
+    assert.equal(queueBand(5, 'open'), 'building');
+    assert.equal(queueBand(6, 'open'), 'long');
+    assert.equal(queueBand(0, 'paused'), 'long');
+  });
+
+  it('pressing refund sends the operator request for the selected order', async () => {
+    const fetch = response({ status: 'REFUNDED' });
+    await refundOperatorOrder(20, 'operator-token');
+    const [url, init] = fetch.mock.calls[0].arguments as [string, RequestInit];
+    assert.equal(url, `${API_URL}/api/operator/orders/20/refund`);
+    assert.equal(init.method, 'POST');
+    assert.equal((init.headers as Record<string, string>).Authorization, 'Bearer operator-token');
+  });
+
+  it('does not report success unless the server confirms the refunded status', async () => {
+    response({ status: 'DELIVERED' });
+    await assert.rejects(refundOperatorOrder(20, 'operator-token'),
+      (error: ApiError) => error.status === 502 && error.message === 'The server did not confirm the refund');
+  });
+
+  it('updates the loaded order in place after refund and respects a status filter', () => {
+    const delivered = { id: 20, customerId: 1, restaurantId: 10, courierId: null, status: 'delivered' as const,
+      dateOrdered: null, acceptedAt: null, rejectionReason: null, totalPrice: 12.50 };
+    const current: OperatorSection = { kind: 'orders', data: envelope([delivered], 0, 1) };
+    const updated = markOperatorOrderRefunded(current, 20, []);
+    assert.equal(updated?.kind, 'orders');
+    if (updated?.kind === 'orders') assert.equal(updated.data.items[0].status, 'refunded');
+    const filtered = markOperatorOrderRefunded(current, 20, ['delivered']);
+    if (filtered?.kind === 'orders') {
+      assert.deepEqual(filtered.data.items, []);
+      assert.equal(filtered.data.total, 0);
+    }
   });
 
   it('accepts empty pages instead of substituting fixtures', async () => {

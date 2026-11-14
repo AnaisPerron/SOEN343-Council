@@ -55,13 +55,13 @@ describe('operator dashboard - order totals', () => {
 });
 
 describe('operator dashboard - customer balance', () => {
-  it('formats the TD Cash balance with two decimals', () => {
-    assert.equal(getCustomerBalance(1, customerProfilesMock), '25.00');
-    assert.equal(getCustomerBalance(2, customerProfilesMock), '8.50');
+  it('formats the Tender Cash balance in whole tenders', () => {
+    assert.equal(getCustomerBalance(1, customerProfilesMock), '250');
+    assert.equal(getCustomerBalance(2, customerProfilesMock), '85');
   });
 
-  it('falls back to 0.00 when the customer has no profile', () => {
-    assert.equal(getCustomerBalance(999, customerProfilesMock), '0.00');
+  it('falls back to zero tenders when the customer has no profile', () => {
+    assert.equal(getCustomerBalance(999, customerProfilesMock), '0');
   });
 });
 

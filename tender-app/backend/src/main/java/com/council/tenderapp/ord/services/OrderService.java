@@ -1,5 +1,8 @@
 package com.council.tenderapp.ord.services;
 
+import java.util.Date;
+import java.time.Instant;
+import java.util.Locale;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -15,17 +18,26 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.council.tenderapp.dlv.services.AssignmentService;
+import com.council.tenderapp.dlv.services.DispatchService;
+import com.council.tenderapp.dlv.entities.Assignment;
+import com.council.tenderapp.dlv.repositories.AssignmentRepository;
+import com.council.tenderapp.ord.entities.OrderEvent;
 import com.council.tenderapp.ord.dtos.OrderLineResponse;
 import com.council.tenderapp.ord.dtos.OrderResponse;
+import com.council.tenderapp.ord.dtos.OrderLineDto;
 import com.council.tenderapp.ord.entities.Order;
 import com.council.tenderapp.ord.entities.OrderStatus;
 import com.council.tenderapp.ord.repositories.OrderEventRepository;
+import com.council.tenderapp.ord.repositories.OrderLineRepository;
 import com.council.tenderapp.ord.repositories.OrderRepository;
 import com.council.tenderapp.reg.entities.Profile;
 import com.council.tenderapp.reg.entities.CourierProfile;
 import com.council.tenderapp.reg.entities.CourierStatus;
 import com.council.tenderapp.reg.repositories.CourierProfileRepository;
 import com.council.tenderapp.reg.repositories.ProfileRepository;
+import com.council.tenderapp.prc.service.LedgerService;
+import com.council.tenderapp.technicalservices.payment.TenderCash;
 
 @Service
 public class OrderService {
@@ -38,20 +50,37 @@ public class OrderService {
     private final OrderStatusPublisher orderStatusPublisher;
     private final OrderEventRepository orderEventRepository;
     private final ProfileRepository profileRepository;
+    private final OrderLineRepository orderLineRepository;
+    private final TenderCash tenderCash;
     private final CourierProfileRepository courierProfileRepository;
+    private final LedgerService ledgerService;
+    private final AssignmentService assignments;
+    private final DispatchService dispatch;
+    private final AssignmentRepository assignmentHistory;
 
     public OrderService(
         OrderRepository orderRepository,
         OrderStatusPublisher orderStatusPublisher,
         OrderEventRepository orderEventRepository,
         ProfileRepository profileRepository,
-        CourierProfileRepository courierProfileRepository
+        OrderLineRepository orderLineRepository,
+        TenderCash tenderCash,
+        CourierProfileRepository courierProfileRepository,
+        LedgerService ledgerService,
+        AssignmentService assignments,
+        DispatchService dispatch, AssignmentRepository assignmentHistory
     ) {
         this.orderRepository = orderRepository;
         this.orderStatusPublisher = orderStatusPublisher;
         this.orderEventRepository = orderEventRepository;
         this.profileRepository = profileRepository;
+        this.orderLineRepository = orderLineRepository;
+        this.tenderCash = tenderCash;
         this.courierProfileRepository = courierProfileRepository;
+        this.ledgerService = ledgerService;
+        this.assignments = assignments;
+        this.dispatch = dispatch;
+        this.assignmentHistory = assignmentHistory;
     }
 
     @Transactional(readOnly = true)
@@ -100,6 +129,7 @@ public class OrderService {
         Order order = getOwnedOrderForUpdate(restaurantId, orderId);
         OrderStatus previousStatus = order.getStatus();
         transitionOrder(order, OrderStatus.REJECTED, "reject");
+        tenderCash.refunded(order);
         order.setRejectionReason(trimmedReason.isEmpty() ? null : trimmedReason);
         Order savedOrder = orderRepository.save(order);
         log.info("Restaurant order rejected: orderId={}, restaurantId={}", orderId, restaurantId);
@@ -109,10 +139,15 @@ public class OrderService {
 
     @Transactional
     public OrderResponse cancelOrder(Long restaurantId, Long orderId) {
+        assignments.lockCouriers();
         Order order = getOwnedOrderForUpdate(restaurantId, orderId);
         OrderStatus previousStatus = order.getStatus();
         transitionOrder(order, OrderStatus.CANCELLED, "cancel");
+        tenderCash.refunded(order);
         Order savedOrder = orderRepository.save(order);
+        assignments.finish(savedOrder, false);
+        orderRepository.flush();
+        dispatch.retryQueue();
         publishStatusChange(savedOrder, previousStatus, "cancelled", null);
         return toResponse(savedOrder);
     }
@@ -130,16 +165,22 @@ public class OrderService {
 
     @Transactional
     public OrderResponse markReady(Long restaurantId, Long orderId) {
+        assignments.lockCouriers();
         Order order = getOwnedOrderForUpdate(restaurantId, orderId);
         OrderStatus previousStatus = order.getStatus();
         transitionOrder(order, OrderStatus.READY, "mark ready");
         Order savedOrder = orderRepository.save(order);
+        orderEventRepository.saveAndFlush(new OrderEvent(orderId, previousStatus.name().toLowerCase(java.util.Locale.ROOT),
+                "ready", "order_ready", Instant.now()));
+        orderRepository.flush();
+        dispatch.retryQueue();
         publishStatusChange(savedOrder, previousStatus, "marked ready", null);
         return toResponse(savedOrder);
     }
 
     @Transactional
     public OrderResponse markPickedUpByCourier(Long courierId, Long orderId) {
+        assignments.lockCouriers();
         Order order = orderRepository.findByIdForUpdate(orderId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
         if (!Objects.equals(order.getCourierId(), courierId)) {
@@ -147,14 +188,27 @@ public class OrderService {
         }
 
         OrderStatus previousStatus = order.getStatus();
+        assignments.pickUp(order);
         transitionOrder(order, OrderStatus.PICKED_UP, "mark picked up");
+
+        Instant now=Instant.now();
+        order.setPickupDate(Date.from(now));
         Order savedOrder = orderRepository.save(order);
+
+        orderEventRepository.save(new OrderEvent(
+        savedOrder.getId(),
+        previousStatus.name().toLowerCase(Locale.ROOT),
+        OrderStatus.PICKED_UP.name().toLowerCase(Locale.ROOT),
+        "order_picked_up",
+        now));
+
         publishStatusChange(savedOrder, previousStatus, "marked picked up by courier", null);
         return toResponse(savedOrder);
     }
 
     @Transactional
     public OrderResponse markDeliveredByCourier(Long courierId, Long orderId) {
+        assignments.lockCouriers();
         Order order = orderRepository.findByIdForUpdate(orderId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
         if (!Objects.equals(order.getCourierId(), courierId)) {
@@ -162,18 +216,56 @@ public class OrderService {
         }
 
         OrderStatus previousStatus = order.getStatus();
+        assignments.current(order);
         transitionOrder(order, OrderStatus.DELIVERED, "mark delivered");
+
+        Instant now = Instant.now();
+        order.setDateDelivered(Date.from(now));
         Order savedOrder = orderRepository.save(order);
+        assignments.finish(savedOrder, true);
+        orderRepository.flush();
+        dispatch.retryQueue();
+
+        orderEventRepository.save(new OrderEvent(
+        savedOrder.getId(),
+        previousStatus.name().toLowerCase(Locale.ROOT),
+        OrderStatus.DELIVERED.name().toLowerCase(Locale.ROOT),
+        "order_delivered",
+        now));
+
         publishStatusChange(savedOrder, previousStatus, "marked delivered", null);
         return toResponse(savedOrder);
     }
 
     @Transactional
+    public OrderResponse confirmDelivery(Long courierId, Long orderId) {
+        return markDeliveredByCourier(courierId, orderId);
+    }
+
+    @Transactional
     public OrderResponse refundOrder(Long restaurantId, Long orderId) {
+        assignments.lockCouriers();
         Order order = getOwnedOrderForUpdate(restaurantId, orderId);
         OrderStatus previousStatus = order.getStatus();
+        if (previousStatus != OrderStatus.DELIVERED) {
+            throw invalidTransition(previousStatus, "refund");
+        }
+        assignments.current(order);
         transitionOrder(order, OrderStatus.REFUNDED, "refund");
+        tenderCash.refunded(order);
         Order savedOrder = orderRepository.save(order);
+        // Close any assignment still open on the order and free its courier, then let them take a waiting order
+        assignments.finish(savedOrder, false);
+        orderRepository.flush();
+        dispatch.retryQueue();
+        ledgerService.createRefundEntry(savedOrder);
+        orderEventRepository.saveAndFlush(new OrderEvent(
+            orderId,
+            previousStatus.name().toLowerCase(java.util.Locale.ROOT),
+            OrderStatus.REFUNDED.name().toLowerCase(java.util.Locale.ROOT),
+            "order_refunded",
+            Instant.now()
+        ));
         publishStatusChange(savedOrder, previousStatus, "refunded", null);
         return toResponse(savedOrder);
     }
@@ -251,7 +343,9 @@ public class OrderService {
             : courierProfileRepository.findById(order.getCourierId()).orElse(null);
         boolean acceptedEvent = order.getId() != null
             && orderEventRepository.existsByOrderIdAndEventType(order.getId(), "courier_accepted");
-        return toResponse(order, customer, courierName(order, courier, courierProfile, acceptedEvent));
+        Assignment latest = order.getId() == null || order.getCourierId() == null ? null : assignmentHistory
+                .findFirstByOrderIdAndCourierIdOrderByAssignedAtDescIdDesc(order.getId(), order.getCourierId()).orElse(null);
+        return toResponse(order, customer, courierName(order, courier, courierProfile, acceptedEvent, latest));
     }
 
     // Load customer and courier profiles in batches so the restaurant history stays efficient.
@@ -283,6 +377,11 @@ public class OrderService {
                 orders.stream().map(Order::getId).toList(), "courier_accepted"
             ).stream().map(event -> event.getOrderId())
                 .collect(Collectors.toSet());
+        Map<AssignmentKey, Assignment> latestAssignments = new java.util.HashMap<>();
+        if (!orders.isEmpty()) {
+            assignmentHistory.findByOrderIdInOrderByAssignedAtDescIdDesc(orders.stream().map(Order::getId).toList())
+                    .forEach(a -> latestAssignments.putIfAbsent(new AssignmentKey(a.getOrderId(), a.getCourierId()), a));
+        }
         return orders.stream()
             .map(order -> toResponse(
                 order,
@@ -291,16 +390,19 @@ public class OrderService {
                     order,
                     order.getCourierId() == null ? null : profiles.get(order.getCourierId()),
                     order.getCourierId() == null ? null : courierProfiles.get(order.getCourierId()),
-                    acceptedOrderIds.contains(order.getId())
+                    acceptedOrderIds.contains(order.getId()),
+                    latestAssignments.get(new AssignmentKey(order.getId(), order.getCourierId()))
                 )
             ))
             .toList();
     }
 
-    private static String courierName(Order order, Profile courier, CourierProfile courierProfile, boolean acceptedEvent) {
+    private record AssignmentKey(Long orderId, Long courierId) {}
+
+    private static String courierName(Order order, Profile courier, CourierProfile courierProfile, boolean acceptedEvent, Assignment latest) {
         if (courier == null || courierProfile == null) return null;
+        if (latest != null) return latest.getAcceptedAt() == null ? null : courier.getName();
         boolean accepted = acceptedEvent
-            || courierProfile.getStatus() == CourierStatus.ASSIGNED
             || courierProfile.getStatus() == CourierStatus.CARRYING
             || order.getStatus() == OrderStatus.PICKED_UP
             || order.getStatus() == OrderStatus.DELIVERED
@@ -329,5 +431,17 @@ public class OrderService {
             order.getDeliveryAddress(),
             orderLines
         );
+    }
+
+    public List<OrderLineDto> getOrderLinesForOrder(Long orderId) {
+        return orderLineRepository.findByOrderId(orderId).stream()
+            .map(line -> new OrderLineDto(
+                line.getMenuItem().getId(),
+                line.getMenuItem().getName(),
+                line.getQuantity(),
+                line.getUnitPrice(),
+                line.getUnitPrice().multiply(java.math.BigDecimal.valueOf(line.getQuantity()))
+            ))
+            .toList();
     }
 }

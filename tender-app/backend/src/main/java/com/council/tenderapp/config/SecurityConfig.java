@@ -13,6 +13,8 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.council.tenderapp.reg.security.TokenAuthenticationFilter;
+import com.council.tenderapp.operator.reset.ResetCoordinator;
+import com.council.tenderapp.operator.reset.ResetCoordinationFilter;
 import com.council.tenderapp.reg.services.SessionService;
 
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -39,6 +41,9 @@ public class SecurityConfig
     }
 
     @Bean
+    public ResetCoordinator resetCoordinator() { return new ResetCoordinator(); }
+
+    @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
@@ -62,7 +67,7 @@ public class SecurityConfig
     }
 
     @Bean 
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, ResetCoordinator resetCoordinator) throws Exception {
         http
         .cors(cors -> cors.configurationSource(corsConfigurationSource()))
         .csrf(csrf -> csrf.disable())
@@ -78,7 +83,8 @@ public class SecurityConfig
         .exceptionHandling(exceptions -> exceptions
             .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
         )
-        .addFilterBefore(new TokenAuthenticationFilter(sessionService), UsernamePasswordAuthenticationFilter.class);
+        .addFilterBefore(new ResetCoordinationFilter(resetCoordinator), UsernamePasswordAuthenticationFilter.class)
+        .addFilterAfter(new TokenAuthenticationFilter(sessionService), ResetCoordinationFilter.class);
 
         return http.build();
     }

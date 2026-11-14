@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCart } from '@/context/CartContext';
 import { groupCartLinesByRestaurant } from './cartStore';
 import { useCatalog } from '@/context/CatalogContext';
-import { getCartOrderRestriction, ORDER_ERROR_FADE_DELAY_MS, ORDER_ERROR_FADE_DURATION_MS, type RestaurantOrderRestriction } from '../services/restaurantOrderRules';
+import { getCartOrderRestriction, getPlaceOrderAvailability, ORDER_ERROR_FADE_DELAY_MS, ORDER_ERROR_FADE_DURATION_MS, type RestaurantOrderRestriction } from '../services/restaurantOrderRules';
 import { styles } from './cart.styles';
 
 export default function CartScreen() {
@@ -19,6 +19,9 @@ export default function CartScreen() {
   const count = lines.reduce((total, line) => total + line.quantity, 0);
   const groups = groupCartLinesByRestaurant(lines);
   const grandTotal = groups.reduce((total, group) => total + group.total, 0);
+  const placeRestriction = getCartOrderRestriction(groups.map((group) => group.restaurantId), restaurants);
+  const placeOrderAvailability = getPlaceOrderAvailability(placeRestriction, lines.map((line) => findItem(line.itemId)?.available));
+  const { disabled: placeOrderDisabled, hint: placeOrderHint } = placeOrderAvailability;
   const goBack = () => router.canGoBack() ? router.back() : router.replace('/customer/home/home');
 
   useEffect(() => () => {
@@ -103,13 +106,14 @@ export default function CartScreen() {
             </View>;
           })}
           {/* Sum the restaurant bills for the cart's displayed total. */}
-          <View style={styles.totalRow}><Text style={styles.totalLabel}>Estimated total</Text><Text style={styles.totalValue}>${grandTotal.toFixed(2)}</Text></View>
+          <View style={styles.totalRow}><Text style={styles.totalLabel}>Total</Text><Text style={styles.totalValue}>${grandTotal.toFixed(2)}</Text></View>
         </>}
       </ScrollView>
       <View style={styles.footer}>
-        <TouchableOpacity style={[styles.makeOrderButton, lines.length === 0 && styles.makeOrderButtonDisabled]} accessibilityRole="button" accessibilityState={{ disabled: lines.length === 0 }} disabled={lines.length === 0} onPress={makeOrder}>
+        <TouchableOpacity style={[styles.makeOrderButton, placeOrderDisabled && styles.makeOrderButtonDisabled]} accessibilityRole="button" accessibilityHint={placeOrderHint} accessibilityState={{ disabled: placeOrderDisabled }} disabled={placeOrderDisabled} onPress={makeOrder}>
           <Text style={styles.makeOrderText}>Make my order</Text>
         </TouchableOpacity>
+        {placeOrderHint && <Text style={styles.orderBlockedHint}>{placeOrderHint}</Text>}
       </View>
       {orderError && <View style={styles.orderErrorOverlay} pointerEvents="none">
         <Animated.View style={[styles.orderErrorToast, { opacity: toastOpacity }]} accessibilityRole="alert" accessibilityLiveRegion="assertive">

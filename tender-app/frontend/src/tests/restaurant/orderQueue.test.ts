@@ -42,6 +42,7 @@ describe('restaurant orders queue', () => {
     assert.equal(remaining.some((order) => order.id === 9301 || order.id === 9302), false);
     assert.equal(restaurantOrdersMock.length, 11, 'deletion must not mutate the source queue');
     assert.equal(orderTotal(placed), 26);
+    assert.equal(orderTotal({ ...placed, totalPrice: 29.50 }), 29.50, 'the server total includes pricing fees');
   });
   it('only lets the oldest accepted order start preparing', () => {
     const base = restaurantOrdersMock[0];

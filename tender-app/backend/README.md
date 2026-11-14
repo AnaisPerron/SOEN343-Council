@@ -23,6 +23,41 @@ The `local` profile uses an in-memory H2 database and seeds a demo
 restaurant (`restaurantId=1`) with orders in `PLACED`, `ACCEPTED`, and
 `PREPARING` states. Data (including accounts) is reset when the backend restarts.
 
+## Demo Data
+
+The `demo` Spring profile automatically loads `src/main/resources/demo/seed.sql` into PostgreSQL at startup.
+
+**Warning:** Every demo startup clears and reseeds the 20 tables listed in the seed. Use a dedicated demo database/branch. Normal startup preserves existing data.
+
+### Setup
+
+1. Copy `backend/.env.example` to `backend/.env` and configure the database credentials.
+2. Ensure the database schema already exists.
+3. From `tender-app/backend`, run:
+
+```sh
+./mvnw spring-boot:run -Dspring-boot.run.profiles=demo
+```
+
+Alternatively, add `--spring.profiles.active=demo` to your IDE's run configuration.
+
+### Seeded Data
+
+Includes 9 users, 4 restaurants, 7 menu items, and 8 orders, covering REG/ORD scenarios such as restaurant availability, sold out items, order lifecycles, and preparation queues.
+
+**Demo accounts:**
+
+| Role | Email |
+-----------------------------
+| Customer | alice@demo.test |
+| Staff | sam@demo.test |
+| Courier | leo@demo.test |
+| Operator | operator@demo.test |
+
+**Password:** `DemoPass123!` (verify BCrypt compatibility when implementing authentication).
+
+**Remove the `demo` profile to run without resetting the database.**
+
 ## Restaurant order queues
 
 `GET /api/restaurants/{restaurantId}/orders/preparation` returns that restaurant's
@@ -97,10 +132,9 @@ orders without a corresponding event use their creation time as a fallback.
 The Observer pattern connects committed order and courier state changes to
 dispatch: the order-status observer retries after an order becomes ready, and
 the courier duty service retries after a courier goes on duty or finishes a
-delivery. For each idle courier, dispatch creates at most one offer by setting
-the order's `courier_id`; the courier remains `IDLE` until accepting. This keeps
-the offer visible through the existing duty response without a new order entity
-field. The nearest idle courier receives the oldest eligible order. A courier
+delivery. For each idle courier, dispatch creates an `OFFERED` assignment, sets
+the order's `courier_id`, and reserves the courier as `ASSIGNED`. Accepting changes
+the assignment to `ACCEPTED`; pickup requires that acceptance. The nearest idle courier receives the oldest eligible order. A courier
 with an outstanding offer is not offered another one.
 
 Courier actions use `POST /api/courier/duty/on` and
@@ -117,9 +151,36 @@ returns the courier to `IDLE`, and retries the queue. The API verifies that the
 order is offered to or assigned to the authenticated courier. Waiting, offer,
 acceptance, decline, pickup, and delivery events are logged to the application
 console.
-Courier acceptance is recorded as a `courier_accepted` row in `order_events`;
-the restaurant order response uses that record to show the courier name even
-after the courier's current duty status changes.
+Courier acceptance is recorded in the assignment and as a `courier_accepted`
+row in `order_events`. Restaurant responses show the current courier's name
+only after that assignment is accepted, including after delivery.
+
+`POST /api/courier/orders/{orderId}/pickup` lets the assigned courier confirm pickup
+(Task 72, US.14). It requires the `COURIER` role and moves the order from `READY` to
+`PICKED_UP`, which moves the courier from `ASSIGNED` to `CARRYING`. The call is refused
+with `404` if the order does not exist, `403` if the authenticated courier is not the
+order's assigned courier or the caller is not a courier, `409` if the order is not
+`READY`, and `401` without a session. On success it returns
+`{"orderId": 12, "orderStatus": "picked_up", "courierStatus": "carrying"}`. The
+transition reuses `OrderService.markPickedUpByCourier`, which also sets the order's
+`pickup_date` and records an `order_picked_up` row in `order_events` (`ready` to
+`picked_up`) in the same transaction. The older
+`POST /api/courier/duty/orders/{orderId}/picked-up` route shares that method, so it
+records the same event.
+
+`POST /api/courier/orders/{orderId}/delivery` lets the assigned courier confirm delivery
+(Task 73, US.14). It requires the `COURIER` role and moves the order from `PICKED_UP` to
+`DELIVERED`. The call is refused with `404` if the order does not exist, `403` if the
+authenticated courier is not the order's assigned courier or the caller is not a courier,
+`409` if the order is not `PICKED_UP`, and `401` without a session. On success it returns
+`{"orderId": 12, "orderStatus": "delivered", "courierStatus": "idle"}`. The transition
+reuses `OrderService.markDeliveredByCourier`, which also sets the order's `date_delivered`
+and records an `order_delivered` row in `order_events` (`picked_up` to `delivered`) in the
+same transaction. After the change commits, `CourierReleaseObserver` returns the courier
+from `CARRYING` to `IDLE` and retries the dispatch queue, so the courier is immediately
+offered the oldest waiting order. The older
+`POST /api/courier/duty/orders/{orderId}/delivered` route shares that method, so it
+records the same event. The order summary and ledger entry are separate tasks (PRC).
 
 The current project has no authentication/authorization integration. The local
 restaurant profile is a demo context, not an authenticated account. Actions
@@ -136,56 +197,21 @@ restaurant contact profiles to an existing database.
 The test suite uses an in-memory H2 database and does not apply this script to
 your configured database.
 
-## Demo Data
-
-The `demo` Spring profile automatically loads `src/main/resources/demo/seed.sql` into PostgreSQL at startup.
-
-**Warning:** Every demo startup clears and reseeds the 15 tables listed in the seed. Use a dedicated demo database/branch. Normal startup preserves existing data.
-
-### Setup
-
-1. Copy `backend/.env.example` to `backend/.env` and configure the database credentials.
-2. Ensure the database schema already exists.
-3. From `tender-app/backend`, run:
-
-```sh
-./mvnw spring-boot:run -Dspring-boot.run.profiles=demo
-```
-
-Alternatively, add `--spring.profiles.active=demo` to your IDE's run configuration.
-
-### Seeded Data
-
-Includes 9 users, 4 restaurants, 7 menu items, and 8 orders, covering REG/ORD scenarios such as restaurant availability, sold out items, order lifecycles, and preparation queues.
-
-**Demo accounts:**
-
-| Role | Email |
------------------------------
-| Customer | alice@demo.test |
-| Staff | sam@demo.test |
-| Courier | leo@demo.test |
-| Operator | operator@demo.test |
-
-**Password:** `DemoPass123!` (verify BCrypt compatibility when implementing authentication).
-
-**Remove the `demo` profile to run without resetting the database.**
-
 ### Menu photos
 
-The SQL seed uses the same seven dishes and image files as the frontend mocks.
-Maven copies `../frontend/src/mocks/menu-items-imgs/*.jpg` into the backend's
-static resources when building, so the images are included in the packaged JAR.
-Unauthenticated GET requests can load `/menu-items-imgs/<filename>.jpg`.
+The seven demo photos are bundled in `src/main/resources/static/menu-items-imgs`,
+so they are included in local and Docker builds. Public URLs such as
+`/menu-items-imgs/truffle.jpg` are stored in the seed; the frontend resolves them
+against `EXPO_PUBLIC_API_URL`. Restaurant covers use the same bundled photos.
+The backend must be reachable from the browser or device to serve these URLs.
 
-Seeded `photo_url` values are full backend URLs, for example
-`http://localhost:8080/menu-items-imgs/truffle.jpg`. These work when the browser
-and backend run on the same computer. For a phone, another computer, or deployment,
-replace the `http://localhost:8080` prefix in the seed with the reachable backend
-origin before seeding. The images require the backend to be running and are not
-uploaded to Supabase Storage.
+For an already reset database, apply
+[docs/migrations/2026-11-13-demo-image-urls.sql](docs/migrations/2026-11-13-demo-image-urls.sql)
+to restore missing demo covers and normalize old localhost photo URLs without
+reseeding. Existing custom cover URLs are preserved. Uploaded images removed by
+a reset must be uploaded again; the seed restores only the bundled demo photos.
 
-The seed matches the public Supabase schema inspected on October 29, 2026:
+The seed matches the public Supabase schema inspected on November 13, 2026:
 menus have no name column, restaurants use `opening_hour` and `closing_hour`,
 and `operator_profiles.user_id` references `users.id`. Olivia's operator profile
 links to demo user 8. No table creation or schema migration is performed by the seed.
@@ -195,7 +221,11 @@ implement automatic opening/closing behavior.
 
 The reset list also includes `order_items` because its foreign key references
 orders, and `auth_sessions` to remove stale persisted demo sessions. Those two
-tables are cleared but not populated. The `health_check` table is preserved.
+tables are cleared but not populated. Reset also clears assignments, uploaded menu
+photos, and Tender Cash transactions. Bills and ledger entries are rebuilt for
+the eight demo orders; balances return to the seeded customer balances. Menu
+categories, descriptions, opening hours, and order snapshots are populated.
+The baseline restores the original demo. The `health_check` table is preserved.
 The current schema snapshot is recorded in [docs/schema.txt](docs/schema.txt).
 The backend maps its Java `dateOrdered` field to `orders.created_at`, preserving
 the existing API field name. Dashboard queries also read `created_at`, so there
@@ -204,3 +234,60 @@ constraint to include `refunded`; it does not perform refunds or reseed data.
 
 The demo seed retains open, paused, and closed restaurant scenarios, so its
 restaurant statuses and generated IDs can differ from the frontend mock state.
+
+### Tender Cash
+
+Tender Cash uses 10 whole tenders per CAD dollar. The existing
+`customer_profiles.td_cash_balance` is the starting CAD balance; order credits
+and debits are recorded in `tender_cash_transactions`. Apply
+`docs/migrations/2026-11-11-tender-cash.sql` to an existing database before
+starting the updated backend. A purchase earns 10 tenders per CAD dollar paid
+after redemption, with fractional tenders dropped. A refund, rejection, or cancellation reverses those earned
+tenders, returns any tenders spent, and credits the cash portion as Tender Cash,
+rounded up to the next tender. These are store credits; no PayPal refund is sent.
+The direct order endpoint accepts a fully Tender Cash funded order; a remaining
+cash amount must go through PayPal. Set `app.payments.allow-mock=true` only for
+tests that intentionally exercise the mock payment gateway.
+
+## Operator actions
+
+- `POST /api/operator/orders/{orderId}/reassign`: operator-only reassignment.
+- `POST /api/operator/reset`: operator-only reset after `{ "confirmation": "RESET" }`.
+- Reset is enabled by default for both local backend runs and Docker Compose. Set
+  `APP_OPERATOR_RESET_ENABLED=false` to disable it. Normal startup does not seed.
+- Successful reset clears all sessions; sign in again with a demo account.
+- The baseline defaults to
+  `classpath:demo/seed.sql`; override it with `app.operator.reset-seed`.
+- The demo-profile alias `POST /api/operator/reset-seed` uses the same reset guard,
+  transaction, and `{ "confirmation": "RESET" }` request as `/api/operator/reset`.
+- Tests verify the actual seed against an isolated PostgreSQL schema, including
+  repeated resets and rollback on failure.
+
+## Repair existing stale assignments
+
+Apply [docs/migrations/2026-11-13-close-stale-assignments.sql](docs/migrations/2026-11-13-close-stale-assignments.sql)
+after deploying the delivery/refund cleanup fix. It closes active assignments
+for finished orders and releases affected couriers only when they have no
+other active assignment or delivery. It preserves order and assignment history,
+and can be run again safely. No database reset is needed.
+
+## Courier offers
+
+Apply [docs/assignments.sql](docs/assignments.sql) before using courier offers.
+Ready orders are dispatched automatically. Couriers accept offers from their
+dashboard through `POST /api/courier/offers/{assignmentId}/accept`.
+
+### Verify the reset seed locally
+
+The PostgreSQL seed regression tests are opt-in and accept only a localhost
+connection. They create and remove an isolated schema using `docs/schema.txt`;
+no Supabase database is used. With a disposable local PostgreSQL instance:
+
+```sh
+RESET_TEST_DATABASE_URL=jdbc:postgresql://127.0.0.1:55439/postgres \
+RESET_TEST_DATABASE_USER=tender_reset_test \
+./mvnw -Dtest=OperatorResetSeedIntegrationTest test
+```
+
+They execute the actual seed twice, check the new foreign-key tables and order
+snapshots, and verify rollback and session preservation if the seed fails.

@@ -54,11 +54,11 @@ export default function RestaurantOrders() {
     const refresh = async () => {
       const version = statusWriteVersion.current;
       try {
-        const data = await requestJson<{ id: number; courierId: number | null; courierName: string | null; status: string; dateOrdered: string; acceptedAt: string | null; rejectionReason: string | null; customerName: string | null; customerPhone: string | null; deliveryAddress: string | null; orderLines: { itemName: string; quantity: number; unitPrice: number }[] }[]>('GET', `/api/restaurants/${restaurantId}/orders`, undefined, token);
+        const data = await requestJson<{ id: number; courierId: number | null; courierName: string | null; status: string; dateOrdered: string; acceptedAt: string | null; rejectionReason: string | null; totalPrice: number | null; customerName: string | null; customerPhone: string | null; deliveryAddress: string | null; orderLines: { itemName: string; quantity: number; unitPrice: number }[] }[]>('GET', `/api/restaurants/${restaurantId}/orders`, undefined, token);
         // Drop this snapshot if a status change started or finished while it was loading; it may predate that change.
         if (!active || version !== statusWriteVersion.current) return;
         console.info('Restaurant orders loaded', { restaurantId, count: data.length });
-        setOrders(data.map((order) => ({ id: order.id, restaurantId, courierId: order.courierId, courierName: order.courierName, status: order.status.toLowerCase() as RestaurantOrderStatus, createdAt: order.dateOrdered, updatedAt: null, acceptedAt: order.acceptedAt, rejectionReason: order.rejectionReason, customer: { name: order.customerName ?? 'Unavailable', address: order.deliveryAddress ?? 'Unavailable', phone: order.customerPhone ?? 'Unavailable' }, lines: order.orderLines.map((line) => ({ name: line.itemName, quantity: line.quantity, unitPrice: line.unitPrice, toppings: [] })) })));
+        setOrders(data.map((order) => ({ id: order.id, restaurantId, courierId: order.courierId, courierName: order.courierName, status: order.status.toLowerCase() as RestaurantOrderStatus, createdAt: order.dateOrdered, updatedAt: null, acceptedAt: order.acceptedAt, rejectionReason: order.rejectionReason, totalPrice: order.totalPrice, customer: { name: order.customerName ?? 'Unavailable', address: order.deliveryAddress ?? 'Unavailable', phone: order.customerPhone ?? 'Unavailable' }, lines: order.orderLines.map((line) => ({ name: line.itemName, quantity: line.quantity, unitPrice: line.unitPrice, toppings: [] })) })));
         setMessage('');
       } catch (error) { if (active) { console.error('Unable to load restaurant orders', error); setMessage(error instanceof Error ? error.message : 'Unable to load orders'); } }
     };
@@ -166,7 +166,7 @@ export default function RestaurantOrders() {
               {order.courierName
                 ? `Courier: ${order.courierName}`
                 : order.status === 'ready'
-                  ? order.courierId != null ? 'Awaiting courier acceptance…' : 'Awaiting courier…'
+                  ? order.courierId != null ? `Offered to ${order.courierName ?? `courier #${order.courierId}`} · awaiting acceptance` : 'Awaiting courier…'
                   : 'Courier: not assigned'}
             </Text>}
             <View style={styles.orderLines}>{order.lines.map((line, index) => <View key={`${order.id}-${index}`} style={index > 0 ? styles.additionalLine : undefined}>
@@ -199,7 +199,7 @@ export default function RestaurantOrders() {
             label="Courier"
             value={detail.courierName
               ?? (detail.status === 'ready'
-                ? detail.courierId != null ? 'Awaiting courier acceptance…' : 'Awaiting courier…'
+                ? detail.courierId != null ? `Offered to ${detail.courierName ?? `courier #${detail.courierId}`} · awaiting acceptance` : 'Awaiting courier…'
                 : 'Not assigned')}
           />}
           <Info label="Delivery address" value={detail.customer.address} />

@@ -15,6 +15,8 @@ import com.council.tenderapp.ord.entities.OrderStatus;
 public interface OrderRepository extends JpaRepository<Order, Long> {
 
     List<Order> findByCustomerIdOrderByDateOrderedDescIdDesc(Long customerId);
+    List<Order> findByRestaurantIdOrderByDateOrderedDescIdDesc(Long restaurantId);
+    List<Order> findByCourierIdAndStatusInOrderByDateOrderedDescIdDesc(Long courierId, Collection<OrderStatus> statuses);
 
     // All statuses are needed by the restaurant dashboard, ordered as a FIFO queue.
     List<Order> findByRestaurantIdOrderByDateOrderedAscIdAsc(Long restaurantId);
@@ -55,7 +57,17 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query("SELECT o FROM Order o WHERE o.id = :orderId")
     Optional<Order> findByIdForUpdate(@Param("orderId") Long orderId);
 
+    boolean existsByCourierIdAndIdNotAndStatusIn(Long courierId, Long orderId, Collection<OrderStatus> statuses);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT o FROM Order o WHERE o.id = :orderId")
     Optional<Order> findWithLockById(@Param("orderId") Long orderId);
+
+    @Query (value = """
+        SELECT r.name
+        FROM orders o
+        JOIN restaurants r ON o.restaurant_id = r.id
+        WHERE o.id = :orderId
+    """, nativeQuery = true)
+    String findRestaurantNameByOrderId(Long orderId);
 }

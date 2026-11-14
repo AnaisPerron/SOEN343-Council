@@ -96,8 +96,8 @@ class RestaurantOrderControllerTest {
     }
 
     @Test
-    void restaurantRoutesCannotChangeCourierPickupOrDeliveryState() throws Exception {
-        for (String action : List.of("picked-up", "delivered")) {
+    void restaurantRoutesCannotChangeCourierStateOrRefund() throws Exception {
+        for (String action : List.of("picked-up", "delivered", "refund")) {
             mockMvc.perform(post("/api/restaurants/1/orders/42/" + action)
                     .header(HttpHeaders.AUTHORIZATION, bearer(1L, Role.STAFF)))
                     .andExpect(status().isNotFound());

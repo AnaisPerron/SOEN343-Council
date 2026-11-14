@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Modal, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
+import { getAccountMenuCommands } from '@/lib/roleCommands';
 
 export default function AccountMenu() {
   const { user, signOut } = useAuth();
@@ -11,6 +12,7 @@ export default function AccountMenu() {
   const anchor = useRef<React.ComponentRef<typeof View>>(null);
   const { width: screenWidth } = useWindowDimensions();
   if (!user) return null;
+  const commands = getAccountMenuCommands(user.role);
 
   const toggle = () => {
     if (open) { setOpen(false); return; }
@@ -38,9 +40,15 @@ export default function AccountMenu() {
         <Pressable style={StyleSheet.absoluteFill} onPress={() => setOpen(false)} accessibilityLabel="Close account menu" />
         <View style={[styles.menu, menuPosition]}>
           <Text style={[styles.name, (user.role === 'restaurant' || user.role === 'customer') && styles.restaurantName]} numberOfLines={1}>{user.name}</Text>
-          <Pressable style={styles.option} onPress={() => navigate('/profile')} accessibilityRole="button"><Text style={styles.optionText}>Profile</Text></Pressable>
-          {user.role === 'customer' && <Pressable style={styles.option} onPress={() => navigate('/customer/history')} accessibilityRole="button"><Text style={styles.optionText}>History</Text></Pressable>}
-          <Pressable style={styles.option} onPress={() => { setOpen(false); signOut(); router.replace('/auth/login'); }} accessibilityRole="button"><Text style={styles.optionText}>Sign Out</Text></Pressable>
+          {commands.map((command) => <Pressable key={command} style={styles.option}
+            onPress={() => {
+              if (command === 'profile') navigate('/profile');
+              else if (command === 'history') navigate('/customer/history');
+              else { setOpen(false); signOut(); router.replace('/auth/login'); }
+            }}
+            accessibilityRole="button">
+            <Text style={styles.optionText}>{command === 'signOut' ? 'Sign Out' : command === 'history' ? 'History' : 'Profile'}</Text>
+          </Pressable>)}
         </View>
       </View>
     </Modal>

@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -46,9 +47,11 @@ import com.council.tenderapp.ord.repositories.MenuItemOptionRepository;
 import com.council.tenderapp.ord.repositories.MenuItemRepository;
 import com.council.tenderapp.ord.repositories.OrderRepository;
 import com.council.tenderapp.reg.services.CustomerProfileService;
+import com.council.tenderapp.prc.service.PricingService;
 import com.council.tenderapp.technicalservices.payment.PaymentDeclinedException;
 import com.council.tenderapp.technicalservices.payment.PaymentGateway;
 import com.council.tenderapp.technicalservices.payment.PaymentResult;
+import com.council.tenderapp.technicalservices.payment.TenderCash;
 
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
@@ -72,6 +75,10 @@ class OrderServiceTest {
     private JdbcTemplate jdbc;
     @Mock
     private CustomerProfileService customerProfileService;
+    @Mock
+    private PricingService pricingService;
+    @Mock
+    private TenderCash tenderCash;
 
     @Mock
     private OrderStatusPublisher publisher;
@@ -81,7 +88,15 @@ class OrderServiceTest {
     @BeforeEach
     void setUp() {
         service = new CustomerOrderService(browseService, menuItemRepository, menuItemOptionRepository, orderRepository, paymentGateway, preparationQueueService, jdbc, customerProfileService,
-                new OrderCancellationService(orderRepository, preparationQueueService, publisher));
+                new OrderCancellationService(orderRepository, preparationQueueService, publisher, tenderCash), pricingService,
+                org.mockito.Mockito.mock(com.council.tenderapp.prc.service.LedgerService.class), tenderCash, true);
+        lenient().when(customerProfileService.deliveryAddress(CUSTOMER_ID)).thenReturn(Optional.of(
+                new CustomerProfileService.DeliveryAddress("1250 Rue Peel, Montreal, Canada", 45.508, -73.571)));
+        lenient().when(pricingService.quote(any(), any(), any(), any())).thenAnswer(inv -> {
+            BigDecimal subtotal = inv.getArgument(0);
+            return new PricingService.Quote(subtotal, BigDecimal.ZERO, BigDecimal.ZERO,
+                    BigDecimal.ZERO, BigDecimal.ZERO, subtotal);
+        });
     }
 
     private static MenuItem item(Long id, String name, String price, String status) {
@@ -94,6 +109,16 @@ class OrderServiceTest {
 
     private static PlaceOrderRequestDto request(OrderItemRequestDto... items) {
         return new PlaceOrderRequestDto(RESTAURANT_ID, List.of(items));
+    }
+
+    @Test
+    void directOrderCannotUseMockPaymentByDefault() {
+        menu(item(1L, "Lunch", "12.00", "available"));
+        ReflectionTestUtils.setField(service, "allowMockPayments", false);
+        assertThatThrownBy(() -> service.placeOrder(CUSTOMER_ID, request(new OrderItemRequestDto(1L, 1))))
+                .isInstanceOf(InvalidOrderException.class)
+                .hasMessageContaining("PayPal checkout");
+        verifyNoInteractions(paymentGateway, orderRepository);
     }
 
     @Test
@@ -123,6 +148,38 @@ class OrderServiceTest {
         assertThat(saved.getValue().getTotalPrice()).isEqualByComparingTo("34.00");
         verify(preparationQueueService).enqueue(eq(saved.getValue()), any(Instant.class));
         verify(customerProfileService).ensureExists(CUSTOMER_ID);
+    }
+
+    @Test
+    void chargesAndStoresThePricedTotal() {
+        menu(item(1L, "Lunch", "12.00", "available"));
+        PricingService.Quote quote = new PricingService.Quote(new BigDecimal("12.00"), new BigDecimal("2.00"),
+                new BigDecimal("1.50"), new BigDecimal("1.60"), new BigDecimal("2.00"), new BigDecimal("17.10"));
+        when(pricingService.quote(any(), any(), any(), any())).thenReturn(quote);
+        when(paymentGateway.charge(CUSTOMER_ID, new BigDecimal("17.10"))).thenReturn(PaymentResult.approved("MOCK-1"));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> {
+            Order order = inv.getArgument(0);
+            ReflectionTestUtils.setField(order, "id", 55L);
+            return order;
+        });
+
+        OrderResponseDto response = service.placeOrder(CUSTOMER_ID, request(new OrderItemRequestDto(1L, 1)));
+
+        assertThat(response.total()).isEqualByComparingTo("17.10");
+        verify(pricingService).saveBill(any(Order.class), eq(quote));
+        verify(paymentGateway).charge(CUSTOMER_ID, new BigDecimal("17.10"));
+    }
+
+    @Test
+    void quotesTheSamePriceWithoutChargingOrSavingAnOrder() {
+        menu(item(1L, "Lunch", "12.00", "available"));
+        PricingService.Quote quote = new PricingService.Quote(new BigDecimal("12.00"), new BigDecimal("2.00"),
+                new BigDecimal("1.50"), new BigDecimal("1.60"), new BigDecimal("2.00"), new BigDecimal("17.10"));
+        when(pricingService.quote(any(), any(), any(), any())).thenReturn(quote);
+
+        assertThat(service.quoteOrder(CUSTOMER_ID, request(new OrderItemRequestDto(1L, 1))).total())
+                .isEqualByComparingTo("17.10");
+        verifyNoInteractions(paymentGateway, orderRepository);
     }
 
     @Test

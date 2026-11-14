@@ -4,6 +4,9 @@ import { StyleSheet } from 'react-native';
 const roundedFont = 'Gotham Rounded';
 
 export const styles = StyleSheet.create({
+  reassign: { alignSelf: 'flex-start', padding: 12, marginTop: 12, borderRadius: 8, backgroundColor: '#fef2f2' },
+  reassignText: { color: '#D42F50', fontWeight: '700' },
+  disabled: { opacity: 0.5 },
   wrapper: {
     width: '100%',
     paddingVertical: 8,
@@ -79,6 +82,9 @@ export const styles = StyleSheet.create({
     marginTop: 6,
     fontStyle: 'italic',
   },
+  refundButton: { alignSelf: 'flex-start', backgroundColor: '#B42343', borderRadius: 10,
+    paddingHorizontal: 16, paddingVertical: 12, marginTop: 14 },
+  refundButtonText: { color: '#FFFFFF', fontFamily: roundedFont, fontWeight: '800', fontSize: 13 },
 
   /* --- Status Chips & Text --- */
   chip: {
@@ -130,7 +136,9 @@ export const styles = StyleSheet.create({
   },
   chipTextCancelled: {
     color: '#546E7A',
-  },// Accepted: Soft Cyan
+  },
+
+  // Accepted: Soft Cyan
   chipAccepted: {
     backgroundColor: '#E0F7FA',
   },
@@ -152,5 +160,52 @@ export const styles = StyleSheet.create({
   },
   chipTextPickedUp: {
     color: '#283593',
+  },
+  /* --- Status Action Buttons --- */
+  actionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F5ECEC',
+  },
+  // Base / neutral (also used by the "Back" button)
+  actionButton: {
+    paddingVertical: 9,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F1E3E3',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionButtonText: {
+    fontFamily: roundedFont,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#7A6268',
+  },
+  // Primary: the forward step in the order flow
+  actionButtonPrimary: {
+    backgroundColor: '#D42F50',
+    borderColor: '#D42F50',
+  },
+  actionButtonTextPrimary: {
+    color: '#FFFFFF',
+  },
+  // Danger: reject / cancel / refund
+  actionButtonDanger: {
+    backgroundColor: '#FFEBEE',
+    borderColor: '#F3C4C9',
+  },
+  actionButtonTextDanger: {
+    color: '#C62828',
+  },
+  actionButtonDisabled: {
+    opacity: 0.5,
   },
 });
