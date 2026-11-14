@@ -141,7 +141,7 @@ requires an authenticated operator session. Backend tests can be run from
 
 Customer account: alice@demo.test
 Courier account: leo@demo.test
-Restaurant Account (Maple & Main): sam@demo.test
+Restaurant Account (Maple & Main): maplemain@demo.test
 Operator Account: operator@demo.test
 
 Password is "DemoPass123!" for all of them
