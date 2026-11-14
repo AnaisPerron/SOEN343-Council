@@ -18,10 +18,19 @@ type MenuItemDto = { id: number; menu_id: number; name: string; price: number; d
 type MenuItemOptionDto = { id: number; menu_item_id: number; name: string; additional_cost: number };
 type MenuResponseDto = { menuItems: MenuItemDto[]; menuItemOptions: MenuItemOptionDto[] };
 
-/** Seeded photos are paths on the backend (e.g. /menu-items-imgs/x.jpg); uploaded ones are already absolute. */
+/** Resolve backend image paths, including URLs stored by older demo seeds. */
 export function resolvePhotoUrl(url: string | null): string | null {
-  if (!url) return null;
-  return url.startsWith('/') ? `${API_URL}${url}` : url;
+  const value = url?.trim();
+  if (!value) return null;
+  if (value.startsWith('/') && !value.startsWith('//')) return `${API_URL}${value}`;
+  try {
+    const parsed = new URL(value);
+    if (['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname)
+      && /^\/(menu-items-imgs|menu-photos)\//.test(parsed.pathname)) {
+      return `${API_URL}${parsed.pathname}${parsed.search}`;
+    }
+  } catch { /* Keep existing external or data URLs unchanged. */ }
+  return value;
 }
 
 const STATUSES: RestaurantStatus[] = ['open', 'paused', 'closed'];

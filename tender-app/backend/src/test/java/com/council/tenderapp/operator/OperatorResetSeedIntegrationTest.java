@@ -96,7 +96,35 @@ class OperatorResetSeedIntegrationTest {
         assertThat(jdbc.queryForObject("SELECT count(*) FROM orders WHERE delivery_address IS NULL", Integer.class)).isZero();
         assertThat(jdbc.queryForObject("SELECT status FROM health_check", String.class)).isEqualTo("preserved");
         assertThat(jdbc.queryForObject("SELECT max(id) FROM bill", Long.class)).isEqualTo(8L);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM restaurants WHERE cover_url IS NOT NULL", Integer.class)).isEqualTo(4);
+        for (String url : jdbc.queryForList("SELECT photo_url FROM menu_items UNION SELECT cover_url FROM restaurants", String.class)) {
+            assertThat(url).startsWith("/menu-items-imgs/");
+            assertThat(new ClassPathResource("static" + url).exists()).as(url).isTrue();
+        }
         assertThat(sessions.find(token)).isEmpty();
+    }
+
+    @Test
+    void imageRepairRestoresMissingCoversAndPreservesCustomUrls() throws Exception {
+        service(new ClassPathResource("demo/seed.sql")).reset();
+        jdbc.update("UPDATE restaurants SET cover_url = 'https://cdn.example.test/custom-cover.jpg' WHERE id = 1");
+        jdbc.update("UPDATE restaurants SET cover_url = NULL WHERE id = 2");
+        jdbc.update("UPDATE menu_items SET photo_url = 'http://localhost:8080/menu-items-imgs/maple-glazed-chicken-sandwich.jpg' WHERE id = 1");
+        jdbc.update("UPDATE menu_items SET photo_url = 'https://cdn.example.test/custom-menu.jpg' WHERE id = 2");
+        String repair = Files.readString(Path.of("docs/migrations/2026-11-13-demo-image-urls.sql"));
+
+        jdbc.execute(repair);
+        jdbc.execute(repair);
+
+        assertThat(jdbc.queryForObject("SELECT cover_url FROM restaurants WHERE id = 1", String.class))
+                .isEqualTo("https://cdn.example.test/custom-cover.jpg");
+        assertThat(jdbc.queryForObject("SELECT cover_url FROM restaurants WHERE id = 2", String.class))
+                .isEqualTo("/menu-items-imgs/harvest-grain-bowl.jpg");
+        assertThat(jdbc.queryForObject("SELECT photo_url FROM menu_items WHERE id = 1", String.class))
+                .isEqualTo("/menu-items-imgs/maple-glazed-chicken-sandwich.jpg");
+        assertThat(jdbc.queryForObject("SELECT photo_url FROM menu_items WHERE id = 2", String.class))
+                .isEqualTo("https://cdn.example.test/custom-menu.jpg");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM orders", Integer.class)).isEqualTo(8);
     }
 
     @Test

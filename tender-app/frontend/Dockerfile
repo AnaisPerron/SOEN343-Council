@@ -7,6 +7,8 @@ ARG EXPO_PUBLIC_API_URL=http://localhost:8080
 ARG EXPO_PUBLIC_GOOGLE_MAPS_API_KEY
 ARG EXPO_PUBLIC_GOOGLE_MAPS_MAP_ID
 ENV EXPO_NO_DOTENV=1 CI=1 EXPO_NO_TELEMETRY=1
+RUN test -n "$EXPO_PUBLIC_API_URL" && test -n "$EXPO_PUBLIC_GOOGLE_MAPS_API_KEY" \
+    || (echo "Set EXPO_PUBLIC_API_URL and EXPO_PUBLIC_GOOGLE_MAPS_API_KEY build arguments" >&2; exit 1)
 RUN npx expo export --platform web
 
 FROM node:24-bookworm-slim

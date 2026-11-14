@@ -19,7 +19,9 @@ Tender is an online platform for ordering, managing and delivering food that fea
 
 Install Docker with Docker Compose v2 and start its container runtime. From the
 repository root, copy `.env.example` to `.env` and fill in `DB_URL`, `DB_USER`,
-and `DB_PASSWORD` for your existing PostgreSQL or Supabase database. For Supabase,
+and `DB_PASSWORD` for your existing PostgreSQL or Supabase database. Also set
+`PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, and `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY`.
+Compose reports missing required values before building or starting. For Supabase,
 use its JDBC connection details and `sslmode=require`. Database tables must match
 the application schema; Docker does not apply the demo seed at startup. The
 operator dashboard can reset to the demo baseline after confirmation. Set
@@ -40,7 +42,9 @@ Java, Maven, Node, and npm installations are unnecessary. This runs the web app;
 native iOS and Android development still uses Expo separately.
 
 The root `.env` configures Compose. Database credentials are passed only to the
-backend at runtime. `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` enables Maps and Places;
+backend at runtime, together with the PayPal client ID and secret. PayPal uses
+its sandbox API by default; log in with sandbox buyer accounts during the demo.
+`EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` enables Maps and Places;
 restrict this browser key to your web origin and required Google APIs. The map
 ID is optional. Public frontend variables are embedded during the image build,
 so rebuild after changing them. No `.env` files enter either build context.
@@ -58,13 +62,54 @@ docker compose logs -f
 docker compose down
 ```
 
-Startup and shutdown preserve database records. Demo startup seeding and the
-operator reset endpoint are disabled in this configuration. The existing
+Startup and shutdown preserve database records. Automatic startup seeding is
+disabled. The operator's confirmed Reset action restores the demo baseline unless
+`APP_OPERATOR_RESET_ENABLED=false`. The existing
 database stays external to Compose and is not stopped by `docker compose down`.
 Use a dedicated demo database when preparing demo scenarios.
 
 References: [Docker Compose configuration](https://docs.docker.com/reference/compose-file/)
 and [Expo web serving](https://docs.expo.dev/router/web/server-rendering/).
+
+
+## Run the demo on another machine
+
+Copy the repository and a privately shared root `.env`, then run:
+
+```sh
+docker compose --env-file .env up -d --build --wait
+```
+
+On this Mac, use `docker-compose` if `docker compose` is unavailable. On the demo
+computer, open `http://localhost:8081`. Docker and outbound access to Supabase,
+Google Maps/Places, and PayPal sandbox are required. Restrict the Maps browser key
+to the demo web origin, for example `http://localhost:8081/*`. Fill in the three
+missing Maps/PayPal values before building. The `.env` contains private backend
+credentials and stays outside Git and both image build contexts.
+
+To prepare images in advance instead of building at the demo:
+
+```sh
+docker compose --env-file .env build
+docker image save -o tender-demo.tar tender-backend:demo tender-frontend:demo
+```
+
+Transfer `tender-demo.tar`, `compose.yaml`, and the private `.env`. On the demo
+machine:
+
+```sh
+docker image load -i tender-demo.tar
+docker compose --env-file .env up -d --no-build --wait
+```
+
+These names use the default `TENDER_IMAGE_TAG=demo`. Build images for the demo
+machine's CPU architecture. For an Intel/AMD demo machine when building on Apple
+Silicon, use `DOCKER_DEFAULT_PLATFORM=linux/amd64 docker compose --env-file .env build`.
+Images built for a different architecture need compatible emulation. Backend
+secrets can change at runtime; API and Maps settings are baked into the frontend,
+so rebuild that image if they change. `localhost` works when the demo browser is
+on the Docker host; for other devices, use the host's reachable address for
+`EXPO_PUBLIC_API_URL` and add the frontend origin to `CORS_ALLOWED_ORIGINS`.
 
 ## Backend Setup Instructions
 
