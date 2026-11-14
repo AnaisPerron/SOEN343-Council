@@ -91,3 +91,17 @@ The backend endpoint is `POST /api/operator/orders/{orderId}/refund` and
 requires an authenticated operator session. Backend tests can be run from
 `tender-app/backend` with `./mvnw test`; frontend tests can be run from
 `tender-app/frontend` with `npm test`.
+
+## Demo test account credentials
+
+Customer account: alice@demo.test
+Courier account: leo@demo.test
+Restaurant Account (Maple & Main): sam@demo.test
+Operator Account: operator@demo.test
+
+Password is "DemoPass123!" for all of them
+
+## Paypal mock account
+
+email: e@demo-tender.com
+password: Demo123!
