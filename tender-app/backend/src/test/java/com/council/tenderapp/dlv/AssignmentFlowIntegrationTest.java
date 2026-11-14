@@ -233,6 +233,64 @@ class AssignmentFlowIntegrationTest {
         orderService.refundOrder(restaurant.getId(), order.getId());
         assertThat(assignments.findById(id).orElseThrow().getStatus()).isEqualTo(AssignmentStatus.ENDED);
         assertThat(couriers.findById(11L).orElseThrow().getStatus()).isEqualTo(CourierStatus.IDLE);
+        assertThat(duty.goOffDuty(11L).status()).isEqualTo("offline");
+    }
+
+    @Test
+    void legacyDeliveryEndpointCompletesAssignmentAndAllowsGoingOffline() throws Exception {
+        long id = readyOffer();
+        authenticate(11, "COURIER");
+        offers.accept(11, id);
+        orderService.markPickedUpByCourier(11L, order.getId());
+        String token = sessions.create(11L, Role.COURIER).token();
+
+        mvc.perform(post("/api/courier/orders/" + order.getId() + "/delivered")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)).andExpect(status().isOk());
+
+        assertThat(assignments.findById(id).orElseThrow().getStatus()).isEqualTo(AssignmentStatus.COMPLETED);
+        assertThat(orders.findById(order.getId()).orElseThrow().getDateDelivered()).isNotNull();
+        assertThat(duty.getDutyStatus(11L).assignedOrder()).isNull();
+        mvc.perform(post("/api/courier/duty/off").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("offline"));
+    }
+
+    @Test
+    void refundClosesStaleAcceptedAssignmentAndAllowsGoingOffline() {
+        long id = readyOffer();
+        authenticate(11, "COURIER");
+        offers.accept(11, id);
+        orderService.markPickedUpByCourier(11L, order.getId());
+        Order delivered = orders.findById(order.getId()).orElseThrow();
+        delivered.transitionTo(OrderStatus.DELIVERED);
+        orders.saveAndFlush(delivered);
+
+        orderService.refundOrder(restaurant.getId(), order.getId());
+
+        assertThat(assignments.findById(id).orElseThrow().getStatus()).isEqualTo(AssignmentStatus.ENDED);
+        assertThat(duty.getDutyStatus(11L).assignedOrder()).isNull();
+        assertThat(duty.goOffDuty(11L).status()).isEqualTo("offline");
+    }
+
+    @Test
+    void refundOfPreviousDeliveryPreservesNewAcceptedAssignment() {
+        long old = readyOffer();
+        authenticate(11, "COURIER");
+        offers.accept(11, old);
+        orderService.markPickedUpByCourier(11L, order.getId());
+        orderService.markDeliveredByCourier(11L, order.getId());
+        Order next = preparingOrder();
+        orderService.markReady(restaurant.getId(), next.getId());
+        long nextAssignment = active(next.getId()).getId();
+        offers.accept(11, nextAssignment);
+
+        orderService.refundOrder(restaurant.getId(), order.getId());
+
+        assertThat(assignments.findById(old).orElseThrow().getStatus()).isEqualTo(AssignmentStatus.COMPLETED);
+        assertThat(assignments.findById(nextAssignment).orElseThrow().getStatus()).isEqualTo(AssignmentStatus.ACCEPTED);
+        assertThat(couriers.findById(11L).orElseThrow().getStatus()).isEqualTo(CourierStatus.ASSIGNED);
+        assertThat(duty.getDutyStatus(11L).assignedOrder().orderId()).isEqualTo(next.getId());
+        assertThatThrownBy(() -> duty.goOffDuty(11L))
+                .isInstanceOf(com.council.tenderapp.dlv.exceptions.InvalidCourierStateException.class);
     }
 
     @Test

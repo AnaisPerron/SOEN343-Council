@@ -21,7 +21,9 @@ Install Docker with Docker Compose v2 and start its container runtime. From the
 repository root, copy `.env.example` to `.env` and fill in `DB_URL`, `DB_USER`,
 and `DB_PASSWORD` for your existing PostgreSQL or Supabase database. For Supabase,
 use its JDBC connection details and `sslmode=require`. Database tables must match
-the application schema; Docker does not apply the demo seed.
+the application schema; Docker does not apply the demo seed at startup. The
+operator dashboard can reset to the demo baseline after confirmation. Set
+`APP_OPERATOR_RESET_ENABLED=false` to disable that action.
 
 On macOS with Colima, run `colima start` first. If your installation provides
 `docker-compose` instead of `docker compose`, use that spelling for the commands
