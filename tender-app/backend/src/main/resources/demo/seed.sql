@@ -63,11 +63,11 @@ INSERT INTO courier_profiles (user_id, latitude, longitude, status) VALUES
 
 -- ---------------- ORD: RESTAURANTS / MENUS ----------------
 -- Open = can order; paused/closed = reject new orders
-INSERT INTO restaurants (name, status, latitude, longitude) VALUES
-('Maple & Main', 'open', 45.5100, -73.5700), -- 1
-('Green Bowl Kitchen', 'paused', 45.5150, -73.5600), -- 2
-('Cafe Nord', 'closed', 45.5010, -73.5840), -- 3
-('Little Italy Pizza', 'open', 45.5352, -73.6132); -- 4
+INSERT INTO restaurants (name, status, latitude, longitude, cover_url) VALUES
+('Maple & Main', 'open', 45.5100, -73.5700, '/menu-items-imgs/maple-glazed-chicken-sandwich.jpg'), -- 1
+('Green Bowl Kitchen', 'paused', 45.5150, -73.5600, '/menu-items-imgs/harvest-grain-bowl.jpg'), -- 2
+('Cafe Nord', 'closed', 45.5010, -73.5840, '/menu-items-imgs/smoked-salmon-bagel.jpg'), -- 3
+('Little Italy Pizza', 'open', 45.5352, -73.6132, '/menu-items-imgs/margherita-pizza.jpg'); -- 4
 
 INSERT INTO restaurant_staff (user_id, restaurant_id) VALUES
 (4, 1), (5, 2), (9, 3);
@@ -81,13 +81,13 @@ INSERT INTO menus (restaurant_id) VALUES
 -- menu photos are served by the backend
 -- The sold-out crumble is intentionally included for negative-case testing.
 INSERT INTO menu_items (menu_id, name, price, status, photo_url) VALUES
-(1, 'Maple-glazed chicken sandwich', 14.50, 'available', 'http://localhost:8080/menu-items-imgs/maple-glazed-chicken-sandwich.jpg'), -- 1
-(1, 'Truffle fries', 6.25, 'available', 'http://localhost:8080/menu-items-imgs/truffle.jpg'), -- 2
-(1, 'Apple crumble', 7.00, 'sold_out', 'http://localhost:8080/menu-items-imgs/apple-crumble.jpg'), -- 3
-(2, 'Harvest grain bowl', 15.75, 'available', 'http://localhost:8080/menu-items-imgs/harvest-grain-bowl.jpg'), -- 4
-(2, 'Miso tofu bowl', 14.00, 'available', 'http://localhost:8080/menu-items-imgs/miso-tofu-bowl.jpg'), -- 5
-(3, 'Smoked salmon bagel', 12.50, 'available', 'http://localhost:8080/menu-items-imgs/smoked-salmon-bagel.jpg'), -- 6
-(4, 'Margherita pizza', 17.00, 'available', 'http://localhost:8080/menu-items-imgs/margherita-pizza.jpg'); -- 7
+(1, 'Maple-glazed chicken sandwich', 14.50, 'available', '/menu-items-imgs/maple-glazed-chicken-sandwich.jpg'), -- 1
+(1, 'Truffle fries', 6.25, 'available', '/menu-items-imgs/truffle.jpg'), -- 2
+(1, 'Apple crumble', 7.00, 'sold_out', '/menu-items-imgs/apple-crumble.jpg'), -- 3
+(2, 'Harvest grain bowl', 15.75, 'available', '/menu-items-imgs/harvest-grain-bowl.jpg'), -- 4
+(2, 'Miso tofu bowl', 14.00, 'available', '/menu-items-imgs/miso-tofu-bowl.jpg'), -- 5
+(3, 'Smoked salmon bagel', 12.50, 'available', '/menu-items-imgs/smoked-salmon-bagel.jpg'), -- 6
+(4, 'Margherita pizza', 17.00, 'available', '/menu-items-imgs/margherita-pizza.jpg'); -- 7
 
 UPDATE menu_items SET category = CASE id
     WHEN 1 THEN 'Popular' WHEN 2 THEN 'Sides' WHEN 3 THEN 'Desserts'
