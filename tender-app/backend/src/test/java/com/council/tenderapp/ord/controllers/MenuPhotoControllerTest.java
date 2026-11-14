@@ -54,6 +54,17 @@ class MenuPhotoControllerTest {
                 .andExpect(content().bytes(image));
     }
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {
+        "maple-glazed-chicken-sandwich.jpg", "truffle.jpg", "apple-crumble.jpg",
+        "harvest-grain-bowl.jpg", "miso-tofu-bowl.jpg", "smoked-salmon-bagel.jpg", "margherita-pizza.jpg"
+    })
+    void demoPhotoIsServedWithoutSession(String filename) throws Exception {
+        mockMvc.perform(get("/menu-items-imgs/" + filename))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.IMAGE_JPEG));
+    }
+
     @Test
     void rejectsNonImageUpload() throws Exception {
         mockMvc.perform(post("/api/restaurant/menu-items/photos")
