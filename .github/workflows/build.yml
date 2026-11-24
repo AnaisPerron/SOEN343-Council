@@ -1,0 +1,45 @@
+
+name: SonarQube
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build and analyze
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Build Java backend
+        working-directory: tender-app/backend
+        run: .\mvnw.cmd -B verify
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v8.5.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.organization=anaisperron
+            -Dsonar.projectKey=AnaisPerron_SOEN343-Council
+            -Dsonar.sources=tender-app/backend/src/main/java,tender-app/frontend/src
+            -Dsonar.java.binaries=tender-app/backend/target/classes
+            -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/target/**,**/coverage/**
