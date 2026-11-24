@@ -50,6 +50,10 @@ public class AssignmentService {
         if (order.getCourierId() == null || (order.getStatus() != OrderStatus.READY && order.getStatus() != OrderStatus.PICKED_UP)) {
             return Optional.empty();
         }
+        return Optional.of(adoptExistingCourier(order));
+    }
+
+    private Assignment adoptExistingCourier(Order order) {
         if (assignments.existsByCourierIdAndStatusIn(order.getCourierId(), ACTIVE)) {
             throw new InvalidOrderStateException("Courier already has another active assignment");
         }
@@ -60,7 +64,7 @@ public class AssignmentService {
                 && events.existsByOrderIdAndEventType(order.getId(), "courier_accepted");
         if (order.getStatus() == OrderStatus.PICKED_UP || alreadyAccepted) adopted.accept(now);
         synchronizeReservation(order);
-        return Optional.of(assignments.saveAndFlush(adopted));
+        return assignments.saveAndFlush(adopted);
     }
 
     private void synchronizeReservation(Order order) {
