@@ -41,5 +41,7 @@ jobs:
             -Dsonar.organization=anaisperron
             -Dsonar.projectKey=AnaisPerron_SOEN343-Council
             -Dsonar.sources=tender-app/backend/src/main/java,tender-app/frontend/src
+            -Dsonar.tests=tender-app/backend/src/test/java
             -Dsonar.java.binaries=tender-app/backend/target/classes
-            -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/target/**,**/coverage/**
+            -Dsonar.coverage.jacoco.xmlReportPaths=tender-app/backend/target/site/jacoco/jacoco.xml
+            -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/target/**,**/coverage/**,tender-app/frontend/src/tests/**
