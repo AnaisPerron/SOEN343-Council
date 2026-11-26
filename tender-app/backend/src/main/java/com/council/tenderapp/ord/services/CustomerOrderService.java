@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -22,11 +21,10 @@ import com.council.tenderapp.ord.entities.MenuItemOption;
 import com.council.tenderapp.ord.entities.Order;
 import com.council.tenderapp.ord.entities.OrderLine;
 import com.council.tenderapp.ord.entities.OrderStatus;
-import com.council.tenderapp.ord.exceptions.InvalidOrderException;
-import com.council.tenderapp.ord.exceptions.MenuItemUnavailableException;
 import com.council.tenderapp.ord.repositories.MenuItemOptionRepository;
 import com.council.tenderapp.ord.repositories.MenuItemRepository;
 import com.council.tenderapp.ord.repositories.OrderRepository;
+import com.council.tenderapp.ord.services.OrderPreparation.PreparedOrder;
 import com.council.tenderapp.reg.services.CustomerProfileService;
 import com.council.tenderapp.prc.service.PricingService;
 import com.council.tenderapp.prc.service.LedgerService;
@@ -39,15 +37,13 @@ import com.council.tenderapp.technicalservices.payment.TenderCashPayment;
 
 @Service
 public class CustomerOrderService {
-    private final BrowseService browseService;
-    private final MenuItemRepository menuItemRepository;
-    private final MenuItemOptionRepository menuItemOptionRepository;
     private final OrderRepository orderRepository;
     private final PreparationQueueService preparationQueueService;
     private final OrderCancellationService cancellations;
     private final JdbcTemplate jdbc;
     private final CustomerProfileService customerProfileService;
     private final PricingService pricingService;
+    private final OrderPreparation preparation;
     private final LedgerService ledgerService;
     private final TenderCash tenderCash;
     // Strategies for direct checkout; PayPal checkout passes its own PayPalPayment.
@@ -60,9 +56,6 @@ public class CustomerOrderService {
             CustomerProfileService customerProfileService, OrderCancellationService cancellations,
             PricingService pricingService, LedgerService ledgerService, TenderCash tenderCash,
             TenderCashPayment tenderCashPayment, MockCardPayment cardPayment) {
-        this.browseService = browseService;
-        this.menuItemRepository = menuItemRepository;
-        this.menuItemOptionRepository = menuItemOptionRepository;
         this.orderRepository = orderRepository;
         this.preparationQueueService = preparationQueueService;
         this.cancellations = cancellations;
@@ -73,6 +66,8 @@ public class CustomerOrderService {
         this.tenderCash = tenderCash;
         this.tenderCashPayment = tenderCashPayment;
         this.cardPayment = cardPayment;
+        this.preparation = new OrderPreparation(browseService, menuItemRepository, menuItemOptionRepository,
+                customerProfileService, pricingService);
     }
 
     /** Direct checkout: Tender Cash when it covers the whole order, otherwise the card strategy. */
@@ -89,7 +84,7 @@ public class CustomerOrderService {
 
     private OrderResponseDto checkout(Long customerId, PlaceOrderRequestDto request,
             Function<BigDecimal, PaymentStrategy> strategyFor) {
-        PreparedOrder prepared = prepareOrder(customerId, request);
+        PreparedOrder prepared = preparation.prepare(customerId, request);
         tenderCash.lockCustomer(customerId);
         BigDecimal amountDue = prepared.quote().total().subtract(request.tenderAmount() == 0 ? BigDecimal.ZERO
                 : tenderCash.discount(customerId, request.tenderAmount(), prepared.quote().total()));
@@ -134,7 +129,7 @@ public class CustomerOrderService {
         List<OrderLineDto> lineDtos = new ArrayList<>();
         for (int i = 0; i < savedLines.size(); i++) {
             OrderLine line = savedLines.get(i);
-            BigDecimal unitPrice = paidUnitPrice(line.getMenuItem(), request.items().get(i), options);
+            BigDecimal unitPrice = OrderPreparation.paidUnitPrice(line.getMenuItem(), request.items().get(i), options);
             lineDtos.add(new OrderLineDto(line.getMenuItemId(), line.getMenuItem().getName(),
                     line.getQuantity(), unitPrice, unitPrice.multiply(BigDecimal.valueOf(line.getQuantity()))));
         }
@@ -145,69 +140,7 @@ public class CustomerOrderService {
 
     @Transactional(readOnly = true)
     public PricingService.Quote quoteOrder(Long customerId, PlaceOrderRequestDto request) {
-        return prepareOrder(customerId, request).quote();
-    }
-
-    private record PreparedOrder(Map<Long, MenuItem> menu, Map<Long, MenuItemOption> options,
-            String deliveryAddress, Double latitude, Double longitude, PricingService.Quote quote) {}
-
-    private PreparedOrder prepareOrder(Long customerId, PlaceOrderRequestDto request) {
-        boolean override = request.deliveryAddress() != null;
-        if (override && (request.deliveryAddress().isBlank() || request.deliveryLatitude() == null || request.deliveryLongitude() == null)) {
-            throw new InvalidOrderException("Pick a verified delivery address from the suggestions");
-        }
-        if (!override && (request.deliveryLatitude() != null || request.deliveryLongitude() != null)) {
-            throw new InvalidOrderException("A delivery location requires an address");
-        }
-        browseService.checkRestaurantOpen(request.restaurantId());
-        Map<Long, MenuItem> menu = menuItemRepository.findMenuItemsByRestaurantId(request.restaurantId())
-                .stream().collect(Collectors.toMap(MenuItem::getId, Function.identity()));
-
-        for (OrderItemRequestDto item : request.items()) {
-            MenuItem menuItem = menu.get(item.menuItemId());
-            if (menuItem == null) {
-                throw new InvalidOrderException("Menu item " + item.menuItemId()
-                        + " does not belong to restaurant " + request.restaurantId());
-            }
-            if (!"available".equalsIgnoreCase(menuItem.getStatus())) {
-                throw new MenuItemUnavailableException("Menu item " + menuItem.getId()
-                        + " : " + menuItem.getName() + " is not available");
-            }
-        }
-
-        Map<Long, MenuItemOption> options = menuItemOptionRepository
-                .findByMenuItemIdIn(request.items().stream().map(OrderItemRequestDto::menuItemId).distinct().toList())
-                .stream().collect(Collectors.toMap(MenuItemOption::getId, Function.identity()));
-        for (OrderItemRequestDto item : request.items()) {
-            for (Long optionId : item.selectedOptionIds()) {
-                MenuItemOption option = options.get(optionId);
-                if (option == null || !item.menuItemId().equals(option.getMenuItemId())) {
-                    throw new InvalidOrderException("Option " + optionId
-                            + " does not belong to menu item " + item.menuItemId());
-                }
-            }
-        }
-
-        BigDecimal subtotal = request.items().stream()
-                .map(item -> paidUnitPrice(menu.get(item.menuItemId()), item, options)
-                        .multiply(BigDecimal.valueOf(item.quantity())))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        CustomerProfileService.DeliveryAddress savedAddress = customerProfileService.deliveryAddress(customerId).orElse(null);
-        String deliveryAddress = override ? request.deliveryAddress().trim() : savedAddress == null ? null : savedAddress.address();
-        Double deliveryLatitude = override ? request.deliveryLatitude() : savedAddress == null ? null : savedAddress.latitude();
-        Double deliveryLongitude = override ? request.deliveryLongitude() : savedAddress == null ? null : savedAddress.longitude();
-        if (deliveryAddress == null || deliveryAddress.isBlank()) {
-            throw new InvalidOrderException("A verified delivery address is required");
-        }
-        PricingService.Quote quote = pricingService.quote(subtotal, request.restaurantId(), deliveryLatitude, deliveryLongitude);
-        return new PreparedOrder(menu, options, deliveryAddress, deliveryLatitude, deliveryLongitude, quote);
-    }
-
-    // What the customer pays per unit: the item's price plus its selected add-ons.
-    private static BigDecimal paidUnitPrice(MenuItem menuItem, OrderItemRequestDto item, Map<Long, MenuItemOption> options) {
-        return item.selectedOptionIds().stream()
-                .map(optionId -> options.get(optionId).getAdditionalCost())
-                .reduce(menuItem.getPrice(), BigDecimal::add);
+        return preparation.prepare(customerId, request).quote();
     }
 
     @Transactional

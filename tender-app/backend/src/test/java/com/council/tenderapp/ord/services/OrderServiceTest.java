@@ -246,6 +246,50 @@ class OrderServiceTest {
     }
 
     @Test
+    void quoteUsesDeliveryOverrideCoordinatesAndSelectedOptionPrices() {
+        menu(item(1L, "Lunch", "12.00", "available"));
+        when(menuItemOptionRepository.findByMenuItemIdIn(List.of(1L))).thenReturn(List.of(
+                new MenuItemOption(7L, 1L, new BigDecimal("2.50"), "Extra cheese")));
+
+        PricingService.Quote quote = service.quoteOrder(CUSTOMER_ID, new PlaceOrderRequestDto(
+                RESTAURANT_ID, List.of(new OrderItemRequestDto(1L, 2, List.of(7L))),
+                "  123 Main St  ", 45.5, -73.6));
+
+        assertThat(quote.total()).isEqualByComparingTo("29.00");
+        verify(pricingService).quote(new BigDecimal("29.00"), RESTAURANT_ID, 45.5, -73.6);
+        verifyNoInteractions(cardPayment, orderRepository);
+    }
+
+    @Test
+    void quoteRejectsAddressOverrideWithoutCoordinatesBeforeRestaurantLookup() {
+        assertThatThrownBy(() -> service.quoteOrder(CUSTOMER_ID, new PlaceOrderRequestDto(
+                RESTAURANT_ID, List.of(new OrderItemRequestDto(1L, 1)), "123 Main St", null, -73.6)))
+                .isInstanceOf(InvalidOrderException.class)
+                .hasMessage("Pick a verified delivery address from the suggestions");
+        verifyNoInteractions(browseService, menuItemRepository, pricingService);
+    }
+
+    @Test
+    void quoteRejectsCoordinatesWithoutAddressBeforeRestaurantLookup() {
+        assertThatThrownBy(() -> service.quoteOrder(CUSTOMER_ID, new PlaceOrderRequestDto(
+                RESTAURANT_ID, List.of(new OrderItemRequestDto(1L, 1)), null, 45.5, -73.6)))
+                .isInstanceOf(InvalidOrderException.class)
+                .hasMessage("A delivery location requires an address");
+        verifyNoInteractions(browseService, menuItemRepository, pricingService);
+    }
+
+    @Test
+    void quoteRequiresSavedAddressWhenNoOverrideIsProvided() {
+        menu(item(1L, "Lunch", "12.00", "available"));
+        when(customerProfileService.deliveryAddress(CUSTOMER_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.quoteOrder(CUSTOMER_ID, request(new OrderItemRequestDto(1L, 1))))
+                .isInstanceOf(InvalidOrderException.class)
+                .hasMessage("A verified delivery address is required");
+        verifyNoInteractions(cardPayment, orderRepository);
+    }
+
+    @Test
     void copiesTheCustomersAddressOntoTheOrder() {
         menu(item(2L, "Pepperoni Pizza", "17.00", "available"));
         when(cardPayment.pay(any(), any())).thenReturn(PaymentResult.approved("MOCK-1"));

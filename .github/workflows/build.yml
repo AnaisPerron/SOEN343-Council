@@ -36,10 +36,3 @@ jobs:
         uses: SonarSource/sonarqube-scan-action@59202af334b4ba7b5db01b701b8e79f8b3bef0f4 # v8.5.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        with:
-          args: >
-            -Dsonar.organization=anaisperron
-            -Dsonar.projectKey=AnaisPerron_SOEN343-Council
-            -Dsonar.sources=tender-app/backend/src/main/java,tender-app/frontend/src
-            -Dsonar.java.binaries=tender-app/backend/target/classes
-            -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/target/**,**/coverage/**
