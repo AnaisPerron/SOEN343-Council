@@ -9,4 +9,7 @@ export interface Restaurant {
   latitude: number | null;
   /** Absolute cover photo URL from the API; fixtures leave it unset. */
   photoUrl?: string | null;
+  /** Average restaurant stars from customer ratings; null when there are none yet. */
+  averageRating?: number | null;
+  ratingCount?: number;
 }
