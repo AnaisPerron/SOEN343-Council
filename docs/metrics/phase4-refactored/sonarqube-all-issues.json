@@ -1,0 +1,2182 @@
+[
+    {
+        "key":  "AaIgKzUFMcbYtfb9wdxr",
+        "rule":  "secrets:S8215",
+        "severity":  "BLOCKER",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/resources/demo/seed.sql",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "hash":  "5e93a16a149cd9932fbb38a9794dd048",
+        "textRange":  {
+                          "startLine":  50,
+                          "endLine":  50,
+                          "startOffset":  46,
+                          "endOffset":  106
+                      },
+        "flows":  [
+
+                  ],
+        "resolution":  "FIXED",
+        "status":  "CLOSED",
+        "message":  "Make sure this bcrypt password hash gets revoked, changed, and removed from the code.",
+        "effort":  "30min",
+        "debt":  "30min",
+        "author":  "colin.haller.eagles@gmail.com",
+        "tags":  [
+                     "cwe",
+                     "secret"
+                 ],
+        "creationDate":  "2026-11-28T02:28:33+0000",
+        "updateDate":  "2026-11-28T03:21:23+0000",
+        "closeDate":  "2026-11-28T03:21:23+0000",
+        "type":  "VULNERABILITY",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "TRUSTWORTHY",
+        "cleanCodeAttributeCategory":  "RESPONSIBLE",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "SECURITY",
+                            "severity":  "BLOCKER"
+                        }
+                    ],
+        "issueStatus":  "FIXED",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "a3752e98-7eb6-4cac-b676-d50c9d8b43a3",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaIgKzUFMcbYtfb9wdxs",
+        "rule":  "secrets:S8215",
+        "severity":  "BLOCKER",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/resources/demo/seed.sql",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "hash":  "9ba197da5f275d0fc5d894a0e5853004",
+        "textRange":  {
+                          "startLine":  52,
+                          "endLine":  52,
+                          "startOffset":  51,
+                          "endOffset":  111
+                      },
+        "flows":  [
+
+                  ],
+        "resolution":  "FIXED",
+        "status":  "CLOSED",
+        "message":  "Make sure this bcrypt password hash gets revoked, changed, and removed from the code.",
+        "effort":  "30min",
+        "debt":  "30min",
+        "author":  "colin.haller.eagles@gmail.com",
+        "tags":  [
+                     "cwe",
+                     "secret"
+                 ],
+        "creationDate":  "2026-11-28T02:28:33+0000",
+        "updateDate":  "2026-11-28T03:21:23+0000",
+        "closeDate":  "2026-11-28T03:21:23+0000",
+        "type":  "VULNERABILITY",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "TRUSTWORTHY",
+        "cleanCodeAttributeCategory":  "RESPONSIBLE",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "SECURITY",
+                            "severity":  "BLOCKER"
+                        }
+                    ],
+        "issueStatus":  "FIXED",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "a3752e98-7eb6-4cac-b676-d50c9d8b43a3",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaIgKzUFMcbYtfb9wdxt",
+        "rule":  "secrets:S8215",
+        "severity":  "BLOCKER",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/resources/demo/seed.sql",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "hash":  "8b4d2190283eea452cdd68a54413c24d",
+        "textRange":  {
+                          "startLine":  53,
+                          "endLine":  53,
+                          "startOffset":  48,
+                          "endOffset":  108
+                      },
+        "flows":  [
+
+                  ],
+        "resolution":  "FIXED",
+        "status":  "CLOSED",
+        "message":  "Make sure this bcrypt password hash gets revoked, changed, and removed from the code.",
+        "effort":  "30min",
+        "debt":  "30min",
+        "author":  "colin.haller.eagles@gmail.com",
+        "tags":  [
+                     "cwe",
+                     "secret"
+                 ],
+        "creationDate":  "2026-11-28T02:28:33+0000",
+        "updateDate":  "2026-11-28T03:21:23+0000",
+        "closeDate":  "2026-11-28T03:21:23+0000",
+        "type":  "VULNERABILITY",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "TRUSTWORTHY",
+        "cleanCodeAttributeCategory":  "RESPONSIBLE",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "SECURITY",
+                            "severity":  "BLOCKER"
+                        }
+                    ],
+        "issueStatus":  "FIXED",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "a3752e98-7eb6-4cac-b676-d50c9d8b43a3",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaIgKzUFMcbYtfb9wdxu",
+        "rule":  "secrets:S8215",
+        "severity":  "BLOCKER",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/resources/demo/seed.sql",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "hash":  "39a5a9d2d74e0623a9d422b9e4aaa00e",
+        "textRange":  {
+                          "startLine":  54,
+                          "endLine":  54,
+                          "startOffset":  51,
+                          "endOffset":  111
+                      },
+        "flows":  [
+
+                  ],
+        "resolution":  "FIXED",
+        "status":  "CLOSED",
+        "message":  "Make sure this bcrypt password hash gets revoked, changed, and removed from the code.",
+        "effort":  "30min",
+        "debt":  "30min",
+        "author":  "colin.haller.eagles@gmail.com",
+        "tags":  [
+                     "cwe",
+                     "secret"
+                 ],
+        "creationDate":  "2026-11-28T02:28:33+0000",
+        "updateDate":  "2026-11-28T03:21:23+0000",
+        "closeDate":  "2026-11-28T03:21:23+0000",
+        "type":  "VULNERABILITY",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "TRUSTWORTHY",
+        "cleanCodeAttributeCategory":  "RESPONSIBLE",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "SECURITY",
+                            "severity":  "BLOCKER"
+                        }
+                    ],
+        "issueStatus":  "FIXED",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "a3752e98-7eb6-4cac-b676-d50c9d8b43a3",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaIgKzUFMcbYtfb9wdxv",
+        "rule":  "secrets:S8215",
+        "severity":  "BLOCKER",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/resources/demo/seed.sql",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "hash":  "358f1332e2f2b5e2e363f3f3d043f867",
+        "textRange":  {
+                          "startLine":  55,
+                          "endLine":  55,
+                          "startOffset":  57,
+                          "endOffset":  117
+                      },
+        "flows":  [
+
+                  ],
+        "resolution":  "FIXED",
+        "status":  "CLOSED",
+        "message":  "Make sure this bcrypt password hash gets revoked, changed, and removed from the code.",
+        "effort":  "30min",
+        "debt":  "30min",
+        "author":  "colin.haller.eagles@gmail.com",
+        "tags":  [
+                     "cwe",
+                     "secret"
+                 ],
+        "creationDate":  "2026-11-28T02:28:33+0000",
+        "updateDate":  "2026-11-28T03:21:23+0000",
+        "closeDate":  "2026-11-28T03:21:23+0000",
+        "type":  "VULNERABILITY",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "TRUSTWORTHY",
+        "cleanCodeAttributeCategory":  "RESPONSIBLE",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "SECURITY",
+                            "severity":  "BLOCKER"
+                        }
+                    ],
+        "issueStatus":  "FIXED",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "a3752e98-7eb6-4cac-b676-d50c9d8b43a3",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaIgKzUFMcbYtfb9wdxw",
+        "rule":  "secrets:S8215",
+        "severity":  "BLOCKER",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/resources/demo/seed.sql",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "hash":  "af5fe47b8b482016306fa6b1989a6245",
+        "textRange":  {
+                          "startLine":  56,
+                          "endLine":  56,
+                          "startOffset":  46,
+                          "endOffset":  106
+                      },
+        "flows":  [
+
+                  ],
+        "resolution":  "FIXED",
+        "status":  "CLOSED",
+        "message":  "Make sure this bcrypt password hash gets revoked, changed, and removed from the code.",
+        "effort":  "30min",
+        "debt":  "30min",
+        "author":  "colin.haller.eagles@gmail.com",
+        "tags":  [
+                     "cwe",
+                     "secret"
+                 ],
+        "creationDate":  "2026-11-28T02:28:33+0000",
+        "updateDate":  "2026-11-28T03:21:23+0000",
+        "closeDate":  "2026-11-28T03:21:23+0000",
+        "type":  "VULNERABILITY",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "TRUSTWORTHY",
+        "cleanCodeAttributeCategory":  "RESPONSIBLE",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "SECURITY",
+                            "severity":  "BLOCKER"
+                        }
+                    ],
+        "issueStatus":  "FIXED",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "a3752e98-7eb6-4cac-b676-d50c9d8b43a3",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaIgKzUFMcbYtfb9wdxx",
+        "rule":  "secrets:S8215",
+        "severity":  "BLOCKER",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/resources/demo/seed.sql",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "hash":  "4320d7618d6bf73ac2a581032bf06719",
+        "textRange":  {
+                          "startLine":  57,
+                          "endLine":  57,
+                          "startOffset":  56,
+                          "endOffset":  116
+                      },
+        "flows":  [
+
+                  ],
+        "resolution":  "FIXED",
+        "status":  "CLOSED",
+        "message":  "Make sure this bcrypt password hash gets revoked, changed, and removed from the code.",
+        "effort":  "30min",
+        "debt":  "30min",
+        "author":  "colin.haller.eagles@gmail.com",
+        "tags":  [
+                     "cwe",
+                     "secret"
+                 ],
+        "creationDate":  "2026-11-28T02:28:33+0000",
+        "updateDate":  "2026-11-28T03:21:23+0000",
+        "closeDate":  "2026-11-28T03:21:23+0000",
+        "type":  "VULNERABILITY",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "TRUSTWORTHY",
+        "cleanCodeAttributeCategory":  "RESPONSIBLE",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "SECURITY",
+                            "severity":  "BLOCKER"
+                        }
+                    ],
+        "issueStatus":  "FIXED",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "a3752e98-7eb6-4cac-b676-d50c9d8b43a3",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaIgKzUFMcbYtfb9wdxy",
+        "rule":  "secrets:S8215",
+        "severity":  "BLOCKER",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/resources/demo/seed.sql",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "hash":  "eb088c6d9e079213933f414a7dd9dc2c",
+        "textRange":  {
+                          "startLine":  58,
+                          "endLine":  58,
+                          "startOffset":  55,
+                          "endOffset":  115
+                      },
+        "flows":  [
+
+                  ],
+        "resolution":  "FIXED",
+        "status":  "CLOSED",
+        "message":  "Make sure this bcrypt password hash gets revoked, changed, and removed from the code.",
+        "effort":  "30min",
+        "debt":  "30min",
+        "author":  "colin.haller.eagles@gmail.com",
+        "tags":  [
+                     "cwe",
+                     "secret"
+                 ],
+        "creationDate":  "2026-11-28T02:28:33+0000",
+        "updateDate":  "2026-11-28T03:21:23+0000",
+        "closeDate":  "2026-11-28T03:21:23+0000",
+        "type":  "VULNERABILITY",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "TRUSTWORTHY",
+        "cleanCodeAttributeCategory":  "RESPONSIBLE",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "SECURITY",
+                            "severity":  "BLOCKER"
+                        }
+                    ],
+        "issueStatus":  "FIXED",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "a3752e98-7eb6-4cac-b676-d50c9d8b43a3",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaIgKzUFMcbYtfb9wdxz",
+        "rule":  "secrets:S8215",
+        "severity":  "BLOCKER",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/resources/demo/seed.sql",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "hash":  "6e62cd467dde6b20e7354b9d595741b3",
+        "textRange":  {
+                          "startLine":  59,
+                          "endLine":  59,
+                          "startOffset":  44,
+                          "endOffset":  104
+                      },
+        "flows":  [
+
+                  ],
+        "resolution":  "FIXED",
+        "status":  "CLOSED",
+        "message":  "Make sure this bcrypt password hash gets revoked, changed, and removed from the code.",
+        "effort":  "30min",
+        "debt":  "30min",
+        "author":  "colin.haller.eagles@gmail.com",
+        "tags":  [
+                     "cwe",
+                     "secret"
+                 ],
+        "creationDate":  "2026-11-28T02:28:33+0000",
+        "updateDate":  "2026-11-28T03:21:23+0000",
+        "closeDate":  "2026-11-28T03:21:23+0000",
+        "type":  "VULNERABILITY",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "TRUSTWORTHY",
+        "cleanCodeAttributeCategory":  "RESPONSIBLE",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "SECURITY",
+                            "severity":  "BLOCKER"
+                        }
+                    ],
+        "issueStatus":  "FIXED",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "a3752e98-7eb6-4cac-b676-d50c9d8b43a3",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaIgKzUFMcbYtfb9wdx0",
+        "rule":  "secrets:S8215",
+        "severity":  "BLOCKER",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/resources/demo/seed.sql",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "hash":  "bd42278cdb52d1915ce6d1dc99b238cd",
+        "textRange":  {
+                          "startLine":  60,
+                          "endLine":  60,
+                          "startOffset":  48,
+                          "endOffset":  108
+                      },
+        "flows":  [
+
+                  ],
+        "resolution":  "FIXED",
+        "status":  "CLOSED",
+        "message":  "Make sure this bcrypt password hash gets revoked, changed, and removed from the code.",
+        "effort":  "30min",
+        "debt":  "30min",
+        "author":  "colin.haller.eagles@gmail.com",
+        "tags":  [
+                     "cwe",
+                     "secret"
+                 ],
+        "creationDate":  "2026-11-28T02:28:33+0000",
+        "updateDate":  "2026-11-28T03:21:23+0000",
+        "closeDate":  "2026-11-28T03:21:23+0000",
+        "type":  "VULNERABILITY",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "TRUSTWORTHY",
+        "cleanCodeAttributeCategory":  "RESPONSIBLE",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "SECURITY",
+                            "severity":  "BLOCKER"
+                        }
+                    ],
+        "issueStatus":  "FIXED",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "a3752e98-7eb6-4cac-b676-d50c9d8b43a3",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaIgKzUFMcbYtfb9wdx1",
+        "rule":  "secrets:S8215",
+        "severity":  "BLOCKER",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/resources/demo/seed.sql",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "hash":  "e0e5f0563423b760e8504af11b3807fc",
+        "textRange":  {
+                          "startLine":  62,
+                          "endLine":  62,
+                          "startOffset":  45,
+                          "endOffset":  105
+                      },
+        "flows":  [
+
+                  ],
+        "resolution":  "FIXED",
+        "status":  "CLOSED",
+        "message":  "Make sure this bcrypt password hash gets revoked, changed, and removed from the code.",
+        "effort":  "30min",
+        "debt":  "30min",
+        "author":  "colin.haller.eagles@gmail.com",
+        "tags":  [
+                     "cwe",
+                     "secret"
+                 ],
+        "creationDate":  "2026-11-28T02:28:33+0000",
+        "updateDate":  "2026-11-28T03:21:23+0000",
+        "closeDate":  "2026-11-28T03:21:23+0000",
+        "type":  "VULNERABILITY",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "TRUSTWORTHY",
+        "cleanCodeAttributeCategory":  "RESPONSIBLE",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "SECURITY",
+                            "severity":  "BLOCKER"
+                        }
+                    ],
+        "issueStatus":  "FIXED",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "a3752e98-7eb6-4cac-b676-d50c9d8b43a3",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaId-M9jrzVnmyu1jQqR",
+        "rule":  "secrets:S8215",
+        "severity":  "BLOCKER",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/resources/demo/seed.sql",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "hash":  "b8509720c46f5694f94d1ff6c0218c97",
+        "textRange":  {
+                          "startLine":  51,
+                          "endLine":  51,
+                          "startOffset":  70,
+                          "endOffset":  130
+                      },
+        "flows":  [
+
+                  ],
+        "resolution":  "FIXED",
+        "status":  "CLOSED",
+        "message":  "Make sure this bcrypt password hash gets revoked, changed, and removed from the code.",
+        "effort":  "30min",
+        "debt":  "30min",
+        "author":  "colin.haller.eagles@gmail.com",
+        "tags":  [
+                     "cwe",
+                     "secret"
+                 ],
+        "creationDate":  "2026-11-27T16:58:27+0000",
+        "updateDate":  "2026-11-28T03:21:23+0000",
+        "closeDate":  "2026-11-28T03:21:23+0000",
+        "type":  "VULNERABILITY",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "TRUSTWORTHY",
+        "cleanCodeAttributeCategory":  "RESPONSIBLE",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "SECURITY",
+                            "severity":  "BLOCKER"
+                        }
+                    ],
+        "issueStatus":  "FIXED",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "a3752e98-7eb6-4cac-b676-d50c9d8b43a3",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaId-M9jrzVnmyu1jQqS",
+        "rule":  "secrets:S8215",
+        "severity":  "BLOCKER",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/resources/demo/seed.sql",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "hash":  "4d084e53e1cb700d298c3aaa227eb98c",
+        "textRange":  {
+                          "startLine":  52,
+                          "endLine":  52,
+                          "startOffset":  51,
+                          "endOffset":  111
+                      },
+        "flows":  [
+
+                  ],
+        "resolution":  "FIXED",
+        "status":  "CLOSED",
+        "message":  "Make sure this bcrypt password hash gets revoked, changed, and removed from the code.",
+        "effort":  "30min",
+        "debt":  "30min",
+        "author":  "colin.haller.eagles@gmail.com",
+        "tags":  [
+                     "cwe",
+                     "secret"
+                 ],
+        "creationDate":  "2026-11-27T16:58:27+0000",
+        "updateDate":  "2026-11-28T00:58:06+0000",
+        "closeDate":  "2026-11-28T00:58:06+0000",
+        "type":  "VULNERABILITY",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "TRUSTWORTHY",
+        "cleanCodeAttributeCategory":  "RESPONSIBLE",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "SECURITY",
+                            "severity":  "BLOCKER"
+                        }
+                    ],
+        "issueStatus":  "FIXED",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "97e99097-0f89-44d2-a00f-1433e87ba2db",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaId-M9jrzVnmyu1jQqT",
+        "rule":  "secrets:S8215",
+        "severity":  "BLOCKER",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/resources/demo/seed.sql",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "hash":  "63b5bfae83e9c09f9199a4a5ed4fdc2f",
+        "textRange":  {
+                          "startLine":  53,
+                          "endLine":  53,
+                          "startOffset":  48,
+                          "endOffset":  108
+                      },
+        "flows":  [
+
+                  ],
+        "resolution":  "FIXED",
+        "status":  "CLOSED",
+        "message":  "Make sure this bcrypt password hash gets revoked, changed, and removed from the code.",
+        "effort":  "30min",
+        "debt":  "30min",
+        "author":  "colin.haller.eagles@gmail.com",
+        "tags":  [
+                     "cwe",
+                     "secret"
+                 ],
+        "creationDate":  "2026-11-27T16:58:27+0000",
+        "updateDate":  "2026-11-28T00:58:06+0000",
+        "closeDate":  "2026-11-28T00:58:06+0000",
+        "type":  "VULNERABILITY",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "TRUSTWORTHY",
+        "cleanCodeAttributeCategory":  "RESPONSIBLE",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "SECURITY",
+                            "severity":  "BLOCKER"
+                        }
+                    ],
+        "issueStatus":  "FIXED",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "97e99097-0f89-44d2-a00f-1433e87ba2db",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaId-M9jrzVnmyu1jQqU",
+        "rule":  "secrets:S8215",
+        "severity":  "BLOCKER",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/resources/demo/seed.sql",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "hash":  "7b52fbd0bfb337a3d6320258e2456805",
+        "textRange":  {
+                          "startLine":  54,
+                          "endLine":  54,
+                          "startOffset":  51,
+                          "endOffset":  111
+                      },
+        "flows":  [
+
+                  ],
+        "resolution":  "FIXED",
+        "status":  "CLOSED",
+        "message":  "Make sure this bcrypt password hash gets revoked, changed, and removed from the code.",
+        "effort":  "30min",
+        "debt":  "30min",
+        "author":  "colin.haller.eagles@gmail.com",
+        "tags":  [
+                     "cwe",
+                     "secret"
+                 ],
+        "creationDate":  "2026-11-27T16:58:27+0000",
+        "updateDate":  "2026-11-28T00:58:06+0000",
+        "closeDate":  "2026-11-28T00:58:06+0000",
+        "type":  "VULNERABILITY",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "TRUSTWORTHY",
+        "cleanCodeAttributeCategory":  "RESPONSIBLE",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "SECURITY",
+                            "severity":  "BLOCKER"
+                        }
+                    ],
+        "issueStatus":  "FIXED",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "97e99097-0f89-44d2-a00f-1433e87ba2db",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaId-M9jrzVnmyu1jQqV",
+        "rule":  "secrets:S8215",
+        "severity":  "BLOCKER",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/resources/demo/seed.sql",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "hash":  "aab69dd61ff001ec8be164114bebd0ea",
+        "textRange":  {
+                          "startLine":  55,
+                          "endLine":  55,
+                          "startOffset":  57,
+                          "endOffset":  117
+                      },
+        "flows":  [
+
+                  ],
+        "resolution":  "FIXED",
+        "status":  "CLOSED",
+        "message":  "Make sure this bcrypt password hash gets revoked, changed, and removed from the code.",
+        "effort":  "30min",
+        "debt":  "30min",
+        "author":  "colin.haller.eagles@gmail.com",
+        "tags":  [
+                     "cwe",
+                     "secret"
+                 ],
+        "creationDate":  "2026-11-27T16:58:27+0000",
+        "updateDate":  "2026-11-28T00:58:06+0000",
+        "closeDate":  "2026-11-28T00:58:06+0000",
+        "type":  "VULNERABILITY",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "TRUSTWORTHY",
+        "cleanCodeAttributeCategory":  "RESPONSIBLE",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "SECURITY",
+                            "severity":  "BLOCKER"
+                        }
+                    ],
+        "issueStatus":  "FIXED",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "97e99097-0f89-44d2-a00f-1433e87ba2db",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaId-M9jrzVnmyu1jQqW",
+        "rule":  "secrets:S8215",
+        "severity":  "BLOCKER",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/resources/demo/seed.sql",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "hash":  "f795a00f69760edd82e4759495352c66",
+        "textRange":  {
+                          "startLine":  56,
+                          "endLine":  56,
+                          "startOffset":  46,
+                          "endOffset":  106
+                      },
+        "flows":  [
+
+                  ],
+        "resolution":  "FIXED",
+        "status":  "CLOSED",
+        "message":  "Make sure this bcrypt password hash gets revoked, changed, and removed from the code.",
+        "effort":  "30min",
+        "debt":  "30min",
+        "author":  "colin.haller.eagles@gmail.com",
+        "tags":  [
+                     "cwe",
+                     "secret"
+                 ],
+        "creationDate":  "2026-11-27T16:58:27+0000",
+        "updateDate":  "2026-11-28T00:58:06+0000",
+        "closeDate":  "2026-11-28T00:58:06+0000",
+        "type":  "VULNERABILITY",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "TRUSTWORTHY",
+        "cleanCodeAttributeCategory":  "RESPONSIBLE",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "SECURITY",
+                            "severity":  "BLOCKER"
+                        }
+                    ],
+        "issueStatus":  "FIXED",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "97e99097-0f89-44d2-a00f-1433e87ba2db",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaId-M9jrzVnmyu1jQqX",
+        "rule":  "secrets:S8215",
+        "severity":  "BLOCKER",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/resources/demo/seed.sql",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "hash":  "776d3c5311d10c1e3f9206132b53fa81",
+        "textRange":  {
+                          "startLine":  57,
+                          "endLine":  57,
+                          "startOffset":  56,
+                          "endOffset":  116
+                      },
+        "flows":  [
+
+                  ],
+        "resolution":  "FIXED",
+        "status":  "CLOSED",
+        "message":  "Make sure this bcrypt password hash gets revoked, changed, and removed from the code.",
+        "effort":  "30min",
+        "debt":  "30min",
+        "author":  "colin.haller.eagles@gmail.com",
+        "tags":  [
+                     "cwe",
+                     "secret"
+                 ],
+        "creationDate":  "2026-11-27T16:58:27+0000",
+        "updateDate":  "2026-11-28T00:58:06+0000",
+        "closeDate":  "2026-11-28T00:58:06+0000",
+        "type":  "VULNERABILITY",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "TRUSTWORTHY",
+        "cleanCodeAttributeCategory":  "RESPONSIBLE",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "SECURITY",
+                            "severity":  "BLOCKER"
+                        }
+                    ],
+        "issueStatus":  "FIXED",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "97e99097-0f89-44d2-a00f-1433e87ba2db",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaId-M9jrzVnmyu1jQqY",
+        "rule":  "secrets:S8215",
+        "severity":  "BLOCKER",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/resources/demo/seed.sql",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "hash":  "c6d5c100d092fd0be46091b5c2560d83",
+        "textRange":  {
+                          "startLine":  58,
+                          "endLine":  58,
+                          "startOffset":  55,
+                          "endOffset":  115
+                      },
+        "flows":  [
+
+                  ],
+        "resolution":  "FIXED",
+        "status":  "CLOSED",
+        "message":  "Make sure this bcrypt password hash gets revoked, changed, and removed from the code.",
+        "effort":  "30min",
+        "debt":  "30min",
+        "author":  "colin.haller.eagles@gmail.com",
+        "tags":  [
+                     "cwe",
+                     "secret"
+                 ],
+        "creationDate":  "2026-11-27T16:58:27+0000",
+        "updateDate":  "2026-11-28T00:58:06+0000",
+        "closeDate":  "2026-11-28T00:58:06+0000",
+        "type":  "VULNERABILITY",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "TRUSTWORTHY",
+        "cleanCodeAttributeCategory":  "RESPONSIBLE",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "SECURITY",
+                            "severity":  "BLOCKER"
+                        }
+                    ],
+        "issueStatus":  "FIXED",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "97e99097-0f89-44d2-a00f-1433e87ba2db",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaId-M9jrzVnmyu1jQqZ",
+        "rule":  "secrets:S8215",
+        "severity":  "BLOCKER",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/resources/demo/seed.sql",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "hash":  "7f2f5128081f3a783c10b940c3af6837",
+        "textRange":  {
+                          "startLine":  59,
+                          "endLine":  59,
+                          "startOffset":  44,
+                          "endOffset":  104
+                      },
+        "flows":  [
+
+                  ],
+        "resolution":  "FIXED",
+        "status":  "CLOSED",
+        "message":  "Make sure this bcrypt password hash gets revoked, changed, and removed from the code.",
+        "effort":  "30min",
+        "debt":  "30min",
+        "author":  "colin.haller.eagles@gmail.com",
+        "tags":  [
+                     "cwe",
+                     "secret"
+                 ],
+        "creationDate":  "2026-11-27T16:58:27+0000",
+        "updateDate":  "2026-11-28T00:58:06+0000",
+        "closeDate":  "2026-11-28T00:58:06+0000",
+        "type":  "VULNERABILITY",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "TRUSTWORTHY",
+        "cleanCodeAttributeCategory":  "RESPONSIBLE",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "SECURITY",
+                            "severity":  "BLOCKER"
+                        }
+                    ],
+        "issueStatus":  "FIXED",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "97e99097-0f89-44d2-a00f-1433e87ba2db",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaId-M9jrzVnmyu1jQqa",
+        "rule":  "secrets:S8215",
+        "severity":  "BLOCKER",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/resources/demo/seed.sql",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "hash":  "5a95f7b543176f2e864a055131e757c8",
+        "textRange":  {
+                          "startLine":  60,
+                          "endLine":  60,
+                          "startOffset":  48,
+                          "endOffset":  108
+                      },
+        "flows":  [
+
+                  ],
+        "resolution":  "FIXED",
+        "status":  "CLOSED",
+        "message":  "Make sure this bcrypt password hash gets revoked, changed, and removed from the code.",
+        "effort":  "30min",
+        "debt":  "30min",
+        "author":  "colin.haller.eagles@gmail.com",
+        "tags":  [
+                     "cwe",
+                     "secret"
+                 ],
+        "creationDate":  "2026-11-27T16:58:27+0000",
+        "updateDate":  "2026-11-28T00:58:06+0000",
+        "closeDate":  "2026-11-28T00:58:06+0000",
+        "type":  "VULNERABILITY",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "TRUSTWORTHY",
+        "cleanCodeAttributeCategory":  "RESPONSIBLE",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "SECURITY",
+                            "severity":  "BLOCKER"
+                        }
+                    ],
+        "issueStatus":  "FIXED",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "97e99097-0f89-44d2-a00f-1433e87ba2db",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaId-M9jrzVnmyu1jQqb",
+        "rule":  "secrets:S8215",
+        "severity":  "BLOCKER",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/resources/demo/seed.sql",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "hash":  "337f75d61911d027ce52829e68b90973",
+        "textRange":  {
+                          "startLine":  61,
+                          "endLine":  61,
+                          "startOffset":  45,
+                          "endOffset":  105
+                      },
+        "flows":  [
+
+                  ],
+        "resolution":  "FIXED",
+        "status":  "CLOSED",
+        "message":  "Make sure this bcrypt password hash gets revoked, changed, and removed from the code.",
+        "effort":  "30min",
+        "debt":  "30min",
+        "author":  "colin.haller.eagles@gmail.com",
+        "tags":  [
+                     "cwe",
+                     "secret"
+                 ],
+        "creationDate":  "2026-11-27T16:58:27+0000",
+        "updateDate":  "2026-11-28T03:21:23+0000",
+        "closeDate":  "2026-11-28T03:21:23+0000",
+        "type":  "VULNERABILITY",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "TRUSTWORTHY",
+        "cleanCodeAttributeCategory":  "RESPONSIBLE",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "SECURITY",
+                            "severity":  "BLOCKER"
+                        }
+                    ],
+        "issueStatus":  "FIXED",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "a3752e98-7eb6-4cac-b676-d50c9d8b43a3",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaId-M9jrzVnmyu1jQqc",
+        "rule":  "secrets:S8215",
+        "severity":  "BLOCKER",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/resources/demo/seed.sql",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "hash":  "10f262e83a2c6b80911250e8a67aa90b",
+        "textRange":  {
+                          "startLine":  62,
+                          "endLine":  62,
+                          "startOffset":  45,
+                          "endOffset":  105
+                      },
+        "flows":  [
+
+                  ],
+        "resolution":  "FIXED",
+        "status":  "CLOSED",
+        "message":  "Make sure this bcrypt password hash gets revoked, changed, and removed from the code.",
+        "effort":  "30min",
+        "debt":  "30min",
+        "author":  "colin.haller.eagles@gmail.com",
+        "tags":  [
+                     "cwe",
+                     "secret"
+                 ],
+        "creationDate":  "2026-11-27T16:58:27+0000",
+        "updateDate":  "2026-11-28T00:58:06+0000",
+        "closeDate":  "2026-11-28T00:58:06+0000",
+        "type":  "VULNERABILITY",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "TRUSTWORTHY",
+        "cleanCodeAttributeCategory":  "RESPONSIBLE",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "SECURITY",
+                            "severity":  "BLOCKER"
+                        }
+                    ],
+        "issueStatus":  "FIXED",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "97e99097-0f89-44d2-a00f-1433e87ba2db",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaIdzKcuOHYb8rn6w5JF",
+        "rule":  "githubactions:S8233",
+        "severity":  "MAJOR",
+        "component":  "AnaisPerron_SOEN343-Council:.github/workflows/publish-demo-images.yml",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "hash":  "97282a4e423896f9006a18748ffe5e02",
+        "textRange":  {
+                          "startLine":  37,
+                          "endLine":  37,
+                          "startOffset":  12,
+                          "endOffset":  17
+                      },
+        "flows":  [
+
+                  ],
+        "resolution":  "FIXED",
+        "status":  "CLOSED",
+        "message":  "Move this write permission from workflow level to job level.",
+        "effort":  "5min",
+        "debt":  "5min",
+        "author":  "gaypetrosy@gmail.com",
+        "tags":  [
+
+                 ],
+        "creationDate":  "2026-11-27T16:13:47+0000",
+        "updateDate":  "2026-11-28T03:21:23+0000",
+        "closeDate":  "2026-11-28T03:21:23+0000",
+        "type":  "VULNERABILITY",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "TRUSTWORTHY",
+        "cleanCodeAttributeCategory":  "RESPONSIBLE",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "SECURITY",
+                            "severity":  "LOW"
+                        }
+                    ],
+        "issueStatus":  "FIXED",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "a3752e98-7eb6-4cac-b676-d50c9d8b43a3",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaIfj2s1UseLLAwL4dJ4",
+        "rule":  "java:S2077",
+        "severity":  "MAJOR",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/test/java/com/council/tenderapp/rvw/RatingResetAcceptanceTest.java",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "hash":  "ac24290aae6463175e801bcf17ad6cf8",
+        "textRange":  {
+                          "startLine":  85,
+                          "endLine":  85,
+                          "startOffset":  30,
+                          "endOffset":  76
+                      },
+        "flows":  [
+
+                  ],
+        "resolution":  "FIXED",
+        "status":  "CLOSED",
+        "message":  "Make sure using a dynamically formatted SQL query is safe here.",
+        "effort":  "20min",
+        "debt":  "20min",
+        "author":  "gaypetrosy@gmail.com",
+        "tags":  [
+                     "bad-practice",
+                     "cert",
+                     "cwe",
+                     "former-hotspot",
+                     "hibernate",
+                     "spring",
+                     "sql"
+                 ],
+        "creationDate":  "2026-11-26T03:13:00+0000",
+        "updateDate":  "2026-11-28T03:21:23+0000",
+        "closeDate":  "2026-11-28T03:21:23+0000",
+        "type":  "VULNERABILITY",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "COMPLETE",
+        "cleanCodeAttributeCategory":  "INTENTIONAL",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "MAINTAINABILITY",
+                            "severity":  "LOW"
+                        },
+                        {
+                            "softwareQuality":  "SECURITY",
+                            "severity":  "MEDIUM"
+                        }
+                    ],
+        "issueStatus":  "FIXED",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "a3752e98-7eb6-4cac-b676-d50c9d8b43a3",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaILcMjMh0a4ai-UpfcN",
+        "rule":  "secrets:S8215",
+        "severity":  "BLOCKER",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/resources/demo/seed.sql",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "line":  44,
+        "hash":  "5ebae850f5f9b6e791bddf2ac357835d",
+        "textRange":  {
+                          "startLine":  44,
+                          "endLine":  44,
+                          "startOffset":  50,
+                          "endOffset":  110
+                      },
+        "flows":  [
+
+                  ],
+        "status":  "OPEN",
+        "message":  "Make sure this bcrypt password hash gets revoked, changed, and removed from the code.",
+        "effort":  "30min",
+        "debt":  "30min",
+        "author":  "colin.haller.eagles@gmail.com",
+        "tags":  [
+                     "cwe",
+                     "secret"
+                 ],
+        "creationDate":  "2026-11-14T01:03:39+0000",
+        "updateDate":  "2026-11-24T02:44:08+0000",
+        "type":  "VULNERABILITY",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "TRUSTWORTHY",
+        "cleanCodeAttributeCategory":  "RESPONSIBLE",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "SECURITY",
+                            "severity":  "BLOCKER"
+                        }
+                    ],
+        "issueStatus":  "OPEN",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "a3752e98-7eb6-4cac-b676-d50c9d8b43a3",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaILcMjMh0a4ai-UpfcO",
+        "rule":  "secrets:S8215",
+        "severity":  "BLOCKER",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/resources/demo/seed.sql",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "line":  45,
+        "hash":  "da8f6b30752dc7237b7e48f3d9794b4d",
+        "textRange":  {
+                          "startLine":  45,
+                          "endLine":  45,
+                          "startOffset":  56,
+                          "endOffset":  116
+                      },
+        "flows":  [
+
+                  ],
+        "status":  "OPEN",
+        "message":  "Make sure this bcrypt password hash gets revoked, changed, and removed from the code.",
+        "effort":  "30min",
+        "debt":  "30min",
+        "author":  "colin.haller.eagles@gmail.com",
+        "tags":  [
+                     "cwe",
+                     "secret"
+                 ],
+        "creationDate":  "2026-11-14T01:03:39+0000",
+        "updateDate":  "2026-11-24T02:44:08+0000",
+        "type":  "VULNERABILITY",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "TRUSTWORTHY",
+        "cleanCodeAttributeCategory":  "RESPONSIBLE",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "SECURITY",
+                            "severity":  "BLOCKER"
+                        }
+                    ],
+        "issueStatus":  "OPEN",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "a3752e98-7eb6-4cac-b676-d50c9d8b43a3",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaILcMjMh0a4ai-UpfcP",
+        "rule":  "secrets:S8215",
+        "severity":  "BLOCKER",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/resources/demo/seed.sql",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "line":  46,
+        "hash":  "ab7d245a79089782b110910b259610a8",
+        "textRange":  {
+                          "startLine":  46,
+                          "endLine":  46,
+                          "startOffset":  45,
+                          "endOffset":  105
+                      },
+        "flows":  [
+
+                  ],
+        "status":  "OPEN",
+        "message":  "Make sure this bcrypt password hash gets revoked, changed, and removed from the code.",
+        "effort":  "30min",
+        "debt":  "30min",
+        "author":  "colin.haller.eagles@gmail.com",
+        "tags":  [
+                     "cwe",
+                     "secret"
+                 ],
+        "creationDate":  "2026-11-14T01:03:39+0000",
+        "updateDate":  "2026-11-24T02:44:08+0000",
+        "type":  "VULNERABILITY",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "TRUSTWORTHY",
+        "cleanCodeAttributeCategory":  "RESPONSIBLE",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "SECURITY",
+                            "severity":  "BLOCKER"
+                        }
+                    ],
+        "issueStatus":  "OPEN",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "a3752e98-7eb6-4cac-b676-d50c9d8b43a3",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaILcMjMh0a4ai-UpfcS",
+        "rule":  "secrets:S8215",
+        "severity":  "BLOCKER",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/resources/demo/seed.sql",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "line":  49,
+        "hash":  "17ed4f322bc53afb28af395861e6d920",
+        "textRange":  {
+                          "startLine":  49,
+                          "endLine":  49,
+                          "startOffset":  46,
+                          "endOffset":  106
+                      },
+        "flows":  [
+
+                  ],
+        "status":  "OPEN",
+        "message":  "Make sure this bcrypt password hash gets revoked, changed, and removed from the code.",
+        "effort":  "30min",
+        "debt":  "30min",
+        "author":  "colin.haller.eagles@gmail.com",
+        "tags":  [
+                     "cwe",
+                     "secret"
+                 ],
+        "creationDate":  "2026-11-14T01:03:39+0000",
+        "updateDate":  "2026-11-28T03:21:23+0000",
+        "type":  "VULNERABILITY",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "TRUSTWORTHY",
+        "cleanCodeAttributeCategory":  "RESPONSIBLE",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "SECURITY",
+                            "severity":  "BLOCKER"
+                        }
+                    ],
+        "issueStatus":  "OPEN",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "a3752e98-7eb6-4cac-b676-d50c9d8b43a3",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaILcMjMh0a4ai-UpfcI",
+        "rule":  "plsql:DeleteOrUpdateWithoutWhereCheck",
+        "severity":  "BLOCKER",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/resources/demo/seed.sql",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "line":  92,
+        "hash":  "e57d7c75d370e19d2622783dd89c3767",
+        "textRange":  {
+                          "startLine":  92,
+                          "endLine":  92,
+                          "startOffset":  0,
+                          "endOffset":  6
+                      },
+        "flows":  [
+
+                  ],
+        "status":  "OPEN",
+        "message":  "Ensure that the WHERE clause is not missing in this UPDATE query.",
+        "effort":  "30min",
+        "debt":  "30min",
+        "author":  "zeinisnotreal@gmail.com",
+        "tags":  [
+                     "sql"
+                 ],
+        "creationDate":  "2026-11-13T23:47:47+0000",
+        "updateDate":  "2026-11-24T02:44:08+0000",
+        "type":  "BUG",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "COMPLETE",
+        "cleanCodeAttributeCategory":  "INTENTIONAL",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "RELIABILITY",
+                            "severity":  "BLOCKER"
+                        }
+                    ],
+        "issueStatus":  "OPEN",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "a3752e98-7eb6-4cac-b676-d50c9d8b43a3",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaILcMjMh0a4ai-UpfcJ",
+        "rule":  "plsql:DeleteOrUpdateWithoutWhereCheck",
+        "severity":  "BLOCKER",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/resources/demo/seed.sql",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "line":  105,
+        "hash":  "9580a1139e37b3b2b50f1aa5758a1922",
+        "textRange":  {
+                          "startLine":  105,
+                          "endLine":  105,
+                          "startOffset":  0,
+                          "endOffset":  6
+                      },
+        "flows":  [
+
+                  ],
+        "status":  "OPEN",
+        "message":  "Ensure that the WHERE clause is not missing in this UPDATE query.",
+        "effort":  "30min",
+        "debt":  "30min",
+        "author":  "zeinisnotreal@gmail.com",
+        "tags":  [
+                     "sql"
+                 ],
+        "creationDate":  "2026-11-13T23:47:47+0000",
+        "updateDate":  "2026-11-24T02:44:08+0000",
+        "type":  "BUG",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "COMPLETE",
+        "cleanCodeAttributeCategory":  "INTENTIONAL",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "RELIABILITY",
+                            "severity":  "BLOCKER"
+                        }
+                    ],
+        "issueStatus":  "OPEN",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "a3752e98-7eb6-4cac-b676-d50c9d8b43a3",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaILcMi1h0a4ai-UpfcH",
+        "rule":  "docker:S6505",
+        "severity":  "MAJOR",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/frontend/Dockerfile",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "line":  4,
+        "hash":  "78647f454d93b59294c34ca1f3ed714a",
+        "textRange":  {
+                          "startLine":  4,
+                          "endLine":  4,
+                          "startOffset":  4,
+                          "endOffset":  10
+                      },
+        "flows":  [
+
+                  ],
+        "status":  "OPEN",
+        "message":  "Omitting \"--ignore-scripts\" allows lifecycle scripts to run during package installation.",
+        "effort":  "30min",
+        "debt":  "30min",
+        "author":  "zeinisnotreal@gmail.com",
+        "tags":  [
+                     "cwe",
+                     "former-hotspot"
+                 ],
+        "creationDate":  "2026-11-13T17:04:03+0000",
+        "updateDate":  "2026-11-24T02:44:08+0000",
+        "type":  "VULNERABILITY",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "TRUSTWORTHY",
+        "cleanCodeAttributeCategory":  "RESPONSIBLE",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "SECURITY",
+                            "severity":  "MEDIUM"
+                        }
+                    ],
+        "issueStatus":  "OPEN",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "9b0cd373-fc01-486d-a10c-a99b266360d2",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaILqwb7kR43N7b3DV-z",
+        "rule":  "java:S2222",
+        "severity":  "CRITICAL",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/java/com/council/tenderapp/operator/reset/ResetCoordinator.java",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "line":  13,
+        "hash":  "69498fdc759d32ffbe2754a5f26d736a",
+        "textRange":  {
+                          "startLine":  13,
+                          "endLine":  13,
+                          "startOffset":  8,
+                          "endOffset":  16
+                      },
+        "flows":  [
+
+                  ],
+        "status":  "OPEN",
+        "message":  "Unlock this lock along all executions paths of this method.",
+        "effort":  "20min",
+        "debt":  "20min",
+        "author":  "zeinisnotreal@gmail.com",
+        "tags":  [
+                     "cwe",
+                     "multi-threading",
+                     "symbolic-execution"
+                 ],
+        "creationDate":  "2026-11-10T23:18:13+0000",
+        "updateDate":  "2026-11-24T03:46:33+0000",
+        "type":  "BUG",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "COMPLETE",
+        "cleanCodeAttributeCategory":  "INTENTIONAL",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "RELIABILITY",
+                            "severity":  "HIGH"
+                        }
+                    ],
+        "issueStatus":  "OPEN",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "bac797b7-49d8-41e1-a552-56065ea5617c",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaILqwdikR43N7b3DV-1",
+        "rule":  "java:S8786",
+        "severity":  "MAJOR",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/java/com/council/tenderapp/technicalservices/payment/PayPalCheckoutService.java",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "line":  65,
+        "hash":  "9ee7f06e011d2e7e917459bb2e3da8ac",
+        "textRange":  {
+                          "startLine":  65,
+                          "endLine":  65,
+                          "startOffset":  31,
+                          "endOffset":  41
+                      },
+        "flows":  [
+
+                  ],
+        "status":  "OPEN",
+        "message":  "Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.",
+        "effort":  "20min",
+        "debt":  "20min",
+        "assignee":  "AnaisPerron-YrRJp@github",
+        "author":  "anaispalacios1501@gmail.com",
+        "tags":  [
+                     "performance",
+                     "regex"
+                 ],
+        "creationDate":  "2026-11-10T05:57:00+0000",
+        "updateDate":  "2026-11-24T03:46:33+0000",
+        "type":  "CODE_SMELL",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "EFFICIENT",
+        "cleanCodeAttributeCategory":  "INTENTIONAL",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "RELIABILITY",
+                            "severity":  "MEDIUM"
+                        }
+                    ],
+        "issueStatus":  "OPEN",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "bac797b7-49d8-41e1-a552-56065ea5617c",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaILqwdikR43N7b3DV-0",
+        "rule":  "java:S2142",
+        "severity":  "MAJOR",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/java/com/council/tenderapp/technicalservices/payment/PayPalCheckoutService.java",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "line":  180,
+        "hash":  "c8910d2f740bdfc92d2b5e93f68be57e",
+        "textRange":  {
+                          "startLine":  180,
+                          "endLine":  180,
+                          "startOffset":  15,
+                          "endOffset":  34
+                      },
+        "flows":  [
+                      {
+                          "locations":  [
+                                            {
+                                                "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/java/com/council/tenderapp/technicalservices/payment/PayPalCheckoutService.java",
+                                                "textRange":  {
+                                                                  "startLine":  168,
+                                                                  "endLine":  168,
+                                                                  "startOffset":  54,
+                                                                  "endOffset":  58
+                                                              },
+                                                "msg":  "Statement throwing InterruptedException."
+                                            }
+                                        ]
+                      },
+                      {
+                          "locations":  [
+                                            {
+                                                "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/java/com/council/tenderapp/technicalservices/payment/PayPalCheckoutService.java",
+                                                "textRange":  {
+                                                                  "startLine":  176,
+                                                                  "endLine":  176,
+                                                                  "startOffset":  49,
+                                                                  "endOffset":  53
+                                                              },
+                                                "msg":  "Statement throwing InterruptedException."
+                                            }
+                                        ]
+                      }
+                  ],
+        "status":  "OPEN",
+        "message":  "Either re-interrupt this method or rethrow the \"InterruptedException\" that can be caught here.",
+        "effort":  "15min",
+        "debt":  "15min",
+        "assignee":  "AnaisPerron-YrRJp@github",
+        "author":  "anaispalacios1501@gmail.com",
+        "tags":  [
+                     "cwe",
+                     "error-handling",
+                     "multi-threading"
+                 ],
+        "creationDate":  "2026-11-10T05:57:00+0000",
+        "updateDate":  "2026-11-24T03:46:33+0000",
+        "type":  "BUG",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "COMPLETE",
+        "cleanCodeAttributeCategory":  "INTENTIONAL",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "RELIABILITY",
+                            "severity":  "MEDIUM"
+                        }
+                    ],
+        "issueStatus":  "OPEN",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "bac797b7-49d8-41e1-a552-56065ea5617c",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaILcMiNh0a4ai-UpfcG",
+        "rule":  "typescript:S9383",
+        "severity":  "MAJOR",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/frontend/src/context/AuthContext.tsx",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "line":  53,
+        "hash":  "274fa981d578d313de17720e448e3a20",
+        "textRange":  {
+                          "startLine":  53,
+                          "endLine":  53,
+                          "startOffset":  4,
+                          "endOffset":  14
+                      },
+        "flows":  [
+
+                  ],
+        "status":  "OPEN",
+        "message":  "Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.",
+        "effort":  "5min",
+        "debt":  "5min",
+        "assignee":  "AnaisPerron-YrRJp@github",
+        "author":  "anaispalacios1501@gmail.com",
+        "tags":  [
+                     "async",
+                     "es2017",
+                     "promise",
+                     "type-dependent"
+                 ],
+        "creationDate":  "2026-10-27T21:09:08+0000",
+        "updateDate":  "2026-11-24T02:44:08+0000",
+        "type":  "BUG",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "LOGICAL",
+        "cleanCodeAttributeCategory":  "INTENTIONAL",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "RELIABILITY",
+                            "severity":  "MEDIUM"
+                        }
+                    ],
+        "issueStatus":  "OPEN",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "9b0cd373-fc01-486d-a10c-a99b266360d2",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaILcMhRh0a4ai-UpfcE",
+        "rule":  "typescript:S8786",
+        "severity":  "MAJOR",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/frontend/src/lib/orderApi.ts",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "line":  45,
+        "hash":  "61a4062fcaa34d0a9edc27ba3aed8959",
+        "textRange":  {
+                          "startLine":  45,
+                          "endLine":  45,
+                          "startOffset":  86,
+                          "endOffset":  92
+                      },
+        "flows":  [
+
+                  ],
+        "status":  "OPEN",
+        "message":  "Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.",
+        "effort":  "20min",
+        "debt":  "20min",
+        "author":  "beckyzhang15@gmail.com",
+        "tags":  [
+                     "performance",
+                     "regex"
+                 ],
+        "creationDate":  "2026-10-23T23:19:33+0000",
+        "updateDate":  "2026-11-24T02:44:08+0000",
+        "type":  "CODE_SMELL",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "EFFICIENT",
+        "cleanCodeAttributeCategory":  "INTENTIONAL",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "RELIABILITY",
+                            "severity":  "MEDIUM"
+                        }
+                    ],
+        "issueStatus":  "OPEN",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "9b0cd373-fc01-486d-a10c-a99b266360d2",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaILcMhsh0a4ai-UpfcF",
+        "rule":  "typescript:S8786",
+        "severity":  "MAJOR",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/frontend/src/api/client.ts",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "line":  2,
+        "hash":  "c265cf401d8f1f5ba7b443c8a1a84e59",
+        "textRange":  {
+                          "startLine":  2,
+                          "endLine":  2,
+                          "startOffset":  92,
+                          "endOffset":  98
+                      },
+        "flows":  [
+
+                  ],
+        "status":  "OPEN",
+        "message":  "Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.",
+        "effort":  "20min",
+        "debt":  "20min",
+        "author":  "gaypetrosy@gmail.com",
+        "tags":  [
+                     "performance",
+                     "regex"
+                 ],
+        "creationDate":  "2026-10-23T03:48:57+0000",
+        "updateDate":  "2026-11-24T02:44:08+0000",
+        "type":  "CODE_SMELL",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "EFFICIENT",
+        "cleanCodeAttributeCategory":  "INTENTIONAL",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "RELIABILITY",
+                            "severity":  "MEDIUM"
+                        }
+                    ],
+        "issueStatus":  "OPEN",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "9b0cd373-fc01-486d-a10c-a99b266360d2",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaILcMjMh0a4ai-UpfcK",
+        "rule":  "secrets:S8215",
+        "severity":  "BLOCKER",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/resources/demo/seed.sql",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "line":  41,
+        "hash":  "9731faa2c01536d719204e9d3c043052",
+        "textRange":  {
+                          "startLine":  41,
+                          "endLine":  41,
+                          "startOffset":  49,
+                          "endOffset":  109
+                      },
+        "flows":  [
+
+                  ],
+        "status":  "OPEN",
+        "message":  "Make sure this bcrypt password hash gets revoked, changed, and removed from the code.",
+        "effort":  "30min",
+        "debt":  "30min",
+        "author":  "zeinisnotreal@gmail.com",
+        "tags":  [
+                     "cwe",
+                     "secret"
+                 ],
+        "creationDate":  "2026-10-23T01:13:45+0000",
+        "updateDate":  "2026-11-24T02:44:08+0000",
+        "type":  "VULNERABILITY",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "TRUSTWORTHY",
+        "cleanCodeAttributeCategory":  "RESPONSIBLE",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "SECURITY",
+                            "severity":  "BLOCKER"
+                        }
+                    ],
+        "issueStatus":  "OPEN",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "a3752e98-7eb6-4cac-b676-d50c9d8b43a3",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaILcMjMh0a4ai-UpfcL",
+        "rule":  "secrets:S8215",
+        "severity":  "BLOCKER",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/resources/demo/seed.sql",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "line":  42,
+        "hash":  "a81073eea32a14d133bae71b7b0b9ad0",
+        "textRange":  {
+                          "startLine":  42,
+                          "endLine":  42,
+                          "startOffset":  47,
+                          "endOffset":  107
+                      },
+        "flows":  [
+
+                  ],
+        "status":  "OPEN",
+        "message":  "Make sure this bcrypt password hash gets revoked, changed, and removed from the code.",
+        "effort":  "30min",
+        "debt":  "30min",
+        "author":  "zeinisnotreal@gmail.com",
+        "tags":  [
+                     "cwe",
+                     "secret"
+                 ],
+        "creationDate":  "2026-10-23T01:13:45+0000",
+        "updateDate":  "2026-11-24T02:44:08+0000",
+        "type":  "VULNERABILITY",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "TRUSTWORTHY",
+        "cleanCodeAttributeCategory":  "RESPONSIBLE",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "SECURITY",
+                            "severity":  "BLOCKER"
+                        }
+                    ],
+        "issueStatus":  "OPEN",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "a3752e98-7eb6-4cac-b676-d50c9d8b43a3",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaILcMjMh0a4ai-UpfcM",
+        "rule":  "secrets:S8215",
+        "severity":  "BLOCKER",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/resources/demo/seed.sql",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "line":  43,
+        "hash":  "1f1b7d97dac2cf0b06126ba39ca2b371",
+        "textRange":  {
+                          "startLine":  43,
+                          "endLine":  43,
+                          "startOffset":  45,
+                          "endOffset":  105
+                      },
+        "flows":  [
+
+                  ],
+        "status":  "OPEN",
+        "message":  "Make sure this bcrypt password hash gets revoked, changed, and removed from the code.",
+        "effort":  "30min",
+        "debt":  "30min",
+        "author":  "zeinisnotreal@gmail.com",
+        "tags":  [
+                     "cwe",
+                     "secret"
+                 ],
+        "creationDate":  "2026-10-23T01:13:45+0000",
+        "updateDate":  "2026-11-24T02:44:08+0000",
+        "type":  "VULNERABILITY",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "TRUSTWORTHY",
+        "cleanCodeAttributeCategory":  "RESPONSIBLE",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "SECURITY",
+                            "severity":  "BLOCKER"
+                        }
+                    ],
+        "issueStatus":  "OPEN",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "a3752e98-7eb6-4cac-b676-d50c9d8b43a3",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaILcMjMh0a4ai-UpfcQ",
+        "rule":  "secrets:S8215",
+        "severity":  "BLOCKER",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/resources/demo/seed.sql",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "line":  47,
+        "hash":  "4cb274af2b95ed7f01ad587a8f5bf45a",
+        "textRange":  {
+                          "startLine":  47,
+                          "endLine":  47,
+                          "startOffset":  47,
+                          "endOffset":  107
+                      },
+        "flows":  [
+
+                  ],
+        "status":  "OPEN",
+        "message":  "Make sure this bcrypt password hash gets revoked, changed, and removed from the code.",
+        "effort":  "30min",
+        "debt":  "30min",
+        "author":  "zeinisnotreal@gmail.com",
+        "tags":  [
+                     "cwe",
+                     "secret"
+                 ],
+        "creationDate":  "2026-10-23T01:13:45+0000",
+        "updateDate":  "2026-11-24T02:44:08+0000",
+        "type":  "VULNERABILITY",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "TRUSTWORTHY",
+        "cleanCodeAttributeCategory":  "RESPONSIBLE",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "SECURITY",
+                            "severity":  "BLOCKER"
+                        }
+                    ],
+        "issueStatus":  "OPEN",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "a3752e98-7eb6-4cac-b676-d50c9d8b43a3",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaILcMjMh0a4ai-UpfcR",
+        "rule":  "secrets:S8215",
+        "severity":  "BLOCKER",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/resources/demo/seed.sql",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "line":  48,
+        "hash":  "26dcaf3070d9a99818334a9126f548a3",
+        "textRange":  {
+                          "startLine":  48,
+                          "endLine":  48,
+                          "startOffset":  55,
+                          "endOffset":  115
+                      },
+        "flows":  [
+
+                  ],
+        "status":  "OPEN",
+        "message":  "Make sure this bcrypt password hash gets revoked, changed, and removed from the code.",
+        "effort":  "30min",
+        "debt":  "30min",
+        "author":  "zeinisnotreal@gmail.com",
+        "tags":  [
+                     "cwe",
+                     "secret"
+                 ],
+        "creationDate":  "2026-10-23T01:13:45+0000",
+        "updateDate":  "2026-11-24T02:44:08+0000",
+        "type":  "VULNERABILITY",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "TRUSTWORTHY",
+        "cleanCodeAttributeCategory":  "RESPONSIBLE",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "SECURITY",
+                            "severity":  "BLOCKER"
+                        }
+                    ],
+        "issueStatus":  "OPEN",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "a3752e98-7eb6-4cac-b676-d50c9d8b43a3",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaILcMfjh0a4ai-UpfcC",
+        "rule":  "typescript:S8786",
+        "severity":  "MAJOR",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/frontend/src/app/auth/login.tsx",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "line":  20,
+        "hash":  "9f274742d21c47ce5b2bbf4cf8d38d19",
+        "textRange":  {
+                          "startLine":  20,
+                          "endLine":  20,
+                          "startOffset":  20,
+                          "endOffset":  48
+                      },
+        "flows":  [
+
+                  ],
+        "status":  "OPEN",
+        "message":  "Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.",
+        "effort":  "20min",
+        "debt":  "20min",
+        "author":  "zeynpozcn6@gmail.com",
+        "tags":  [
+                     "performance",
+                     "regex"
+                 ],
+        "creationDate":  "2026-10-22T23:50:53+0000",
+        "updateDate":  "2026-11-24T02:44:08+0000",
+        "type":  "CODE_SMELL",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "EFFICIENT",
+        "cleanCodeAttributeCategory":  "INTENTIONAL",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "RELIABILITY",
+                            "severity":  "MEDIUM"
+                        }
+                    ],
+        "issueStatus":  "OPEN",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "9b0cd373-fc01-486d-a10c-a99b266360d2",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaILcMhBh0a4ai-UpfcD",
+        "rule":  "typescript:S8786",
+        "severity":  "MAJOR",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/frontend/src/app/auth/register.tsx",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "line":  21,
+        "hash":  "9f274742d21c47ce5b2bbf4cf8d38d19",
+        "textRange":  {
+                          "startLine":  21,
+                          "endLine":  21,
+                          "startOffset":  20,
+                          "endOffset":  48
+                      },
+        "flows":  [
+
+                  ],
+        "status":  "OPEN",
+        "message":  "Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.",
+        "effort":  "20min",
+        "debt":  "20min",
+        "author":  "zeynpozcn6@gmail.com",
+        "tags":  [
+                     "performance",
+                     "regex"
+                 ],
+        "creationDate":  "2026-10-22T23:50:53+0000",
+        "updateDate":  "2026-11-24T02:44:08+0000",
+        "type":  "CODE_SMELL",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "EFFICIENT",
+        "cleanCodeAttributeCategory":  "INTENTIONAL",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "RELIABILITY",
+                            "severity":  "MEDIUM"
+                        }
+                    ],
+        "issueStatus":  "OPEN",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "9b0cd373-fc01-486d-a10c-a99b266360d2",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    }
+]

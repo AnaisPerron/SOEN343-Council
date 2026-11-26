@@ -1,0 +1,238 @@
+[
+    {
+        "key":  "AaILqwdikR43N7b3DV-1",
+        "rule":  "java:S8786",
+        "severity":  "MAJOR",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/java/com/council/tenderapp/technicalservices/payment/PayPalCheckoutService.java",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "line":  65,
+        "hash":  "9ee7f06e011d2e7e917459bb2e3da8ac",
+        "textRange":  {
+                          "startLine":  65,
+                          "endLine":  65,
+                          "startOffset":  31,
+                          "endOffset":  41
+                      },
+        "flows":  [
+
+                  ],
+        "status":  "OPEN",
+        "message":  "Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.",
+        "effort":  "20min",
+        "debt":  "20min",
+        "assignee":  "AnaisPerron-YrRJp@github",
+        "author":  "anaispalacios1501@gmail.com",
+        "tags":  [
+                     "performance",
+                     "regex"
+                 ],
+        "creationDate":  "2026-11-10T05:57:00+0000",
+        "updateDate":  "2026-11-24T03:46:33+0000",
+        "type":  "CODE_SMELL",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "EFFICIENT",
+        "cleanCodeAttributeCategory":  "INTENTIONAL",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "RELIABILITY",
+                            "severity":  "MEDIUM"
+                        }
+                    ],
+        "issueStatus":  "OPEN",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "bac797b7-49d8-41e1-a552-56065ea5617c",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaILcMhRh0a4ai-UpfcE",
+        "rule":  "typescript:S8786",
+        "severity":  "MAJOR",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/frontend/src/lib/orderApi.ts",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "line":  45,
+        "hash":  "61a4062fcaa34d0a9edc27ba3aed8959",
+        "textRange":  {
+                          "startLine":  45,
+                          "endLine":  45,
+                          "startOffset":  86,
+                          "endOffset":  92
+                      },
+        "flows":  [
+
+                  ],
+        "status":  "OPEN",
+        "message":  "Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.",
+        "effort":  "20min",
+        "debt":  "20min",
+        "author":  "beckyzhang15@gmail.com",
+        "tags":  [
+                     "performance",
+                     "regex"
+                 ],
+        "creationDate":  "2026-10-23T23:19:33+0000",
+        "updateDate":  "2026-11-24T02:44:08+0000",
+        "type":  "CODE_SMELL",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "EFFICIENT",
+        "cleanCodeAttributeCategory":  "INTENTIONAL",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "RELIABILITY",
+                            "severity":  "MEDIUM"
+                        }
+                    ],
+        "issueStatus":  "OPEN",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "9b0cd373-fc01-486d-a10c-a99b266360d2",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaILcMhsh0a4ai-UpfcF",
+        "rule":  "typescript:S8786",
+        "severity":  "MAJOR",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/frontend/src/api/client.ts",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "line":  2,
+        "hash":  "c265cf401d8f1f5ba7b443c8a1a84e59",
+        "textRange":  {
+                          "startLine":  2,
+                          "endLine":  2,
+                          "startOffset":  92,
+                          "endOffset":  98
+                      },
+        "flows":  [
+
+                  ],
+        "status":  "OPEN",
+        "message":  "Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.",
+        "effort":  "20min",
+        "debt":  "20min",
+        "author":  "gaypetrosy@gmail.com",
+        "tags":  [
+                     "performance",
+                     "regex"
+                 ],
+        "creationDate":  "2026-10-23T03:48:57+0000",
+        "updateDate":  "2026-11-24T02:44:08+0000",
+        "type":  "CODE_SMELL",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "EFFICIENT",
+        "cleanCodeAttributeCategory":  "INTENTIONAL",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "RELIABILITY",
+                            "severity":  "MEDIUM"
+                        }
+                    ],
+        "issueStatus":  "OPEN",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "9b0cd373-fc01-486d-a10c-a99b266360d2",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaILcMfjh0a4ai-UpfcC",
+        "rule":  "typescript:S8786",
+        "severity":  "MAJOR",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/frontend/src/app/auth/login.tsx",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "line":  20,
+        "hash":  "9f274742d21c47ce5b2bbf4cf8d38d19",
+        "textRange":  {
+                          "startLine":  20,
+                          "endLine":  20,
+                          "startOffset":  20,
+                          "endOffset":  48
+                      },
+        "flows":  [
+
+                  ],
+        "status":  "OPEN",
+        "message":  "Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.",
+        "effort":  "20min",
+        "debt":  "20min",
+        "author":  "zeynpozcn6@gmail.com",
+        "tags":  [
+                     "performance",
+                     "regex"
+                 ],
+        "creationDate":  "2026-10-22T23:50:53+0000",
+        "updateDate":  "2026-11-24T02:44:08+0000",
+        "type":  "CODE_SMELL",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "EFFICIENT",
+        "cleanCodeAttributeCategory":  "INTENTIONAL",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "RELIABILITY",
+                            "severity":  "MEDIUM"
+                        }
+                    ],
+        "issueStatus":  "OPEN",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "9b0cd373-fc01-486d-a10c-a99b266360d2",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    },
+    {
+        "key":  "AaILcMhBh0a4ai-UpfcD",
+        "rule":  "typescript:S8786",
+        "severity":  "MAJOR",
+        "component":  "AnaisPerron_SOEN343-Council:tender-app/frontend/src/app/auth/register.tsx",
+        "project":  "AnaisPerron_SOEN343-Council",
+        "line":  21,
+        "hash":  "9f274742d21c47ce5b2bbf4cf8d38d19",
+        "textRange":  {
+                          "startLine":  21,
+                          "endLine":  21,
+                          "startOffset":  20,
+                          "endOffset":  48
+                      },
+        "flows":  [
+
+                  ],
+        "status":  "OPEN",
+        "message":  "Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.",
+        "effort":  "20min",
+        "debt":  "20min",
+        "author":  "zeynpozcn6@gmail.com",
+        "tags":  [
+                     "performance",
+                     "regex"
+                 ],
+        "creationDate":  "2026-10-22T23:50:53+0000",
+        "updateDate":  "2026-11-24T02:44:08+0000",
+        "type":  "CODE_SMELL",
+        "organization":  "anaisperron",
+        "cleanCodeAttribute":  "EFFICIENT",
+        "cleanCodeAttributeCategory":  "INTENTIONAL",
+        "impacts":  [
+                        {
+                            "softwareQuality":  "RELIABILITY",
+                            "severity":  "MEDIUM"
+                        }
+                    ],
+        "issueStatus":  "OPEN",
+        "projectName":  "SOEN343-Council",
+        "internalTags":  [
+
+                         ],
+        "lastChangeAnalysisUuid":  "9b0cd373-fc01-486d-a10c-a99b266360d2",
+        "lastChangeSource":  "ANALYSIS",
+        "producer":  "SCANNER"
+    }
+]

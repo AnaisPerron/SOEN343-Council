@@ -28,12 +28,14 @@ public class AssignmentService {
     private final CourierProfileRepository couriers;
     private final OrderRepository orders;
     private final OrderEventRepository events;
+    private final AssignmentAdoption adoption;
 
     public AssignmentService(AssignmentRepository assignments, CourierProfileRepository couriers, OrderRepository orders, OrderEventRepository events) {
         this.assignments = assignments;
         this.couriers = couriers;
         this.orders = orders;
         this.events = events;
+        this.adoption = new AssignmentAdoption(assignments, couriers, events);
     }
 
     public List<CourierProfile> lockCouriers() { return couriers.findAllByOrderByUserIdAsc(); }
@@ -44,31 +46,10 @@ public class AssignmentService {
             if (!active.get().getCourierId().equals(order.getCourierId())) {
                 throw new InvalidOrderStateException("Order and assignment courier do not match");
             }
-            synchronizeReservation(order);
+            adoption.synchronizeReservation(order);
             return active;
         }
-        if (order.getCourierId() == null || (order.getStatus() != OrderStatus.READY && order.getStatus() != OrderStatus.PICKED_UP)) {
-            return Optional.empty();
-        }
-        if (assignments.existsByCourierIdAndStatusIn(order.getCourierId(), ACTIVE)) {
-            throw new InvalidOrderStateException("Courier already has another active assignment");
-        }
-        Instant now = Instant.now();
-        Assignment adopted = new Assignment(order.getId(), order.getCourierId(), now);
-        var courier = couriers.findWithLockByUserId(order.getCourierId()).orElseThrow();
-        boolean alreadyAccepted = courier.getStatus() == CourierStatus.ASSIGNED
-                && events.existsByOrderIdAndEventType(order.getId(), "courier_accepted");
-        if (order.getStatus() == OrderStatus.PICKED_UP || alreadyAccepted) adopted.accept(now);
-        synchronizeReservation(order);
-        return Optional.of(assignments.saveAndFlush(adopted));
-    }
-
-    private void synchronizeReservation(Order order) {
-        couriers.findWithLockByUserId(order.getCourierId()).ifPresent(courier -> {
-            if (courier.getStatus() == CourierStatus.IDLE) {
-                courier.setStatus(order.getStatus() == OrderStatus.PICKED_UP ? CourierStatus.CARRYING : CourierStatus.ASSIGNED);
-            }
-        });
+        return adoption.adopt(order);
     }
 
     public Assignment accept(long courierId, long assignmentId) {
