@@ -18,6 +18,7 @@ import CartIconButton from '../components/CartIconButton';
 import { useCart } from '../../../context/CartContext';
 import { useCatalog, useRestaurantMenu } from '../../../context/CatalogContext';
 import { styles } from './restaurant.styles';
+import { formatAverageRating } from '../services/orderRating';
 
 const PANEL_OVERLAP = 30;
 const STICKY_HEIGHT = 106;
@@ -48,11 +49,16 @@ function RestaurantInfoPanel({ restaurant, showMore }: {
   showMore: boolean;
 }) {
   const statusText = restaurant.status === 'open' ? 'Open now' : restaurant.status === 'paused' ? 'Temporarily paused' : 'Closed now';
-  // Rating, address and delivery fee are not in the browse API yet, so only their fallbacks show.
+  // Address and delivery fee are not in the browse API yet, so only their fallbacks show.
   return (
     <View style={styles.info}>
       <Text style={styles.restaurantName}>{restaurant.name}</Text>
-      <View style={styles.ratingLine}>
+      <View style={styles.ratingLine} accessibilityLabel={`Average rating ${formatAverageRating(restaurant.averageRating, restaurant.ratingCount)}`}>
+        {restaurant.averageRating != null && <Text style={styles.rating}>★</Text>}
+        <Text style={restaurant.averageRating != null ? styles.rating : styles.muted}>
+          {formatAverageRating(restaurant.averageRating, restaurant.ratingCount)}
+        </Text>
+        <Text style={styles.dot}>·</Text>
         <Text style={styles.muted}>{statusText}</Text>
       </View>
       <View style={styles.fulfillmentRow}>
