@@ -152,6 +152,28 @@ public class CustomerOrderService {
             String deliveryAddress, Double latitude, Double longitude, PricingService.Quote quote) {}
 
     private PreparedOrder prepareOrder(Long customerId, PlaceOrderRequestDto request) {
+        validateDeliveryOverride(request);
+        browseService.checkRestaurantOpen(request.restaurantId());
+        Map<Long, MenuItem> menu = availableMenu(request);
+        Map<Long, MenuItemOption> options = selectedOptions(request);
+
+        BigDecimal subtotal = request.items().stream()
+                .map(item -> paidUnitPrice(menu.get(item.menuItemId()), item, options)
+                        .multiply(BigDecimal.valueOf(item.quantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        CustomerProfileService.DeliveryAddress savedAddress = customerProfileService.deliveryAddress(customerId).orElse(null);
+        boolean override = request.deliveryAddress() != null;
+        String deliveryAddress = override ? request.deliveryAddress().trim() : savedAddress == null ? null : savedAddress.address();
+        Double deliveryLatitude = override ? request.deliveryLatitude() : savedAddress == null ? null : savedAddress.latitude();
+        Double deliveryLongitude = override ? request.deliveryLongitude() : savedAddress == null ? null : savedAddress.longitude();
+        if (deliveryAddress == null || deliveryAddress.isBlank()) {
+            throw new InvalidOrderException("A verified delivery address is required");
+        }
+        PricingService.Quote quote = pricingService.quote(subtotal, request.restaurantId(), deliveryLatitude, deliveryLongitude);
+        return new PreparedOrder(menu, options, deliveryAddress, deliveryLatitude, deliveryLongitude, quote);
+    }
+
+    private static void validateDeliveryOverride(PlaceOrderRequestDto request) {
         boolean override = request.deliveryAddress() != null;
         if (override && (request.deliveryAddress().isBlank() || request.deliveryLatitude() == null || request.deliveryLongitude() == null)) {
             throw new InvalidOrderException("Pick a verified delivery address from the suggestions");
@@ -159,10 +181,11 @@ public class CustomerOrderService {
         if (!override && (request.deliveryLatitude() != null || request.deliveryLongitude() != null)) {
             throw new InvalidOrderException("A delivery location requires an address");
         }
-        browseService.checkRestaurantOpen(request.restaurantId());
+    }
+
+    private Map<Long, MenuItem> availableMenu(PlaceOrderRequestDto request) {
         Map<Long, MenuItem> menu = menuItemRepository.findMenuItemsByRestaurantId(request.restaurantId())
                 .stream().collect(Collectors.toMap(MenuItem::getId, Function.identity()));
-
         for (OrderItemRequestDto item : request.items()) {
             MenuItem menuItem = menu.get(item.menuItemId());
             if (menuItem == null) {
@@ -174,7 +197,10 @@ public class CustomerOrderService {
                         + " : " + menuItem.getName() + " is not available");
             }
         }
+        return menu;
+    }
 
+    private Map<Long, MenuItemOption> selectedOptions(PlaceOrderRequestDto request) {
         Map<Long, MenuItemOption> options = menuItemOptionRepository
                 .findByMenuItemIdIn(request.items().stream().map(OrderItemRequestDto::menuItemId).distinct().toList())
                 .stream().collect(Collectors.toMap(MenuItemOption::getId, Function.identity()));
@@ -187,20 +213,7 @@ public class CustomerOrderService {
                 }
             }
         }
-
-        BigDecimal subtotal = request.items().stream()
-                .map(item -> paidUnitPrice(menu.get(item.menuItemId()), item, options)
-                        .multiply(BigDecimal.valueOf(item.quantity())))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        CustomerProfileService.DeliveryAddress savedAddress = customerProfileService.deliveryAddress(customerId).orElse(null);
-        String deliveryAddress = override ? request.deliveryAddress().trim() : savedAddress == null ? null : savedAddress.address();
-        Double deliveryLatitude = override ? request.deliveryLatitude() : savedAddress == null ? null : savedAddress.latitude();
-        Double deliveryLongitude = override ? request.deliveryLongitude() : savedAddress == null ? null : savedAddress.longitude();
-        if (deliveryAddress == null || deliveryAddress.isBlank()) {
-            throw new InvalidOrderException("A verified delivery address is required");
-        }
-        PricingService.Quote quote = pricingService.quote(subtotal, request.restaurantId(), deliveryLatitude, deliveryLongitude);
-        return new PreparedOrder(menu, options, deliveryAddress, deliveryLatitude, deliveryLongitude, quote);
+        return options;
     }
 
     // What the customer pays per unit: the item's price plus its selected add-ons.
