@@ -33,6 +33,8 @@ import com.council.tenderapp.ord.exceptions.UnauthorizedMenuAccessException;
 import com.council.tenderapp.prc.exceptions.OrderNotFinishedException;
 import com.council.tenderapp.prc.exceptions.UnauthorizedOrderAccessException;
 import com.council.tenderapp.reg.dtos.ErrorResponse;
+import com.council.tenderapp.rvw.exceptions.InvalidRatingException;
+import com.council.tenderapp.rvw.exceptions.OrderAlreadyRatedException;
 import com.council.tenderapp.technicalservices.payment.PaymentDeclinedException;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -207,4 +209,16 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.FORBIDDEN, ex.getMessage(), Map.of());
     }
 
+
+    @ExceptionHandler(OrderAlreadyRatedException.class)
+    public ResponseEntity<ErrorResponse> handleOrderAlreadyRated(OrderAlreadyRatedException ex) {
+        log.warn("Duplicate rating refused: {}", ex.getMessage());
+        return build(HttpStatus.CONFLICT, ex.getMessage(), Map.of());
+    }
+
+    @ExceptionHandler(InvalidRatingException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidRating(InvalidRatingException ex) {
+        log.warn("Invalid rating: {}", ex.getMessage());
+        return build(HttpStatus.BAD_REQUEST, ex.getMessage(), Map.of());
+    }
 }
