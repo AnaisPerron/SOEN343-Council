@@ -7,5 +7,8 @@ public record RestaurantResponseDTO (
     String status,
     Double latitude,
     Double longitude,
-    String photoUrl
+    String photoUrl,
+    // Average restaurant stars (1-5, one decimal); null when the restaurant has no ratings.
+    Double averageRating,
+    long ratingCount
 ) {}
