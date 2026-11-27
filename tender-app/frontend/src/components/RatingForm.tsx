@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { API_URL } from '@/api/client';
-import { sendOrderRating } from '@/app/customer/services/orderApi';
+import { sendOrderRating, type RatingResult } from '@/app/customer/services/orderApi';
 import { ratingFormProblem, toRatingSubmission } from '@/app/customer/services/orderRating';
 
 const STARS = [1, 2, 3, 4, 5];
@@ -23,8 +23,8 @@ function StarPicker({ label, value, onChange, disabled }: {
 }
 
 /** Rates the restaurant (and courier, when there was one) of a delivered order. */
-export default function RatingForm({ orderId, hasCourier, token, onClose }: {
-  orderId: string; hasCourier: boolean; token: string; onClose: () => void;
+export default function RatingForm({ orderId, hasCourier, token, onClose, onSaved }: {
+  orderId: string; hasCourier: boolean; token: string; onClose: () => void; onSaved: (rating: RatingResult) => void;
 }) {
   const [restaurantStars, setRestaurantStars] = useState<number | null>(null);
   const [courierStars, setCourierStars] = useState<number | null>(null);
@@ -40,7 +40,10 @@ export default function RatingForm({ orderId, hasCourier, token, onClose }: {
     setResult(null);
     sendOrderRating(`${API_URL}/api/orders/${encodeURIComponent(orderId)}/rating`, token,
       toRatingSubmission(restaurantStars as number, courierStars, comment, hasCourier))
-      .then(() => setResult({ kind: 'success', text: 'Thanks! Your rating was saved.' }))
+      .then((rating) => {
+        onSaved(rating);
+        setResult({ kind: 'success', text: 'Thanks! Your rating was saved.' });
+      })
       .catch((error) => setResult({ kind: 'error', text: error instanceof Error ? error.message : 'Could not save your rating.' }))
       .finally(() => setSending(false));
   };
