@@ -3,11 +3,13 @@ import { Redirect, useFocusEffect, useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AccountMenu from '@/components/AccountMenu';
+import RatingForm from '@/components/RatingForm';
 import { useAuth } from '@/context/AuthContext';
 import { fetchCustomerOrderSummary, type OrderSummary } from '@/api/orderSummary';
 import { useOrders } from '@/context/OrdersContext';
 import { useCatalog } from '@/context/CatalogContext';
 import { formatOrderStatus, type CustomerOrderStatus } from './services/orderLifecycle';
+import { canRateOrder } from './services/orderRating';
 
 const lifecycle: CustomerOrderStatus[] = ['placed', 'accepted', 'preparing', 'ready', 'picked_up', 'delivered'];
 
@@ -19,6 +21,7 @@ export default function CustomerHistory() {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancelErrors, setCancelErrors] = useState<Record<string, string>>({});
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [ratingOrderId, setRatingOrderId] = useState<string | null>(null);
   const [summaries, setSummaries] = useState<Record<string, OrderSummary>>({});
   const [summaryLoading, setSummaryLoading] = useState<string | null>(null);
   const [summaryErrors, setSummaryErrors] = useState<Record<string, string>>({});
@@ -97,6 +100,9 @@ export default function CustomerHistory() {
             <Pressable accessibilityRole="button" accessibilityLabel={`View summary for order ${order.id}`} onPress={() => router.push({ pathname: '/customer/order-summary/[id]', params: { id: order.id } })} style={styles.cancel}><Text style={styles.cancelText}>View summary</Text></Pressable>
             {order.status === 'placed' && <Pressable onPress={() => cancel(order.id)} disabled={cancellingId !== null} accessibilityRole="button" style={styles.cancel}><Text style={styles.cancelText}>{cancellingId === order.id ? 'Cancelling…' : 'Cancel order'}</Text></Pressable>}
             {!!cancelErrors[order.id] && <Text style={styles.message} accessibilityRole="alert">{cancelErrors[order.id]}</Text>}
+            {canRateOrder(order.status) && token && (ratingOrderId === order.id
+              ? <RatingForm key={order.id} orderId={order.id} hasCourier={order.courierId != null} token={token} onClose={() => setRatingOrderId(null)} />
+              : <Pressable onPress={() => setRatingOrderId(order.id)} accessibilityRole="button" accessibilityLabel={`Rate order ${order.id}`} style={styles.rate}><Text style={styles.rateText}>Rate order</Text></Pressable>)}
           </View>;
         })}
     </ScrollView>
@@ -119,4 +125,5 @@ const styles = StyleSheet.create({
   item: { color: '#273039', fontSize: 15, fontWeight: '700', marginBottom: 6 }, bottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 12 },
   badge: { color: '#35414B', fontWeight: '800', backgroundColor: '#EDF0F2', overflow: 'hidden', padding: 6, borderRadius: 5 }, total: { color: '#273039', fontWeight: '800', fontSize: 17 },
   details: { borderTopWidth: 1, borderTopColor: '#E8ECEE', marginTop: 16, paddingTop: 8 }, cancel: { alignSelf: 'flex-end', marginTop: 16, borderWidth: 1, borderColor: '#A83B4B', borderRadius: 6, padding: 10 }, cancelText: { color: '#A83B4B', fontWeight: '800' },
+  rate: { alignSelf: 'flex-end', marginTop: 12, borderWidth: 1, borderColor: '#B97812', borderRadius: 6, padding: 10 }, rateText: { color: '#8A5A0C', fontWeight: '800' },
 });

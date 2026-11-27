@@ -205,10 +205,9 @@ export default function CustomerHome() {
                 accessibilityLabel="Tender logo"
               />
             </View>
-            <TouchableOpacity style={styles.pointsAction} accessibilityRole="button">
-              {/* Empty Route for now. TODO: should lead to the swiping tinder-like page */}
-              <Text style={styles.pointsActionText}>Find a yummy soulmate</Text>
-              <View style={styles.pointsActionIcon}>
+            <TouchableOpacity style={styles.pointsAction} accessibilityRole="button" onPress={() => router.push('/customer/discover')}>
+              <Text style={styles.pointsActionText}>Discover restaurants</Text>
+              <View style={styles.pointsActionIcon} aria-hidden>
                 <Text style={styles.pointsActionArrow}>›</Text>
               </View>
             </TouchableOpacity>

@@ -98,3 +98,31 @@ export async function sendOrderCancellation(
 ): Promise<OrderCancellationResult> {
   return postWithToken<OrderCancellationResult>(endpoint, token, undefined, 'Order cancellation failed', fetchImpl);
 }
+
+/** Body of POST /api/orders/{orderId}/rating; courierStars only when a courier delivered the order. */
+export interface RatingSubmission {
+  restaurantStars: number;
+  courierStars?: number;
+  comment?: string;
+}
+
+export interface RatingResult {
+  id: number;
+  orderId: number;
+  restaurantId: number;
+  courierId: number | null;
+  restaurantStars: number;
+  courierStars: number | null;
+  comment: string | null;
+  createdAt: string;
+}
+
+/** Rejects with the backend's message, e.g. "Order 7 has already been rated". */
+export async function sendOrderRating(
+  endpoint: string,
+  token: string,
+  rating: RatingSubmission,
+  fetchImpl: typeof fetch = fetch,
+): Promise<RatingResult> {
+  return postWithToken<RatingResult>(endpoint, token, rating, 'Rating submission failed', fetchImpl);
+}
