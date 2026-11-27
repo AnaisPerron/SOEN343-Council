@@ -31,6 +31,7 @@ import com.council.tenderapp.ord.exceptions.InvalidOrderStateException;
 import com.council.tenderapp.ord.exceptions.OrderAccessDeniedException;
 import com.council.tenderapp.ord.exceptions.OrderNotFoundException;
 import com.council.tenderapp.ord.repositories.OrderRepository;
+import com.council.tenderapp.reg.entities.Role;
 import com.council.tenderapp.rvw.dtos.OrderRatingResponseDto;
 import com.council.tenderapp.rvw.dtos.SubmitRatingRequestDto;
 import com.council.tenderapp.rvw.exceptions.InvalidRatingException;
@@ -99,6 +100,43 @@ class OrderRatingServiceIntegrationTest {
         var stored = ratings.findById(response.id()).orElseThrow();
         assertThat(stored.getCustomerId()).isEqualTo(CUSTOMER);
         assertThat(stored.getCourierId()).isEqualTo(COURIER);
+    }
+
+    @Test
+    void restaurantAndCourierSeeTheirOwnStarsAndSharedCommentOnly() {
+        Long orderId = order(OrderStatus.DELIVERED, COURIER);
+        service.rate(CUSTOMER, orderId, new SubmitRatingRequestDto(5, 4, "Hot and on time"));
+
+        authenticate("STAFF");
+        var restaurantRating = service.view(orderId, Role.STAFF, 7L, RESTAURANT);
+        assertThat(restaurantRating.stars()).isEqualTo(5);
+        assertThat(restaurantRating.comment()).isEqualTo("Hot and on time");
+
+        authenticate("COURIER");
+        var courierRating = service.view(orderId, Role.COURIER, COURIER, null);
+        assertThat(courierRating.stars()).isEqualTo(4);
+        assertThat(courierRating.restaurantStars()).isNull();
+        assertThat(courierRating.comment()).isEqualTo("Hot and on time");
+        assertThatThrownBy(() -> service.view(orderId, Role.COURIER, COURIER + 1, null))
+                .isInstanceOf(com.council.tenderapp.prc.exceptions.UnauthorizedOrderAccessException.class);
+        assertThatThrownBy(() -> service.view(orderId, Role.STAFF, 7L, RESTAURANT + 1))
+                .isInstanceOf(com.council.tenderapp.prc.exceptions.UnauthorizedOrderAccessException.class);
+
+        authenticate("CUSTOMER");
+        var customerRating = service.view(orderId, Role.CUSTOMER, CUSTOMER, null);
+        assertThat(customerRating.stars()).isNull();
+        assertThat(customerRating.restaurantStars()).isEqualTo(5);
+        assertThat(customerRating.courierStars()).isEqualTo(4);
+        assertThat(customerRating.comment()).isEqualTo("Hot and on time");
+        assertThatThrownBy(() -> service.view(orderId, Role.CUSTOMER, CUSTOMER + 1, null))
+                .isInstanceOf(com.council.tenderapp.prc.exceptions.UnauthorizedOrderAccessException.class);
+    }
+
+    @Test
+    void authorisedHistoryOrderWithoutARatingReturnsNull() {
+        Long orderId = order(OrderStatus.DELIVERED, COURIER);
+        authenticate("COURIER");
+        assertThat(service.view(orderId, Role.COURIER, COURIER, null)).isNull();
     }
 
     @Test
