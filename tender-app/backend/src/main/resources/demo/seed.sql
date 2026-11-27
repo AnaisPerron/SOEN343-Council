@@ -1,4 +1,4 @@
--- Demo baseline for REG, ORD, DLV, and PRC. Requires the existing database schema.
+Cafe Nord-- Demo baseline for REG, ORD, DLV, and PRC. Requires the existing database schema.
 -- warning deletes and replaces all data in the twenty tables below
 -- Run ONLY against a demo database.
 -- TRUNCATE RESTART IDENTITY ensures consistent data on every run.
@@ -47,6 +47,18 @@ INSERT INTO users (role, name, email, password_hash, phone) VALUES
 ('courier', 'Nora Courier', 'nora@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550107'), -- 7
 ('operator', 'Olivia Operator', 'operator@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550108'), -- 8
 ('staff', 'Cafe Nord', 'cafenord@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550109'); -- 9
+('staff', 'Historical Restaurant', 'cafenord@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550110'); -- 10
+('staff', 'Pho''nomenal', 'phonomenal@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550111'); -- 11
+('staff', 'The Blue Dog', 'bluedog@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550112'); -- 12
+('staff', 'Kam''s Craves', 'kamcraves@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550113'); -- 13
+('staff', 'Sam''s London UK Shop', 'samshop@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550114'); -- 14
+('staff', 'Jack Subs', 'cafenord@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550115'); -- 15
+('staff', 'Little Beijing', 'littlebeijing@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550116'); -- 16
+('staff', 'Brat und Würst', 'bratundwurst@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550117'); -- 17
+('staff', 'Cafe Sud', 'cafesud@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550118'); -- 18
+('staff', 'Cafe Ouest', 'cafeouest@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550119'); -- 19
+('courier', 'Bob Courier', 'bob@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550120'), -- 20
+('courier', 'Ted Courier', 'ted@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550121'), -- 21
 
 -- demo coordinates are illustrative points around Montreal (lat, lon)
 INSERT INTO customer_profiles (user_id, td_cash_balance, address, latitude, longitude) VALUES
@@ -60,6 +72,8 @@ INSERT INTO operator_profiles (user_id) VALUES
 INSERT INTO courier_profiles (user_id, latitude, longitude, status) VALUES
 (6, 45.5090, -73.5730, 'idle'),
 (7, 45.5180, -73.5610, 'offline');
+(20, 45.5162, -73.5620, 'idle');
+(21, 45.5205, -73.5710, 'offline');
 
 -- ---------------- ORD: RESTAURANTS / MENUS ----------------
 -- Open = can order; paused/closed = reject new orders
@@ -68,15 +82,45 @@ INSERT INTO restaurants (name, status, latitude, longitude, cover_url) VALUES
 ('Green Bowl Kitchen', 'paused', 45.5150, -73.5600, '/menu-items-imgs/harvest-grain-bowl.jpg'), -- 2
 ('Cafe Nord', 'closed', 45.5010, -73.5840, '/menu-items-imgs/smoked-salmon-bagel.jpg'), -- 3
 ('Little Italy Pizza', 'open', 45.5352, -73.6132, '/menu-items-imgs/margherita-pizza.jpg'); -- 4
+('Historical Restaurant', 'open', 45.5075, -73.5701, '/menu-items-imgs/historical-restaurant.jpg'); -- 5
+('Pho''nomenal', 'open', 45.4974, -73.5765, '/menu-items-imgs/pho-beef-bowl.jpg'); -- 6
+('The Blue Dog', 'open', 45.5017, -73.5724, '/menu-items-imgs/onion-rings.jpg'); -- 7
+('Kam''s Craves', 'open', 45.4968, -73.5782, '/menu-items-imgs/indian-food.jpg'); -- 8
+('Sam''s London UK Shop', 'closed', 45.5021, -73.5736, '/menu-items-imgs/british-food.jpg'); -- 9
+('Jack Subs', 'open', 45.5003, -73.5748,'/menu-items-imgs/ham-tomato-sub.jpg'); -- 10
+('Little Beijing', 'open', 45.5094, -73.5651, '/menu-items-imgs/bao-bun-and-salad.jpg'); -- 11
+('Brat und Würst', 'open', 45.5112, -73.5715, '/menu-items-imgs/brat.jpg'); -- 12
+('Cafe Sud', 'closed', 45.5056, -73.5721, '/menu-items-imgs/poutine-bagel.jpg'); -- 13
+('Cafe Ouest', 'closed', 45.5042, -73.5664, '/menu-items-imgs/oreo-bagel.jpg'); -- 14
 
 INSERT INTO restaurant_staff (user_id, restaurant_id) VALUES
-(4, 1), (5, 2), (9, 3);
+(4, 1), (5, 2), (9, 3),
+(10, 5),  -- Historical Restaurant
+(11, 6),  -- Pho'nomenal
+(12, 7),  -- The Blue Dog
+(13, 8),  -- Kam's Craves
+(14, 9),  -- Sam's London UK Shop
+(15, 10), -- Jack Subs
+(16, 11), -- Little Beijing
+(17, 12), -- Brat und Würst
+(18, 13), -- Cafe Sud
+(19, 14); -- Cafe Ouest
 
 INSERT INTO menus (restaurant_id) VALUES
 (1),
 (2),
 (3),
-(4);
+(4),
+(5),
+(6),
+(7),
+(8),
+(9),
+(10),
+(11),
+(12),
+(13)
+(14);
 
 -- menu photos are served by the backend
 -- The sold-out crumble is intentionally included for negative-case testing.
@@ -88,11 +132,23 @@ INSERT INTO menu_items (menu_id, name, price, status, photo_url) VALUES
 (2, 'Miso tofu bowl', 14.00, 'available', '/menu-items-imgs/miso-tofu-bowl.jpg'), -- 5
 (3, 'Smoked salmon bagel', 12.50, 'available', '/menu-items-imgs/smoked-salmon-bagel.jpg'), -- 6
 (4, 'Margherita pizza', 17.00, 'available', '/menu-items-imgs/margherita-pizza.jpg'); -- 7
+(6, 'Pho beef bowl', 18.00, 'available', '/menu-items-imgs/pho-beef-bowl.jpg'), -- 8
+(7, 'Onion rings', 7.50, 'available', '/menu-items-imgs/onion-rings.jpg'), -- 9
+(8, 'Indian spread', 16.50, 'available', '/menu-items-imgs/indian-food.jpg'), -- 10
+(9, 'British spread', 15.00, 'available', '/menu-items-imgs/british-food.jpg'), -- 11
+(10, 'Ham and tomato sub', 12.00, 'available', '/menu-items-imgs/ham-tomato-sub.jpg'), -- 12
+(11, 'Bao bun and salad', 13.50, 'available', '/menu-items-imgs/bao-bun-and-salad.jpg'), -- 13
+(12, 'Bratwurst', 11.50, 'available', '/menu-items-imgs/bratwurst.jpg'), -- 14
+(13, 'Poutine bagel', 10.50, 'available', '/menu-items-imgs/poutine-bagel.jpg'), -- 15
+(14, 'Oreo bagel', 8.50, 'available', '/menu-items-imgs/oreo-bagel.jpg'); -- 16
 
 UPDATE menu_items SET category = CASE id
     WHEN 1 THEN 'Popular' WHEN 2 THEN 'Sides' WHEN 3 THEN 'Desserts'
     WHEN 4 THEN 'Bowls' WHEN 5 THEN 'Bowls' WHEN 6 THEN 'Popular'
-    WHEN 7 THEN 'Pizza' END,
+    WHEN 7 THEN 'Pizza' WHEN 8 THEN 'Bowls' WHEN 9 THEN 'Sides'
+    WHEN 10 THEN 'Mains' WHEN 11 THEN 'Mains' WHEN 12 THEN 'Sandwiches'
+    WHEN 13 THEN 'Mains' WHEN 14 THEN 'Mains' WHEN 15 THEN 'Sandwiches'
+    WHEN 16 THEN 'Desserts' END,
     description = CASE id
     WHEN 1 THEN 'Tender chicken, maple glaze and crisp greens.'
     WHEN 2 THEN 'Golden fries tossed with fragrant truffle.'
@@ -100,10 +156,19 @@ UPDATE menu_items SET category = CASE id
     WHEN 4 THEN 'Seasonal vegetables, grains and house dressing.'
     WHEN 5 THEN 'Miso tofu with fresh vegetables and rice.'
     WHEN 6 THEN 'Smoked salmon, cream cheese and a toasted bagel.'
-    WHEN 7 THEN 'Tomato, mozzarella and fresh basil.' END;
+    WHEN 7 THEN 'Tomato, mozzarella and fresh basil.'
+    WHEN 8 THEN 'Savory beef broth with rice noodles, tender beef and herbs.'
+    WHEN 9 THEN 'Crispy golden onion rings fried until crunchy.'
+    WHEN 10 THEN 'Assorted Indian dishes served together as a shareable spread.'
+    WHEN 11 THEN 'Assorted British dishes served together as a shareable spread.'
+    WHEN 12 THEN 'Sliced ham and ripe tomato layered on a fresh sub roll.'
+    WHEN 13 THEN 'Steamed bao bun paired with a crisp side salad.'
+    WHEN 14 THEN 'Savory grilled bratwurst sausage.'
+    WHEN 15 THEN 'Toasted bagel topped with fries, cheese curds and gravy.'
+    WHEN 16 THEN 'Sweet bagel topped with crushed chocolate sandwich cookies.' END;
 
 UPDATE restaurants SET opening_hour = TIME '09:00',
-    closing_hour = CASE WHEN id IN (1, 4) THEN TIME '22:00' ELSE TIME '17:00' END;
+    closing_hour = CASE WHEN id IN (1, 10) THEN TIME '22:00' ELSE TIME '17:00' END;
 
 INSERT INTO menu_item_options (menu_item_id, name, additional_cost) VALUES
 (1, 'Add avocado', 2.00), -- 1
