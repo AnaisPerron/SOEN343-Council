@@ -47,7 +47,7 @@ INSERT INTO users (role, name, email, password_hash, phone) VALUES
 ('courier', 'Leo Courier', 'leo@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550106'), -- 6
 ('courier', 'Nora Courier', 'nora@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550107'), -- 7
 ('operator', 'Olivia Operator', 'operator@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550108'), -- 8
-('staff', 'Cafe Nord', 'cafenord@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550109'); -- 9
+('staff', 'Cafe Nord', 'cafenord@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550109'), -- 9
 ('staff', 'Historical Restaurant', 'cafenord@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550110'); -- 10
 ('staff', 'Pho''nomenal', 'phonomenal@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550111'); -- 11
 ('staff', 'The Blue Dog', 'bluedog@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550112'); -- 12
@@ -59,7 +59,7 @@ INSERT INTO users (role, name, email, password_hash, phone) VALUES
 ('staff', 'Cafe Sud', 'cafesud@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550118'); -- 18
 ('staff', 'Cafe Ouest', 'cafeouest@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550119'); -- 19
 ('courier', 'Bob Courier', 'bob@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550120'), -- 20
-('courier', 'Ted Courier', 'ted@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550121'), -- 21
+('courier', 'Ted Courier', 'ted@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550121'); -- 21
 
 -- demo coordinates are illustrative points around Montreal (lat, lon)
 INSERT INTO customer_profiles (user_id, td_cash_balance, address, latitude, longitude) VALUES
@@ -82,16 +82,16 @@ INSERT INTO restaurants (name, status, latitude, longitude, cover_url) VALUES
 ('Maple & Main', 'open', 45.5100, -73.5700, '/menu-items-imgs/maple-glazed-chicken-sandwich.jpg'), -- 1
 ('Green Bowl Kitchen', 'paused', 45.5150, -73.5600, '/menu-items-imgs/harvest-grain-bowl.jpg'), -- 2
 ('Cafe Nord', 'closed', 45.5010, -73.5840, '/menu-items-imgs/smoked-salmon-bagel.jpg'), -- 3
-('Little Italy Pizza', 'open', 45.5352, -73.6132, '/menu-items-imgs/margherita-pizza.jpg'); -- 4
-('Historical Restaurant', 'open', 45.5075, -73.5701, '/menu-items-imgs/historical-restaurant.jpg'); -- 5
-('Pho''nomenal', 'open', 45.4974, -73.5765, '/menu-items-imgs/pho-beef-bowl.jpg'); -- 6
-('The Blue Dog', 'open', 45.5017, -73.5724, '/menu-items-imgs/onion-rings.jpg'); -- 7
-('Kam''s Craves', 'open', 45.4968, -73.5782, '/menu-items-imgs/indian-food.jpg'); -- 8
-('Sam''s London UK Shop', 'closed', 45.5021, -73.5736, '/menu-items-imgs/british-food.jpg'); -- 9
-('Jack Subs', 'open', 45.5003, -73.5748,'/menu-items-imgs/ham-tomato-sub.jpg'); -- 10
-('Little Beijing', 'open', 45.5094, -73.5651, '/menu-items-imgs/bao-bun-and-salad.jpg'); -- 11
-('Brat und Würst', 'open', 45.5112, -73.5715, '/menu-items-imgs/brat.jpg'); -- 12
-('Cafe Sud', 'closed', 45.5056, -73.5721, '/menu-items-imgs/poutine-bagel.jpg'); -- 13
+('Little Italy Pizza', 'open', 45.5352, -73.6132, '/menu-items-imgs/margherita-pizza.jpg'), -- 4
+('Historical Restaurant', 'open', 45.5075, -73.5701, '/menu-items-imgs/historical-restaurant.jpg'), -- 5
+('Pho''nomenal', 'open', 45.4974, -73.5765, '/menu-items-imgs/pho-beef-bowl.jpg'), -- 6
+('The Blue Dog', 'open', 45.5017, -73.5724, '/menu-items-imgs/onion-rings.jpg'), -- 7
+('Kam''s Craves', 'open', 45.4968, -73.5782, '/menu-items-imgs/indian-food.jpg'), -- 8
+('Sam''s London UK Shop', 'closed', 45.5021, -73.5736, '/menu-items-imgs/british-food.jpg'), -- 9
+('Jack Subs', 'open', 45.5003, -73.5748,'/menu-items-imgs/ham-tomato-sub.jpg'), -- 10
+('Little Beijing', 'open', 45.5094, -73.5651, '/menu-items-imgs/bao-bun-and-salad.jpg'), -- 11
+('Brat und Würst', 'open', 45.5112, -73.5715, '/menu-items-imgs/brat.jpg'), -- 12
+('Cafe Sud', 'closed', 45.5056, -73.5721, '/menu-items-imgs/poutine-bagel.jpg'), -- 13
 ('Cafe Ouest', 'closed', 45.5042, -73.5664, '/menu-items-imgs/oreo-bagel.jpg'); -- 14
 
 INSERT INTO restaurant_staff (user_id, restaurant_id) VALUES
