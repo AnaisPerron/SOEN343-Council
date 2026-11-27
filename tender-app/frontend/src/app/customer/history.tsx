@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Redirect, useFocusEffect, useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -6,6 +6,8 @@ import AccountMenu from '@/components/AccountMenu';
 import RatingForm from '@/components/RatingForm';
 import { useAuth } from '@/context/AuthContext';
 import { fetchCustomerOrderSummary, type OrderSummary } from '@/api/orderSummary';
+import { fetchOrderRating, type OrderRatingView } from '@/api/orderRating';
+import type { RatingResult } from './services/orderApi';
 import { useOrders } from '@/context/OrdersContext';
 import { useCatalog } from '@/context/CatalogContext';
 import { formatOrderStatus, type CustomerOrderStatus } from './services/orderLifecycle';
@@ -18,15 +20,51 @@ export default function CustomerHistory() {
   const { orders, historyStatus, historyError, refreshOrders, cancelOrder } = useOrders();
   const { restaurants } = useCatalog();
   const router = useRouter();
+  const [isFocused, setIsFocused] = useState(false);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancelErrors, setCancelErrors] = useState<Record<string, string>>({});
   const [expanded, setExpanded] = useState<string | null>(null);
   const [ratingOrderId, setRatingOrderId] = useState<string | null>(null);
+  const [ratings, setRatings] = useState<Record<string, OrderRatingView | null>>({});
+  const [ratingLoading, setRatingLoading] = useState<Record<string, boolean>>({});
+  const [ratingErrors, setRatingErrors] = useState<Record<string, string>>({});
+  const [ratingRetry, setRatingRetry] = useState(0);
+  const ratingRequests = useRef(new Set<string>());
   const [summaries, setSummaries] = useState<Record<string, OrderSummary>>({});
   const [summaryLoading, setSummaryLoading] = useState<string | null>(null);
   const [summaryErrors, setSummaryErrors] = useState<Record<string, string>>({});
   // Reload whenever the page is shown, then poll so restaurant status changes appear while it stays open.
-  useFocusEffect(refreshOrders);
+  useFocusEffect(useCallback(() => {
+    setIsFocused(true);
+    ratingRequests.current.clear();
+    refreshOrders();
+    return () => {
+      setIsFocused(false);
+      ratingRequests.current.clear();
+    };
+  }, [refreshOrders]));
+  useEffect(() => {
+    if (!isFocused || !token) return;
+    const deliveredOrders = orders.filter((order) => order.status === 'delivered');
+    for (const order of deliveredOrders) {
+      if (ratingRequests.current.has(order.id) || ratingErrors[order.id]) continue;
+      ratingRequests.current.add(order.id);
+      setRatingLoading((current) => ({ ...current, [order.id]: true }));
+      setRatingErrors((current) => ({ ...current, [order.id]: '' }));
+      fetchOrderRating(Number(order.id), token)
+        .then((rating) => {
+          setRatings((current) => ({ ...current, [order.id]: rating }));
+        })
+        .catch((error) => {
+          setRatingErrors((current) => ({
+            ...current, [order.id]: error instanceof Error ? error.message : 'Could not load the saved rating.',
+          }));
+        })
+        .finally(() => {
+          setRatingLoading((current) => ({ ...current, [order.id]: false }));
+        });
+    }
+  }, [isFocused, orders, ratingErrors, ratingRetry, token]);
   useEffect(() => {
     const timer = setInterval(refreshOrders, 10000);
     return () => clearInterval(timer);
@@ -56,6 +94,27 @@ export default function CustomerHistory() {
       .finally(() => setSummaryLoading((current) => current === orderId ? null : current));
   };
 
+  const saveRating = (orderId: string, rating: RatingResult) => {
+    setRatings((current) => ({
+      ...current,
+      [orderId]: {
+        orderId: rating.orderId,
+        stars: null,
+        restaurantStars: rating.restaurantStars,
+        courierStars: rating.courierStars,
+        comment: rating.comment,
+        createdAt: rating.createdAt,
+      },
+    }));
+    setRatingOrderId(null);
+  };
+
+  const retryRating = (orderId: string) => {
+    ratingRequests.current.delete(orderId);
+    setRatingErrors((current) => ({ ...current, [orderId]: '' }));
+    setRatingRetry((current) => current + 1);
+  };
+
   return <SafeAreaView style={styles.page}>
     <ScrollView contentContainerStyle={styles.content}>
       <View style={styles.header}>
@@ -73,6 +132,7 @@ export default function CustomerHistory() {
         : orders.map((order) => {
           const restaurantName = order.restaurantName ?? restaurants.find((entry) => entry.id === order.restaurantId)?.name ?? 'Restaurant';
           const current = lifecycle.indexOf(order.status);
+          const savedRating = ratings[order.id];
           return <View key={order.id} style={styles.card}>
             <Pressable accessibilityRole="button" accessibilityLabel={`View order ${order.id} details`} onPress={() => toggleDetails(order.id)}>
               <View style={styles.top}><Text style={styles.orderTitle}>Order #{order.id}</Text>{!!order.createdAt && <Text style={styles.muted}>{new Date(order.createdAt).toLocaleDateString()}</Text>}</View>
@@ -101,8 +161,20 @@ export default function CustomerHistory() {
             {order.status === 'placed' && <Pressable onPress={() => cancel(order.id)} disabled={cancellingId !== null} accessibilityRole="button" style={styles.cancel}><Text style={styles.cancelText}>{cancellingId === order.id ? 'Cancelling…' : 'Cancel order'}</Text></Pressable>}
             {!!cancelErrors[order.id] && <Text style={styles.message} accessibilityRole="alert">{cancelErrors[order.id]}</Text>}
             {canRateOrder(order.status) && token && (ratingOrderId === order.id
-              ? <RatingForm key={order.id} orderId={order.id} hasCourier={order.courierId != null} token={token} onClose={() => setRatingOrderId(null)} />
-              : <Pressable onPress={() => setRatingOrderId(order.id)} accessibilityRole="button" accessibilityLabel={`Rate order ${order.id}`} style={styles.rate}><Text style={styles.rateText}>Rate order</Text></Pressable>)}
+              ? <RatingForm key={order.id} orderId={order.id} hasCourier={order.courierId != null} token={token} onClose={() => setRatingOrderId(null)} onSaved={(rating) => saveRating(order.id, rating)} />
+              : savedRating
+                ? <View style={styles.savedRating} accessibilityLabel={`Your rating: ${savedRating.restaurantStars} out of 5`}>
+                  <Text style={styles.ratingText}>Your restaurant rating: {savedRating.restaurantStars}/5</Text>
+                  {savedRating.courierStars != null && <Text style={styles.ratingText}>Your courier rating: {savedRating.courierStars}/5</Text>}
+                  {!!savedRating.comment && <Text style={styles.ratingComment}>Comment: {savedRating.comment}</Text>}
+                </View>
+                : ratingLoading[order.id]
+                  ? <ActivityIndicator accessibilityLabel="Loading saved rating" />
+                  : ratingErrors[order.id]
+                    ? <View><Text style={styles.message} accessibilityRole="alert">{ratingErrors[order.id]}</Text><Pressable onPress={() => retryRating(order.id)} accessibilityRole="button" style={styles.rate}><Text style={styles.rateText}>Retry rating lookup</Text></Pressable></View>
+                    : ratings[order.id] === null
+                      ? <Pressable onPress={() => setRatingOrderId(order.id)} accessibilityRole="button" accessibilityLabel={`Rate order ${order.id}`} style={styles.rate}><Text style={styles.rateText}>Rate order</Text></Pressable>
+                      : <ActivityIndicator accessibilityLabel="Loading saved rating" />)}
           </View>;
         })}
     </ScrollView>
@@ -126,4 +198,7 @@ const styles = StyleSheet.create({
   badge: { color: '#35414B', fontWeight: '800', backgroundColor: '#EDF0F2', overflow: 'hidden', padding: 6, borderRadius: 5 }, total: { color: '#273039', fontWeight: '800', fontSize: 17 },
   details: { borderTopWidth: 1, borderTopColor: '#E8ECEE', marginTop: 16, paddingTop: 8 }, cancel: { alignSelf: 'flex-end', marginTop: 16, borderWidth: 1, borderColor: '#A83B4B', borderRadius: 6, padding: 10 }, cancelText: { color: '#A83B4B', fontWeight: '800' },
   rate: { alignSelf: 'flex-end', marginTop: 12, borderWidth: 1, borderColor: '#B97812', borderRadius: 6, padding: 10 }, rateText: { color: '#8A5A0C', fontWeight: '800' },
+  savedRating: { borderTopWidth: 1, borderTopColor: '#E8ECEE', marginTop: 14, paddingTop: 12 },
+  ratingText: { color: '#38414A', fontSize: 13, fontWeight: '700', marginTop: 4 },
+  ratingComment: { color: '#68737C', fontSize: 12, marginTop: 6 },
 });

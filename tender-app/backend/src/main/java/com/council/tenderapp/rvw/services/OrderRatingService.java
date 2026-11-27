@@ -3,6 +3,7 @@ package com.council.tenderapp.rvw.services;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Locale;
+import java.util.Objects;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -16,7 +17,10 @@ import com.council.tenderapp.ord.exceptions.InvalidOrderStateException;
 import com.council.tenderapp.ord.exceptions.OrderAccessDeniedException;
 import com.council.tenderapp.ord.exceptions.OrderNotFoundException;
 import com.council.tenderapp.ord.repositories.OrderRepository;
+import com.council.tenderapp.prc.exceptions.UnauthorizedOrderAccessException;
+import com.council.tenderapp.reg.entities.Role;
 import com.council.tenderapp.rvw.dtos.OrderRatingResponseDto;
+import com.council.tenderapp.rvw.dtos.OrderRatingViewDto;
 import com.council.tenderapp.rvw.dtos.SubmitRatingRequestDto;
 import com.council.tenderapp.rvw.entities.OrderRating;
 import com.council.tenderapp.rvw.exceptions.InvalidRatingException;
@@ -39,6 +43,31 @@ public class OrderRatingService {
         this.orders = orders;
         this.ratings = ratings;
         this.clock = clock;
+    }
+
+    @Transactional(readOnly = true)
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'COURIER')")
+    public OrderRatingViewDto view(Long orderId, Role role, Long accountId, Long restaurantId) {
+        Order order = orders.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException("Order not found with id: " + orderId));
+        boolean permitted = switch (role) {
+            case CUSTOMER -> Objects.equals(order.getCustomerId(), accountId);
+            case COURIER -> Objects.equals(order.getCourierId(), accountId);
+            case STAFF -> Objects.equals(order.getRestaurantId(), restaurantId);
+            default -> false;
+        };
+        if (!permitted) {
+            throw new UnauthorizedOrderAccessException("Order " + orderId + " is not available to this account.");
+        }
+
+        return ratings.findByOrderId(orderId)
+                .map(rating -> role == Role.CUSTOMER
+                        ? new OrderRatingViewDto(orderId, null, rating.getRestaurantStars(), rating.getCourierStars(),
+                                rating.getComment(), rating.getCreatedAt())
+                        : new OrderRatingViewDto(orderId,
+                                role == Role.COURIER ? rating.getCourierStars() : rating.getRestaurantStars(),
+                                null, null, rating.getComment(), rating.getCreatedAt()))
+                .orElse(null);
     }
 
     @Transactional

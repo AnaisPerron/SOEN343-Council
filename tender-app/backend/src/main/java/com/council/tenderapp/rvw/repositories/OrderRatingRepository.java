@@ -2,6 +2,7 @@ package com.council.tenderapp.rvw.repositories;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -12,6 +13,7 @@ import com.council.tenderapp.rvw.entities.OrderRating;
 public interface OrderRatingRepository extends JpaRepository<OrderRating, Long> {
 
     boolean existsByOrderId(Long orderId);
+    Optional<OrderRating> findByOrderId(Long orderId);
 
     /** Star totals per restaurant; only ratings inside the 1-5 range count. */
     interface RestaurantStarTotals {

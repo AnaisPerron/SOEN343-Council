@@ -25,6 +25,8 @@ export const styles = StyleSheet.create({
   orderCard: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#EDE6E6', borderRadius: 18, padding: 20 },
   deliveredButton: { backgroundColor: '#D42F50', borderRadius: 14, alignItems: 'center', padding: 16, marginTop: 16 },
   deliveredButtonText: { color: '#FFF', fontWeight: '800' },
+  ratingButton: { borderWidth: 1, borderColor: '#D42F50', borderRadius: 10, alignItems: 'center', padding: 12, marginTop: 14 },
+  ratingButtonText: { color: '#D42F50', fontWeight: '800' },
   actionRow: { flexDirection: 'row', gap: 12, marginTop: 16 },
   actionButton: { flex: 1, backgroundColor: '#D42F50', borderRadius: 14, alignItems: 'center', padding: 16 },
   offerActions: { gap: 8 },
