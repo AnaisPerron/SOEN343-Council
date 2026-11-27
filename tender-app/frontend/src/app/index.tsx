@@ -1,10 +1,10 @@
 import { homeRoute } from '@/lib/roleRoutes';
 import { Redirect } from 'expo-router';
-import { ActivityIndicator, View } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
+import LoadingScreen from '@/components/LoadingScreen';
 
 export default function IndexRoute() {
   const { user, ready } = useAuth();
-  if (!ready) return <View style={{ flex: 1, justifyContent: 'center' }}><ActivityIndicator color="#D42F50" /></View>;
+  if (!ready) return <LoadingScreen />;
   return <Redirect href={homeRoute(user?.role)} />;
 }
