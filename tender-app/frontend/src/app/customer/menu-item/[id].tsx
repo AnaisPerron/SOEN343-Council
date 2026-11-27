@@ -11,7 +11,7 @@ import { getMenuItemOrderRestriction, getRestaurantOrderRestriction, ORDER_ERROR
 import { styles } from './item.styles';
 
 export default function MenuItemDetails() {
-  const { id, restaurantId } = useLocalSearchParams<{ id: string; restaurantId?: string }>();
+  const { id, restaurantId, from } = useLocalSearchParams<{ id: string; restaurantId?: string; from?: string }>();
   const router = useRouter();
   const { lines, addItem } = useCart();
   const { selections } = useItemCustomization();
@@ -60,9 +60,13 @@ export default function MenuItemDetails() {
   }
 
   const cover = item.photURL ? { uri: item.photURL } : undefined;
+  const returnToMenu = () => router.replace({
+    pathname: '/customer/restaurant/[id]',
+    params: { id: String(restaurant.id), ...(from === 'discover' ? { from } : {}) },
+  });
   const goBack = () => router.canGoBack()
     ? router.back()
-    : router.replace({ pathname: '/customer/restaurant/[id]', params: { id: String(restaurant.id) } });
+    : returnToMenu();
 
   const showError = (restriction: RestaurantOrderRestriction) => {
     setOrderError(restriction);
@@ -97,7 +101,9 @@ export default function MenuItemDetails() {
       Animated.delay(1300),
       Animated.timing(addedOpacity, { toValue: 0, duration: 260, useNativeDriver: true }),
     ]).start(({ finished }) => {
-      if (finished) router.replace({ pathname: '/customer/restaurant/[id]', params: { id: String(restaurant.id) } });
+      if (!finished) return;
+      if (from === 'discover') goBack();
+      else returnToMenu();
     });
   };
 
