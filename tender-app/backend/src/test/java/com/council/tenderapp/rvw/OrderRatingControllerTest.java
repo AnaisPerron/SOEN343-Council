@@ -2,10 +2,12 @@ package com.council.tenderapp.rvw;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -29,6 +31,7 @@ import com.council.tenderapp.reg.entities.Role;
 import com.council.tenderapp.reg.services.SessionService;
 import com.council.tenderapp.rvw.controllers.OrderRatingController;
 import com.council.tenderapp.rvw.dtos.OrderRatingResponseDto;
+import com.council.tenderapp.rvw.dtos.OrderRatingViewDto;
 import com.council.tenderapp.rvw.dtos.SubmitRatingRequestDto;
 import com.council.tenderapp.rvw.exceptions.InvalidRatingException;
 import com.council.tenderapp.rvw.exceptions.OrderAlreadyRatedException;
@@ -48,7 +51,52 @@ class OrderRatingControllerTest {
     @MockitoBean private OrderRatingService ratings;
 
     private String bearer(Role role) {
-        return "Bearer " + sessionService.create(7L, role).token();
+        return "Bearer " + (role == Role.STAFF
+                ? sessionService.create(7L, 2L, role)
+                : sessionService.create(7L, role)).token();
+    }
+
+    @Test
+    void customerCourierAndRestaurantCanReadTheirOwnOrderRating() throws Exception {
+        when(ratings.view(42L, Role.CUSTOMER, 7L, null))
+                .thenReturn(new OrderRatingViewDto(42L, null, 5, 4, "Hot and on time", Instant.parse("2026-11-25T12:00:00Z")));
+        mockMvc.perform(get(RATE, 42L).header(HttpHeaders.AUTHORIZATION, bearer(Role.CUSTOMER)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.restaurantStars").value(5))
+                .andExpect(jsonPath("$.courierStars").value(4))
+                .andExpect(jsonPath("$.comment").value("Hot and on time"));
+
+        when(ratings.view(42L, Role.COURIER, 7L, null))
+                .thenReturn(new OrderRatingViewDto(42L, 4, null, null, "Hot and on time", Instant.parse("2026-11-25T12:00:00Z")));
+        mockMvc.perform(get(RATE, 42L).header(HttpHeaders.AUTHORIZATION, bearer(Role.COURIER)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.orderId").value(42))
+                .andExpect(jsonPath("$.stars").value(4))
+                .andExpect(jsonPath("$.comment").value("Hot and on time"));
+
+        when(ratings.view(42L, Role.STAFF, 7L, 2L))
+                .thenReturn(new OrderRatingViewDto(42L, 5, null, null, "Hot and on time", Instant.parse("2026-11-25T12:00:00Z")));
+        mockMvc.perform(get(RATE, 42L).header(HttpHeaders.AUTHORIZATION, bearer(Role.STAFF)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stars").value(5));
+
+        verify(ratings).view(42L, Role.CUSTOMER, 7L, null);
+        verify(ratings).view(42L, Role.COURIER, 7L, null);
+        verify(ratings).view(42L, Role.STAFF, 7L, 2L);
+    }
+
+    @Test
+    void missingRatingReturnsNoContentAndUnauthenticatedOrOperatorMayNotRead() throws Exception {
+        when(ratings.view(eq(42L), eq(Role.COURIER), eq(7L), isNull())).thenReturn(null);
+        mockMvc.perform(get(RATE, 42L).header(HttpHeaders.AUTHORIZATION, bearer(Role.COURIER)))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(get(RATE, 42L))
+                .andExpect(status().isUnauthorized());
+        for (Role role : List.of(Role.OPERATOR)) {
+            mockMvc.perform(get(RATE, 42L).header(HttpHeaders.AUTHORIZATION, bearer(role)))
+                    .andExpect(status().isForbidden());
+        }
+        verify(ratings).view(42L, Role.COURIER, 7L, null);
     }
 
     private org.springframework.test.web.servlet.ResultActions rate(Role role, String body) throws Exception {
