@@ -1,5 +1,5 @@
-Cafe Nord-- Demo baseline for REG, ORD, DLV, and PRC. Requires the existing database schema.
--- warning deletes and replaces all data in the twenty tables below
+-- Demo baseline for REG, ORD, DLV, and PRC. Requires the existing database schema.
+-- warning deletes and replaces all data in the twenty-one tables below
 -- Run ONLY against a demo database.
 -- TRUNCATE RESTART IDENTITY ensures consistent data on every run.
 -- Executed in a transaction; errors roll back all changes.
@@ -12,6 +12,7 @@ Cafe Nord-- Demo baseline for REG, ORD, DLV, and PRC. Requires the existing data
 BEGIN;
 
 TRUNCATE TABLE
+    order_ratings,
     ledger_entries,
     bill,
     tender_cash_transactions,

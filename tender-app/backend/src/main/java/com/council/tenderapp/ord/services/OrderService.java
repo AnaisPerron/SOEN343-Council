@@ -363,25 +363,10 @@ public class OrderService {
         List<Long> profileIds = java.util.stream.Stream.concat(customerIds.stream(), courierIds.stream())
             .distinct()
             .toList();
-        Map<Long, Profile> profiles = profileIds.isEmpty()
-            ? Map.of()
-            : profileRepository.findAllById(profileIds).stream()
-                .collect(Collectors.toMap(Profile::getId, Function.identity()));
-        Map<Long, CourierProfile> courierProfiles = courierIds.isEmpty()
-            ? Map.of()
-            : courierProfileRepository.findAllById(courierIds).stream()
-                .collect(Collectors.toMap(CourierProfile::getUserId, Function.identity()));
-        Set<Long> acceptedOrderIds = orders.isEmpty()
-            ? Set.of()
-            : orderEventRepository.findByOrderIdInAndEventType(
-                orders.stream().map(Order::getId).toList(), "courier_accepted"
-            ).stream().map(event -> event.getOrderId())
-                .collect(Collectors.toSet());
-        Map<AssignmentKey, Assignment> latestAssignments = new java.util.HashMap<>();
-        if (!orders.isEmpty()) {
-            assignmentHistory.findByOrderIdInOrderByAssignedAtDescIdDesc(orders.stream().map(Order::getId).toList())
-                    .forEach(a -> latestAssignments.putIfAbsent(new AssignmentKey(a.getOrderId(), a.getCourierId()), a));
-        }
+        Map<Long, Profile> profiles = loadProfiles(profileIds);
+        Map<Long, CourierProfile> courierProfiles = loadCourierProfiles(courierIds);
+        Set<Long> acceptedOrderIds = acceptedOrderIds(orders);
+        Map<AssignmentKey, Assignment> latestAssignments = latestAssignments(orders);
         return orders.stream()
             .map(order -> toResponse(
                 order,
@@ -395,6 +380,38 @@ public class OrderService {
                 )
             ))
             .toList();
+    }
+
+    private Map<Long, Profile> loadProfiles(List<Long> profileIds) {
+        return profileIds.isEmpty()
+            ? Map.of()
+            : profileRepository.findAllById(profileIds).stream()
+                .collect(Collectors.toMap(Profile::getId, Function.identity()));
+    }
+
+    private Map<Long, CourierProfile> loadCourierProfiles(List<Long> courierIds) {
+        return courierIds.isEmpty()
+            ? Map.of()
+            : courierProfileRepository.findAllById(courierIds).stream()
+                .collect(Collectors.toMap(CourierProfile::getUserId, Function.identity()));
+    }
+
+    private Set<Long> acceptedOrderIds(List<Order> orders) {
+        return orders.isEmpty()
+            ? Set.of()
+            : orderEventRepository.findByOrderIdInAndEventType(
+                orders.stream().map(Order::getId).toList(), "courier_accepted"
+            ).stream().map(event -> event.getOrderId())
+                .collect(Collectors.toSet());
+    }
+
+    private Map<AssignmentKey, Assignment> latestAssignments(List<Order> orders) {
+        Map<AssignmentKey, Assignment> latestAssignments = new java.util.HashMap<>();
+        if (!orders.isEmpty()) {
+            assignmentHistory.findByOrderIdInOrderByAssignedAtDescIdDesc(orders.stream().map(Order::getId).toList())
+                    .forEach(a -> latestAssignments.putIfAbsent(new AssignmentKey(a.getOrderId(), a.getCourierId()), a));
+        }
+        return latestAssignments;
     }
 
     private record AssignmentKey(Long orderId, Long courierId) {}

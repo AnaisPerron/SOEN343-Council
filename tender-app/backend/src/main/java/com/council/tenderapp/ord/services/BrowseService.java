@@ -1,6 +1,7 @@
 package com.council.tenderapp.ord.services;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.stereotype.Service;
 
@@ -17,6 +18,8 @@ import com.council.tenderapp.ord.exceptions.RestaurantNotFoundException;
 import com.council.tenderapp.ord.repositories.MenuItemOptionRepository;
 import com.council.tenderapp.ord.repositories.MenuItemRepository;
 import com.council.tenderapp.ord.repositories.RestaurantRepository;
+import com.council.tenderapp.rvw.dtos.RestaurantRatingSummary;
+import com.council.tenderapp.rvw.services.RestaurantRatingService;
 
 @Service 
 public class BrowseService 
@@ -24,26 +27,36 @@ public class BrowseService
     private final RestaurantRepository restaurantRepository;
     private final MenuItemRepository menuItemRepository;
     private final MenuItemOptionRepository menuItemOptionRepository;
+    private final RestaurantRatingService restaurantRatings;
 
-    public BrowseService(RestaurantRepository restaurantRepository, MenuItemRepository menuItemRepository, MenuItemOptionRepository menuItemOptionRepository) {
+    public BrowseService(RestaurantRepository restaurantRepository, MenuItemRepository menuItemRepository,
+            MenuItemOptionRepository menuItemOptionRepository, RestaurantRatingService restaurantRatings) {
         this.restaurantRepository = restaurantRepository;
         this.menuItemRepository = menuItemRepository;
         this.menuItemOptionRepository = menuItemOptionRepository;
+        this.restaurantRatings = restaurantRatings;
     }
 
     public List<RestaurantResponseDTO> getOpenRestaurants() {
         
         List<RestaurantBrowseProjection> restaurants = restaurantRepository.findRestaurantBrowseByStatus("open");
+        // One grouped query for every listed restaurant instead of one per restaurant.
+        Map<Long, RestaurantRatingSummary> ratings = restaurantRatings.summaries(
+            restaurants.stream().map(RestaurantBrowseProjection::getId).toList());
 
-        return restaurants.stream().map(p-> new RestaurantResponseDTO(
-            p.getId(),
-            p.getName(),
-            p.getStatus(),
-            p.getLatitude(),
-            p.getLongitude(),
-            p.getPhotoUrl()
-        )
-        ).toList();
+        return restaurants.stream().map(p-> {
+            RestaurantRatingSummary rating = ratings.getOrDefault(p.getId(), RestaurantRatingSummary.NONE);
+            return new RestaurantResponseDTO(
+                p.getId(),
+                p.getName(),
+                p.getStatus(),
+                p.getLatitude(),
+                p.getLongitude(),
+                p.getPhotoUrl(),
+                rating.averageRating(),
+                rating.ratingCount()
+            );
+        }).toList();
     }
 
     public MenuResponseDTO getRestaurantMenu(Long restaurantId) {

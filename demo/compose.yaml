@@ -1,0 +1,74 @@
+# Demo stack for the SOEN 343 demo platform (https://council.soen343-demos.dev).
+# Submit this file on the platform. See demo/README.md for the steps.
+#
+#   proxy     nginx, the only public service: /api, /health and the photo paths go to the
+#             backend, everything else to the frontend, so the browser talks to one address
+#   backend   Spring Boot API; data lives in the team's Supabase database
+#   frontend  Expo web build served by `expo serve`
+#
+# After each push to main, replace both image tags with the lines printed in the summary of the
+# "Publish demo images" run on GitHub (Actions tab).
+# Values written ${secret:NAME} come from the group's Secrets page on the platform.
+
+x-demo:
+  web: proxy
+  port: 80
+
+services:
+  proxy:
+    image: nginx:1.27-alpine
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+    command:
+      - /bin/sh
+      - -c
+      - |
+        cat > /etc/nginx/conf.d/default.conf <<'EOF'
+        server {
+          listen 80;
+          server_name _;
+          client_max_body_size 10m;
+          resolver 127.0.0.11 valid=10s ipv6=off;
+          set $$backend http://backend:8080;
+          set $$frontend http://frontend:8081;
+          proxy_set_header Host $$host;
+          proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto https;
+          proxy_read_timeout 55s;
+          location /api/ { proxy_pass $$backend; }
+          location = /health { proxy_pass $$backend; }
+          location /menu-items-imgs/ { proxy_pass $$backend; }
+          location /menu-photos/ { proxy_pass $$backend; }
+          location / { proxy_pass $$frontend; }
+        }
+        EOF
+        exec nginx -g 'daemon off;'
+
+  backend:
+    image: ghcr.io/tarakanner/soen343-council-backend:bd3e55b338fc65e54a02ff49f101ed44b35b7789
+    environment:
+      DB_URL: ${secret:DB_URL}
+      DB_USER: ${secret:DB_USER}
+      DB_PASSWORD: ${secret:DB_PASSWORD}
+      PAYPAL_CLIENT_ID: ${secret:PAYPAL_CLIENT_ID}
+      PAYPAL_CLIENT_SECRET: ${secret:PAYPAL_CLIENT_SECRET}
+      PAYPAL_BASE_URL: https://api-m.sandbox.paypal.com
+      CORS_ALLOWED_ORIGINS: https://council.soen343-demos.dev
+      SPRING_PROFILES_ACTIVE: ""
+      SPRING_SQL_INIT_MODE: never
+      APP_OPERATOR_RESET_ENABLED: "true"
+      SERVER_FORWARD_HEADERS_STRATEGY: framework
+      # The whole group has 2 GB; leave room for the frontend and nginx.
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=50
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/8080'"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 20s
+
+  frontend:
+    image: ghcr.io/tarakanner/soen343-council-frontend:bd3e55b338fc65e54a02ff49f101ed44b35b7789

@@ -12,6 +12,7 @@ import { ApiError } from '@/api/client';
 import { acceptCourierOffer, declineOrder, fetchCourierDuty, goOffDuty, goOnDuty, markOrderDelivered, markOrderPickedUp, type CourierDuty } from '@/api/courierDuty';
 import { fetchLedgerHistory, type LedgerHistoryEntry } from '@/api/orderHistory';
 import { canGoOffDuty, canGoOnDuty, getOrderActionAvailability, isOnDuty, stateLabel } from '@/lib/courierDuty';
+import LoadingScreen from '@/components/LoadingScreen';
 
 // Orders can be assigned at any time, so the panel refreshes itself while open
 const REFRESH_MS = 15000;
@@ -149,7 +150,7 @@ export default function CourierDashboard() {
     } finally { mutating.current = false; if (version === requestId.current) setUpdatingOrder(false); }
   };
 
-  if (!ready) return <SafeAreaView style={styles.page}><ActivityIndicator color="#D42F50" /></SafeAreaView>;
+  if (!ready) return <LoadingScreen />;
   if (!user) return <Redirect href="/auth/login" />;
   if (user.role !== 'courier') return <Redirect href="/account" />;
 

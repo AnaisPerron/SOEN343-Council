@@ -1,14 +1,15 @@
 import { Redirect, useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AccountMenu from '@/components/AccountMenu';
 import CityMap from '@/components/dash/CityMap';
 import { useAuth } from '@/context/AuthContext';
+import LoadingScreen from '@/components/LoadingScreen';
 
 export default function RestaurantDashboard() {
   const { user, ready } = useAuth();
   const router = useRouter();
-  if (!ready) return <SafeAreaView style={styles.page}><ActivityIndicator color="#D42F50" /></SafeAreaView>;
+  if (!ready) return <LoadingScreen />;
   if (!user) return <Redirect href="/auth/login" />;
   if (user.role !== 'restaurant') return <Redirect href="/account" />;
 
