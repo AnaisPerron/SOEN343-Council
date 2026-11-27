@@ -39,10 +39,40 @@ const DROP_SIZE = 16;
 const ORBIT_RADIUS = 96;
 const CYCLE_MS = 2400;
 
-// Phases of one cycle: the drop pulls off the tip, circles the fire, then sinks back in.
+// Phases of one cycle: the drop rises off the tip, circles the fire, and on the last
+// stretch of the lap spirals inward so it lands back on the tip as the circle closes.
 const LEAVE_END = 0.16;
-const ORBIT_END = 0.82;
-const JOIN_END = 0.96;
+const SPIRAL_START = 0.66;
+const ORBIT_END = 0.9;
+
+// The drop's speed around the fire follows a bell curve: it sets off at a gentle base
+// speed, is fastest halfway round, and eases back to that same base speed to rejoin.
+const BASE_SPEED = 0.25; // relative to the peak speed of 1
+const SPEED_SPREAD = 0.18; // width of the bell, as a fraction of the lap
+const ORBIT_KEYFRAMES = 24;
+
+/** Samples the angle travelled under the bell-shaped speed curve, as interpolation keyframes. */
+function orbitKeyframes() {
+  const speed = (u: number) => BASE_SPEED + Math.exp(-((u - 0.5) ** 2) / (2 * SPEED_SPREAD ** 2));
+  const resolution = 240;
+  const distance = [0];
+  for (let i = 1; i <= resolution; i++) {
+    const u0 = (i - 1) / resolution;
+    const u1 = i / resolution;
+    distance.push(distance[i - 1] + ((speed(u0) + speed(u1)) / 2) / resolution);
+  }
+  const total = distance[resolution];
+  const inputRange: number[] = [];
+  const outputRange: string[] = [];
+  for (let k = 0; k <= ORBIT_KEYFRAMES; k++) {
+    const u = k / ORBIT_KEYFRAMES;
+    inputRange.push(LEAVE_END + u * (ORBIT_END - LEAVE_END));
+    outputRange.push(`${(-360 * distance[Math.round(u * resolution)]) / total}deg`);
+  }
+  // Hold still while the drop rises off the tip and once it has rejoined the fire.
+  return { inputRange: [0, ...inputRange, 1], outputRange: ['0deg', ...outputRange, '-360deg'] };
+}
+const ORBIT = orbitKeyframes();
 
 /** Loops a 0 → 1 value forever so each piece can interpolate its own keyframes. */
 function useLoop(duration: number) {
@@ -74,28 +104,25 @@ export default function LoadingScreen({ message = 'Warming things up…' }: { me
 
   // The fire gives a little of itself up when the drop leaves and swells when it comes home.
   const pulse = cycle.interpolate({
-    inputRange: [0, LEAVE_END, ORBIT_END, JOIN_END, 1],
+    inputRange: [0, LEAVE_END, ORBIT_END, ORBIT_END + 0.05, 1],
     outputRange: [1, 0.96, 0.96, 1.05, 1],
   });
 
-  const orbitAngle = cycle.interpolate({
-    inputRange: [0, LEAVE_END, ORBIT_END, 1],
-    outputRange: ['0deg', '0deg', '-360deg', '-360deg'],
-  });
+  const orbitAngle = cycle.interpolate(ORBIT);
   const radius = cycle.interpolate({
-    inputRange: [0, LEAVE_END, ORBIT_END, JOIN_END, 1],
+    inputRange: [0, LEAVE_END, SPIRAL_START, ORBIT_END, 1],
     outputRange: [TIP_DISTANCE - 8, ORBIT_RADIUS, ORBIT_RADIUS, TIP_DISTANCE - 8, TIP_DISTANCE - 8],
   });
   const dropOffset = Animated.multiply(radius, -1);
   const dropScale = cycle.interpolate({
-    inputRange: [0, LEAVE_END, ORBIT_END, JOIN_END, 1],
+    inputRange: [0, LEAVE_END, SPIRAL_START, ORBIT_END, 1],
     outputRange: [0.4, 1, 1, 0.4, 0.4],
   });
-  // Keep the drop's tail trailing behind it: downward as it rises, backward as it
-  // circles, upward as it sinks into the tip.
+  // Keep the drop's tail trailing behind it: downward as it rises, then backward as it
+  // circles and spirals in.
   const dropTurn = cycle.interpolate({
-    inputRange: [0, LEAVE_END * 0.6, LEAVE_END + 0.04, ORBIT_END - 0.04, ORBIT_END + 0.06, 1],
-    outputRange: ['225deg', '225deg', '135deg', '135deg', '45deg', '45deg'],
+    inputRange: [0, LEAVE_END * 0.6, LEAVE_END + 0.04, 1],
+    outputRange: ['225deg', '225deg', '135deg', '135deg'],
   });
 
   return (
