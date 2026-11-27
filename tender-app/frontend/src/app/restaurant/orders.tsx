@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import AccountMenu from '@/components/AccountMenu';
 import { requestJson } from '@/api/client';
+import { fetchOrderRating, type OrderRatingView } from '@/api/orderRating';
 import {
   filterAndSortOrders, isWaitingForCourier, nextOrderToPrepare, ORDER_STATUSES, orderTotal,
   type OrderFilter, type RestaurantOrder, type RestaurantOrderStatus,
@@ -31,6 +32,9 @@ export default function RestaurantOrders() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [message, setMessage] = useState('');
   const [toast, setToast] = useState('');
+  const [ratings, setRatings] = useState<Record<number, OrderRatingView | null>>({});
+  const [ratingLoadingId, setRatingLoadingId] = useState<number | null>(null);
+  const [ratingErrors, setRatingErrors] = useState<Record<number, string>>({});
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   // Bumped before and after each status change so a refresh that overlapped it cannot put the old status back.
@@ -103,6 +107,20 @@ export default function RestaurantOrders() {
     } finally {
       statusWriteVersion.current += 1;
       setUpdatingId(null);
+    }
+  };
+
+  const viewRating = async (orderId: number) => {
+    if (!token || ratingLoadingId != null) return;
+    setRatingLoadingId(orderId);
+    setRatingErrors((current) => ({ ...current, [orderId]: '' }));
+    try {
+      const rating = await fetchOrderRating(orderId, token);
+      setRatings((current) => ({ ...current, [orderId]: rating }));
+    } catch (error) {
+      setRatingErrors((current) => ({ ...current, [orderId]: error instanceof Error ? error.message : 'Could not load the order rating.' }));
+    } finally {
+      setRatingLoadingId(null);
     }
   };
 
@@ -212,6 +230,19 @@ export default function RestaurantOrders() {
             {line.toppings.map((topping, toppingIndex) => <Text key={toppingIndex} style={styles.detailTopping}>+ {topping.name} · {money(topping.additionalCost)} each</Text>)}
           </View>)}
           <View style={styles.totalRow}><Text style={styles.totalLabel}>Order total</Text><Text style={styles.totalValue}>{money(orderTotal(detail))}</Text></View>
+          {(detail.status === 'delivered' || detail.status === 'refunded') && <>
+            <View style={styles.divider} />
+            <Text style={styles.sectionTitle}>Order rating</Text>
+            <Pressable accessibilityRole="button" disabled={ratingLoadingId != null} onPress={() => void viewRating(detail.id)} style={styles.ratingButton}>
+              <Text style={styles.ratingButtonText}>{ratingLoadingId === detail.id ? 'Loading rating…' : 'View rating'}</Text>
+            </Pressable>
+            {!!ratingErrors[detail.id] && <Text accessibilityRole="alert" style={styles.message}>{ratingErrors[detail.id]}</Text>}
+            {ratings[detail.id] && <View accessibilityLabel={`Restaurant rating: ${ratings[detail.id]?.stars} out of 5`}>
+              <Text style={styles.ratingValue}>Restaurant rating: {ratings[detail.id]?.stars}/5</Text>
+              {!!ratings[detail.id]?.comment && <Text style={styles.ratingComment}>Comment: {ratings[detail.id]?.comment}</Text>}
+            </View>}
+            {ratings[detail.id] === null && <Text style={styles.emptyText}>No rating has been submitted for this order.</Text>}
+          </>}
           {detail.status === 'placed' && <View style={styles.actions}>
             <Pressable accessibilityRole="button" style={styles.primaryAction} disabled={updatingId != null} onPress={() => changeStatus('accepted')}><Text style={styles.primaryActionText}>Accept order</Text></Pressable>
             <Pressable accessibilityRole="button" style={styles.secondaryAction} onPress={() => setRejecting(true)}><Text style={styles.secondaryActionText}>Reject order</Text></Pressable>
@@ -347,6 +378,10 @@ const styles = StyleSheet.create({
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 17, marginBottom: 24 },
   totalLabel: { color: '#273039', fontSize: 15, fontWeight: '800' },
   totalValue: { color: '#273039', fontSize: 17, fontWeight: '800' },
+  ratingButton: { alignSelf: 'flex-start', borderWidth: 1, borderColor: '#405766', borderRadius: 7, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 12 },
+  ratingButtonText: { color: '#405766', fontSize: 12, fontWeight: '800' },
+  ratingValue: { color: '#273039', fontSize: 14, fontWeight: '800', marginBottom: 6 },
+  ratingComment: { color: '#68737C', fontSize: 13, lineHeight: 19 },
   actions: { flexDirection: 'row', gap: 10 },
   primaryAction: { backgroundColor: '#26313A', paddingHorizontal: 17, paddingVertical: 13, borderRadius: 7, alignItems: 'center', marginTop: 10, flexGrow: 1 },
   primaryActionText: { color: '#FFF', fontSize: 12, fontWeight: '800' },

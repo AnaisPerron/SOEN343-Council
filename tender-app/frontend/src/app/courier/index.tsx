@@ -9,6 +9,7 @@ import { queueBand, queueBandColor } from '@/lib/queueBands';
 import { styles } from './couriers.styles';
 import { useAuth } from '@/context/AuthContext';
 import { ApiError } from '@/api/client';
+import { fetchOrderRating, type OrderRatingView } from '@/api/orderRating';
 import { acceptCourierOffer, declineOrder, fetchCourierDuty, goOffDuty, goOnDuty, markOrderDelivered, markOrderPickedUp, type CourierDuty } from '@/api/courierDuty';
 import { fetchLedgerHistory, type LedgerHistoryEntry } from '@/api/orderHistory';
 import { canGoOffDuty, canGoOnDuty, getOrderActionAvailability, isOnDuty, stateLabel } from '@/lib/courierDuty';
@@ -25,6 +26,9 @@ export default function CourierDashboard() {
   const [switching, setSwitching] = useState(false);
   const [message, setMessage] = useState('');
   const [history, setHistory] = useState<LedgerHistoryEntry[]>([]);
+  const [ratings, setRatings] = useState<Record<number, OrderRatingView | null>>({});
+  const [ratingLoadingId, setRatingLoadingId] = useState<number | null>(null);
+  const [ratingErrors, setRatingErrors] = useState<Record<number, string>>({});
   const [accepting, setAccepting] = useState(false);
   const [updatingOrder, setUpdatingOrder] = useState(false);
   const mutating = useRef(false);
@@ -150,6 +154,21 @@ export default function CourierDashboard() {
     } finally { mutating.current = false; if (version === requestId.current) setUpdatingOrder(false); }
   };
 
+  const viewRating = async (orderId: number) => {
+    if (!token || ratingLoadingId != null) return;
+    setRatingLoadingId(orderId);
+    setRatingErrors((current) => ({ ...current, [orderId]: '' }));
+    try {
+      const rating = await fetchOrderRating(orderId, token);
+      setRatings((current) => ({ ...current, [orderId]: rating }));
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) signOut();
+      else setRatingErrors((current) => ({ ...current, [orderId]: error instanceof Error ? error.message : 'Could not load the order rating.' }));
+    } finally {
+      setRatingLoadingId(null);
+    }
+  };
+
   if (!ready) return <LoadingScreen />;
   if (!user) return <Redirect href="/auth/login" />;
   if (user.role !== 'courier') return <Redirect href="/account" />;
@@ -222,6 +241,17 @@ export default function CourierDashboard() {
           <Text style={styles.orderTitle}>Order #{entry.orderId}</Text>
           <Text style={styles.orderMuted}>{entry.status.replaceAll('_', ' ').toLowerCase()} · {entry.deliveredAt ? new Date(entry.deliveredAt).toLocaleString() : 'Delivery time unavailable'}</Text>
           <Text style={styles.orderLine}>Total charge {money(entry.totalCharge)}</Text>
+          {(entry.status === 'DELIVERED' || entry.status === 'REFUNDED') && <>
+            <Pressable accessibilityRole="button" disabled={ratingLoadingId != null} onPress={() => void viewRating(entry.orderId)} style={styles.ratingButton}>
+              <Text style={styles.ratingButtonText}>{ratingLoadingId === entry.orderId ? 'Loading rating…' : 'View rating'}</Text>
+            </Pressable>
+            {!!ratingErrors[entry.orderId] && <Text accessibilityRole="alert" style={styles.message}>{ratingErrors[entry.orderId]}</Text>}
+            {ratings[entry.orderId] && <View accessibilityLabel={`Your rating: ${ratings[entry.orderId]?.stars} out of 5`}>
+              <Text style={styles.orderLine}>Your rating: {ratings[entry.orderId]?.stars}/5</Text>
+              {!!ratings[entry.orderId]?.comment && <Text style={styles.orderMuted}>Comment: {ratings[entry.orderId]?.comment}</Text>}
+            </View>}
+            {ratings[entry.orderId] === null && <Text style={styles.orderMuted}>No rating has been submitted for this order.</Text>}
+          </>}
         </View>)}
       {!!message && <Text accessibilityRole="alert" style={styles.message}>{message}</Text>}
       <View style={styles.map}><CityMap refreshKey={mapRefreshKey} onData={setMapData} /></View>
