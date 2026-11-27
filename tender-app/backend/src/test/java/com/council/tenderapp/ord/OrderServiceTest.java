@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
@@ -142,6 +143,35 @@ class OrderServiceTest {
         assertThat(orderService.getAllOrders(restaurantId).get(0).getCourierName()).isNull();
         offer.accept(java.time.Instant.now());
         assertThat(orderService.getAllOrders(restaurantId).get(0).getCourierName()).isEqualTo("Jordan Courier");
+    }
+
+    @Test
+    void emptyRestaurantHistoryAvoidsProfileAndAssignmentLookups() {
+        when(orderRepository.findByRestaurantIdOrderByDateOrderedAscIdAsc(42L)).thenReturn(List.of());
+
+        assertThat(orderService.getAllOrders(42L)).isEmpty();
+
+        verifyNoInteractions(profileRepository, courierProfileRepository, orderEventRepository, assignmentHistory);
+    }
+
+    @Test
+    void deliveredHistoryShowsCourierWithoutAcceptanceEventOrAssignment() {
+        Order delivered = order(42L, OrderStatus.DELIVERED, new Date(1_000L));
+        delivered.setId(10L);
+        delivered.setCourierId(77L);
+        Profile courier = new Profile(Role.COURIER, "Jordan Courier", "jordan@example.test", "hash", "514-555-0101");
+        ReflectionTestUtils.setField(courier, "id", 77L);
+        CourierProfile duty = new CourierProfile(77L);
+        duty.setStatus(CourierStatus.IDLE);
+        when(orderRepository.findByRestaurantIdOrderByDateOrderedAscIdAsc(42L)).thenReturn(List.of(delivered));
+        when(profileRepository.findAllById(List.of(77L))).thenReturn(List.of(courier));
+        when(courierProfileRepository.findAllById(List.of(77L))).thenReturn(List.of(duty));
+
+        OrderResponse response = orderService.getAllOrders(42L).get(0);
+
+        assertThat(response.getCourierName()).isEqualTo("Jordan Courier");
+        assertThat(response.getStatus()).isEqualTo(OrderStatus.DELIVERED);
+        verify(assignmentHistory).findByOrderIdInOrderByAssignedAtDescIdDesc(List.of(10L));
     }
 
     @Test

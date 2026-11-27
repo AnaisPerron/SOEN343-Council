@@ -6,10 +6,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,46 +21,42 @@ import com.council.tenderapp.ord.entities.MenuItemOption;
 import com.council.tenderapp.ord.entities.Order;
 import com.council.tenderapp.ord.entities.OrderLine;
 import com.council.tenderapp.ord.entities.OrderStatus;
-import com.council.tenderapp.ord.exceptions.InvalidOrderException;
-import com.council.tenderapp.ord.exceptions.MenuItemUnavailableException;
 import com.council.tenderapp.ord.repositories.MenuItemOptionRepository;
 import com.council.tenderapp.ord.repositories.MenuItemRepository;
 import com.council.tenderapp.ord.repositories.OrderRepository;
+import com.council.tenderapp.ord.services.OrderPreparation.PreparedOrder;
 import com.council.tenderapp.reg.services.CustomerProfileService;
 import com.council.tenderapp.prc.service.PricingService;
 import com.council.tenderapp.prc.service.LedgerService;
 import com.council.tenderapp.technicalservices.payment.PaymentDeclinedException;
-import com.council.tenderapp.technicalservices.payment.PaymentGateway;
+import com.council.tenderapp.technicalservices.payment.MockCardPayment;
 import com.council.tenderapp.technicalservices.payment.PaymentResult;
+import com.council.tenderapp.technicalservices.payment.PaymentStrategy;
 import com.council.tenderapp.technicalservices.payment.TenderCash;
+import com.council.tenderapp.technicalservices.payment.TenderCashPayment;
 
 @Service
 public class CustomerOrderService {
-    private final BrowseService browseService;
-    private final MenuItemRepository menuItemRepository;
-    private final MenuItemOptionRepository menuItemOptionRepository;
     private final OrderRepository orderRepository;
-    private final PaymentGateway paymentGateway;
     private final PreparationQueueService preparationQueueService;
     private final OrderCancellationService cancellations;
     private final JdbcTemplate jdbc;
     private final CustomerProfileService customerProfileService;
     private final PricingService pricingService;
+    private final OrderPreparation preparation;
     private final LedgerService ledgerService;
     private final TenderCash tenderCash;
-    private final boolean allowMockPayments;
+    // Strategies for direct checkout; PayPal checkout passes its own PayPalPayment.
+    private final PaymentStrategy tenderCashPayment;
+    private final PaymentStrategy cardPayment;
 
     public CustomerOrderService(BrowseService browseService, MenuItemRepository menuItemRepository,
             MenuItemOptionRepository menuItemOptionRepository, OrderRepository orderRepository,
-            PaymentGateway paymentGateway, PreparationQueueService preparationQueueService, JdbcTemplate jdbc,
+            PreparationQueueService preparationQueueService, JdbcTemplate jdbc,
             CustomerProfileService customerProfileService, OrderCancellationService cancellations,
             PricingService pricingService, LedgerService ledgerService, TenderCash tenderCash,
-            @Value("${app.payments.allow-mock:false}") boolean allowMockPayments) {
-        this.browseService = browseService;
-        this.menuItemRepository = menuItemRepository;
-        this.menuItemOptionRepository = menuItemOptionRepository;
+            TenderCashPayment tenderCashPayment, MockCardPayment cardPayment) {
         this.orderRepository = orderRepository;
-        this.paymentGateway = paymentGateway;
         this.preparationQueueService = preparationQueueService;
         this.cancellations = cancellations;
         this.jdbc = jdbc;
@@ -70,36 +64,36 @@ public class CustomerOrderService {
         this.pricingService = pricingService;
         this.ledgerService = ledgerService;
         this.tenderCash = tenderCash;
-        this.allowMockPayments = allowMockPayments;
+        this.tenderCashPayment = tenderCashPayment;
+        this.cardPayment = cardPayment;
+        this.preparation = new OrderPreparation(browseService, menuItemRepository, menuItemOptionRepository,
+                customerProfileService, pricingService);
     }
 
+    /** Direct checkout: Tender Cash when it covers the whole order, otherwise the card strategy. */
     @Transactional
     public OrderResponseDto placeOrder(Long customerId, PlaceOrderRequestDto request) {
-        PreparedOrder prepared = prepareOrder(customerId, request);
+        return checkout(customerId, request, amountDue -> amountDue.signum() == 0 ? tenderCashPayment : cardPayment);
+    }
+
+    /** Checkout with a payment strategy chosen by the caller, e.g. a verified PayPal capture. */
+    @Transactional
+    public OrderResponseDto placeOrder(Long customerId, PlaceOrderRequestDto request, PaymentStrategy payment) {
+        return checkout(customerId, request, amountDue -> payment);
+    }
+
+    private OrderResponseDto checkout(Long customerId, PlaceOrderRequestDto request,
+            Function<BigDecimal, PaymentStrategy> strategyFor) {
+        PreparedOrder prepared = preparation.prepare(customerId, request);
         tenderCash.lockCustomer(customerId);
-        BigDecimal paid = prepared.quote().total().subtract(request.tenderAmount() == 0 ? BigDecimal.ZERO
+        BigDecimal amountDue = prepared.quote().total().subtract(request.tenderAmount() == 0 ? BigDecimal.ZERO
                 : tenderCash.discount(customerId, request.tenderAmount(), prepared.quote().total()));
-        if (paid.signum() > 0 && !allowMockPayments) {
-            throw new InvalidOrderException("Use PayPal checkout for the remaining payment");
-        }
-        PaymentResult payment = paid.signum() == 0 ? PaymentResult.approved("TENDER-CASH") : paymentGateway.charge(customerId, paid);
+        PaymentStrategy strategy = strategyFor.apply(amountDue);
+        PaymentResult payment = strategy.pay(customerId, amountDue);
         if (!payment.approved()) {
             throw new PaymentDeclinedException("Payment declined: " + payment.message());
         }
-        return persistOrder(customerId, request, prepared, payment, paid);
-    }
-
-    @Transactional
-    public OrderResponseDto placePaidOrder(Long customerId, PlaceOrderRequestDto request,
-            String paymentReference, BigDecimal approvedAmount) {
-        PreparedOrder prepared = prepareOrder(customerId, request);
-        tenderCash.lockCustomer(customerId);
-        BigDecimal paid = prepared.quote().total().subtract(request.tenderAmount() == 0 ? BigDecimal.ZERO
-                : tenderCash.discount(customerId, request.tenderAmount(), prepared.quote().total()));
-        if (paid.compareTo(approvedAmount) != 0) {
-            throw new InvalidOrderException("Order price changed after PayPal approval");
-        }
-        return persistOrder(customerId, request, prepared, PaymentResult.approved(paymentReference), paid);
+        return persistOrder(customerId, request, prepared, payment, amountDue);
     }
 
     private OrderResponseDto persistOrder(Long customerId, PlaceOrderRequestDto request,
@@ -135,7 +129,7 @@ public class CustomerOrderService {
         List<OrderLineDto> lineDtos = new ArrayList<>();
         for (int i = 0; i < savedLines.size(); i++) {
             OrderLine line = savedLines.get(i);
-            BigDecimal unitPrice = paidUnitPrice(line.getMenuItem(), request.items().get(i), options);
+            BigDecimal unitPrice = OrderPreparation.paidUnitPrice(line.getMenuItem(), request.items().get(i), options);
             lineDtos.add(new OrderLineDto(line.getMenuItemId(), line.getMenuItem().getName(),
                     line.getQuantity(), unitPrice, unitPrice.multiply(BigDecimal.valueOf(line.getQuantity()))));
         }
@@ -146,69 +140,7 @@ public class CustomerOrderService {
 
     @Transactional(readOnly = true)
     public PricingService.Quote quoteOrder(Long customerId, PlaceOrderRequestDto request) {
-        return prepareOrder(customerId, request).quote();
-    }
-
-    private record PreparedOrder(Map<Long, MenuItem> menu, Map<Long, MenuItemOption> options,
-            String deliveryAddress, Double latitude, Double longitude, PricingService.Quote quote) {}
-
-    private PreparedOrder prepareOrder(Long customerId, PlaceOrderRequestDto request) {
-        boolean override = request.deliveryAddress() != null;
-        if (override && (request.deliveryAddress().isBlank() || request.deliveryLatitude() == null || request.deliveryLongitude() == null)) {
-            throw new InvalidOrderException("Pick a verified delivery address from the suggestions");
-        }
-        if (!override && (request.deliveryLatitude() != null || request.deliveryLongitude() != null)) {
-            throw new InvalidOrderException("A delivery location requires an address");
-        }
-        browseService.checkRestaurantOpen(request.restaurantId());
-        Map<Long, MenuItem> menu = menuItemRepository.findMenuItemsByRestaurantId(request.restaurantId())
-                .stream().collect(Collectors.toMap(MenuItem::getId, Function.identity()));
-
-        for (OrderItemRequestDto item : request.items()) {
-            MenuItem menuItem = menu.get(item.menuItemId());
-            if (menuItem == null) {
-                throw new InvalidOrderException("Menu item " + item.menuItemId()
-                        + " does not belong to restaurant " + request.restaurantId());
-            }
-            if (!"available".equalsIgnoreCase(menuItem.getStatus())) {
-                throw new MenuItemUnavailableException("Menu item " + menuItem.getId()
-                        + " : " + menuItem.getName() + " is not available");
-            }
-        }
-
-        Map<Long, MenuItemOption> options = menuItemOptionRepository
-                .findByMenuItemIdIn(request.items().stream().map(OrderItemRequestDto::menuItemId).distinct().toList())
-                .stream().collect(Collectors.toMap(MenuItemOption::getId, Function.identity()));
-        for (OrderItemRequestDto item : request.items()) {
-            for (Long optionId : item.selectedOptionIds()) {
-                MenuItemOption option = options.get(optionId);
-                if (option == null || !item.menuItemId().equals(option.getMenuItemId())) {
-                    throw new InvalidOrderException("Option " + optionId
-                            + " does not belong to menu item " + item.menuItemId());
-                }
-            }
-        }
-
-        BigDecimal subtotal = request.items().stream()
-                .map(item -> paidUnitPrice(menu.get(item.menuItemId()), item, options)
-                        .multiply(BigDecimal.valueOf(item.quantity())))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        CustomerProfileService.DeliveryAddress savedAddress = customerProfileService.deliveryAddress(customerId).orElse(null);
-        String deliveryAddress = override ? request.deliveryAddress().trim() : savedAddress == null ? null : savedAddress.address();
-        Double deliveryLatitude = override ? request.deliveryLatitude() : savedAddress == null ? null : savedAddress.latitude();
-        Double deliveryLongitude = override ? request.deliveryLongitude() : savedAddress == null ? null : savedAddress.longitude();
-        if (deliveryAddress == null || deliveryAddress.isBlank()) {
-            throw new InvalidOrderException("A verified delivery address is required");
-        }
-        PricingService.Quote quote = pricingService.quote(subtotal, request.restaurantId(), deliveryLatitude, deliveryLongitude);
-        return new PreparedOrder(menu, options, deliveryAddress, deliveryLatitude, deliveryLongitude, quote);
-    }
-
-    // What the customer pays per unit: the item's price plus its selected add-ons.
-    private static BigDecimal paidUnitPrice(MenuItem menuItem, OrderItemRequestDto item, Map<Long, MenuItemOption> options) {
-        return item.selectedOptionIds().stream()
-                .map(optionId -> options.get(optionId).getAdditionalCost())
-                .reduce(menuItem.getPrice(), BigDecimal::add);
+        return preparation.prepare(customerId, request).quote();
     }
 
     @Transactional

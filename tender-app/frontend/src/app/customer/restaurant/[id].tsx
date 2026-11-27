@@ -18,6 +18,7 @@ import CartIconButton from '../components/CartIconButton';
 import { useCart } from '../../../context/CartContext';
 import { useCatalog, useRestaurantMenu } from '../../../context/CatalogContext';
 import { styles } from './restaurant.styles';
+import { formatAverageRating } from '../services/orderRating';
 
 const PANEL_OVERLAP = 30;
 const STICKY_HEIGHT = 106;
@@ -48,11 +49,16 @@ function RestaurantInfoPanel({ restaurant, showMore }: {
   showMore: boolean;
 }) {
   const statusText = restaurant.status === 'open' ? 'Open now' : restaurant.status === 'paused' ? 'Temporarily paused' : 'Closed now';
-  // Rating, address and delivery fee are not in the browse API yet, so only their fallbacks show.
+  // Address and delivery fee are not in the browse API yet, so only their fallbacks show.
   return (
     <View style={styles.info}>
       <Text style={styles.restaurantName}>{restaurant.name}</Text>
-      <View style={styles.ratingLine}>
+      <View style={styles.ratingLine} accessibilityLabel={`Average rating ${formatAverageRating(restaurant.averageRating, restaurant.ratingCount)}`}>
+        {restaurant.averageRating != null && <Text style={styles.rating}>★</Text>}
+        <Text style={restaurant.averageRating != null ? styles.rating : styles.muted}>
+          {formatAverageRating(restaurant.averageRating, restaurant.ratingCount)}
+        </Text>
+        <Text style={styles.dot}>·</Text>
         <Text style={styles.muted}>{statusText}</Text>
       </View>
       <View style={styles.fulfillmentRow}>
@@ -88,7 +94,7 @@ export default function RestaurantDetails({ restaurantId, onBack }: {
   restaurantId?: number;
   onBack?: () => void;
 } = {}) {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, from } = useLocalSearchParams<{ id: string; from?: string }>();
   const router = useRouter();
   const { lines } = useCart();
   const cartCount = lines.reduce((count, line) => count + line.quantity, 0);
@@ -107,7 +113,13 @@ export default function RestaurantDetails({ restaurantId, onBack }: {
   const resolvedRestaurantId = restaurantId ?? Number(id);
   const restaurant = restaurants.find((entry) => entry.id === resolvedRestaurantId);
   const { menu, status: menuStatus, error: menuError, retry: retryMenu } = useRestaurantMenu(restaurant?.id);
-  const goToRestaurants = () => onBack ? onBack() : router.replace('/customer/home/home');
+  const fromDiscover = from === 'discover';
+  const backLabel = fromDiscover ? 'Back to Discover' : 'Back to restaurants';
+  const goToRestaurants = () => {
+    if (onBack) return onBack();
+    if (fromDiscover && router.canGoBack()) return router.back();
+    router.replace(fromDiscover ? '/customer/discover' : '/customer/home/home');
+  };
   const coverHeight = Math.max(290, Math.min(windowHeight * 0.39, 390));
   const items = useMemo(() => menu?.items ?? [], [menu]);
   const categories = useMemo(() => [...new Set(items.map(categoryOf))], [items]);
@@ -121,7 +133,7 @@ export default function RestaurantDetails({ restaurantId, onBack }: {
   }
 
   if (!restaurant) {
-    return <View style={styles.notFound}><Text style={styles.restaurantName}>Restaurant not found</Text><TouchableOpacity onPress={goToRestaurants}><Text style={styles.backLink}>Back to restaurants</Text></TouchableOpacity></View>;
+    return <View style={styles.notFound}><Text style={styles.restaurantName}>Restaurant not found</Text><TouchableOpacity onPress={goToRestaurants}><Text style={styles.backLink}>{backLabel}</Text></TouchableOpacity></View>;
   }
 
   const goToCategory = (category: string) => {
@@ -130,7 +142,7 @@ export default function RestaurantDetails({ restaurantId, onBack }: {
   };
 
   const openItem = (item: CatalogItem) => {
-    router.push({ pathname: '/customer/menu-item/[id]', params: { id: String(item.id), restaurantId: String(restaurant.id) } });
+    router.push({ pathname: '/customer/menu-item/[id]', params: { id: String(item.id), restaurantId: String(restaurant.id), ...(fromDiscover ? { from: 'discover' } : {}) } });
   };
 
   return (
@@ -140,7 +152,7 @@ export default function RestaurantDetails({ restaurantId, onBack }: {
         setCoverControlsVisible(offset < coverHeight - PANEL_OVERLAP - insets.top - 60);
       }} foreground={<>
       {coverControlsVisible && !stickyVisible && <View pointerEvents="box-none" style={[styles.coverControls, { top: insets.top + 12 }]}>
-        <IconButton label="Back to restaurants" symbol="‹" onPress={goToRestaurants} />
+        <IconButton label={backLabel} symbol="‹" onPress={goToRestaurants} />
         <View style={styles.controlGroup}>
           <CartIconButton count={cartCount} tone="dark" onPress={() => router.push('/customer/cart/cart')} />
           <IconButton label="Search menu" symbol="⌕" onPress={() => setSearchOpen(true)} />
@@ -150,7 +162,7 @@ export default function RestaurantDetails({ restaurantId, onBack }: {
       </View>}
       {(stickyVisible || searchOpen) && <View style={[styles.sticky, { paddingTop: insets.top }]}>
         <View style={styles.stickyTop}>
-          <IconButton label="Back to restaurants" symbol="‹" onPress={goToRestaurants} light />
+          <IconButton label={backLabel} symbol="‹" onPress={goToRestaurants} light />
           {searchOpen ? <TextInput autoFocus value={query} onChangeText={setQuery} placeholder="Search menu" placeholderTextColor="#9F9092" style={styles.searchInput} returnKeyType="search" /> : <Text numberOfLines={1} style={styles.stickyName}>{restaurant.name}</Text>}
           <IconButton label={searchOpen ? 'Close search' : 'Search menu'} symbol={searchOpen ? '×' : '⌕'} onPress={() => { setSearchOpen((value) => !value); setQuery(''); }} light />
           <CartIconButton count={cartCount} onPress={() => router.push('/customer/cart/cart')} />

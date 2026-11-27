@@ -13,7 +13,8 @@ export interface CatalogMenu {
   options: MenuItemOption[];
 }
 
-type RestaurantDto = { id: number; name: string; status: string; latitude: number | null; longitude: number | null; photoUrl: string | null };
+type RestaurantDto = { id: number; name: string; status: string; latitude: number | null; longitude: number | null; photoUrl: string | null;
+  averageRating?: number | null; ratingCount?: number };
 type MenuItemDto = { id: number; menu_id: number; name: string; price: number; description: string | null; available: boolean; photoUrl: string | null; category?: string | null };
 type MenuItemOptionDto = { id: number; menu_item_id: number; name: string; additional_cost: number };
 type MenuResponseDto = { menuItems: MenuItemDto[]; menuItemOptions: MenuItemOptionDto[] };
@@ -44,6 +45,8 @@ export async function fetchOpenRestaurants(token: string): Promise<Restaurant[]>
     latitude: restaurant.latitude,
     longitude: restaurant.longitude,
     photoUrl: resolvePhotoUrl(restaurant.photoUrl),
+    averageRating: restaurant.averageRating == null ? null : Number(restaurant.averageRating),
+    ratingCount: Number(restaurant.ratingCount ?? 0),
   }));
 }
 
