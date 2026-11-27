@@ -36,7 +36,7 @@ TRUNCATE TABLE
 RESTART IDENTITY;
 
 -- ---------------- REG: USERS ----------------
--- IDs will be 1..9 in listed order thanks to RESTART IDENTITY
+-- IDs will be 1..21 in listed order thanks to RESTART IDENTITY
 -- Fictional demo phone numbers satisfy the required users.phone column
 INSERT INTO users (role, name, email, password_hash, phone) VALUES
 ('customer', 'Alice Martin', 'alice@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550101'), -- 1
@@ -48,16 +48,16 @@ INSERT INTO users (role, name, email, password_hash, phone) VALUES
 ('courier', 'Nora Courier', 'nora@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550107'), -- 7
 ('operator', 'Olivia Operator', 'operator@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550108'), -- 8
 ('staff', 'Cafe Nord', 'cafenord@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550109'), -- 9
-('staff', 'Historical Restaurant', 'cafenord@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550110'); -- 10
-('staff', 'Pho''nomenal', 'phonomenal@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550111'); -- 11
-('staff', 'The Blue Dog', 'bluedog@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550112'); -- 12
-('staff', 'Kam''s Craves', 'kamcraves@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550113'); -- 13
-('staff', 'Sam''s London UK Shop', 'samshop@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550114'); -- 14
-('staff', 'Jack Subs', 'cafenord@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550115'); -- 15
-('staff', 'Little Beijing', 'littlebeijing@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550116'); -- 16
-('staff', 'Brat und Würst', 'bratundwurst@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550117'); -- 17
-('staff', 'Cafe Sud', 'cafesud@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550118'); -- 18
-('staff', 'Cafe Ouest', 'cafeouest@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550119'); -- 19
+('staff', 'Historical Restaurant', 'historicalrestaurant@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550110'), -- 10
+('staff', 'Pho''nomenal', 'phonomenal@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550111'), -- 11
+('staff', 'The Blue Dog', 'bluedog@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550112'), -- 12
+('staff', 'Kam''s Craves', 'kamcraves@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550113'), -- 13
+('staff', 'Sam''s London UK Shop', 'samshop@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550114'), -- 14
+('staff', 'Jack Subs', 'jacksubs@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550115'), -- 15
+('staff', 'Little Beijing', 'littlebeijing@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550116'), -- 16
+('staff', 'Brat und Würst', 'bratundwurst@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550117'), -- 17
+('staff', 'Cafe Sud', 'cafesud@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550118'), -- 18
+('staff', 'Cafe Ouest', 'cafeouest@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550119'), -- 19
 ('courier', 'Bob Courier', 'bob@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550120'), -- 20
 ('courier', 'Ted Courier', 'ted@demo.test', '$2y$10$S6fasfa9HK9ZwYkQF0rt/OSV5PIm/eUDvHtHuKu.dR4QdoWbo3dfi', '+15145550121'); -- 21
 
@@ -72,8 +72,8 @@ INSERT INTO operator_profiles (user_id) VALUES
 
 INSERT INTO courier_profiles (user_id, latitude, longitude, status) VALUES
 (6, 45.5090, -73.5730, 'idle'),
-(7, 45.5180, -73.5610, 'offline');
-(20, 45.5162, -73.5620, 'idle');
+(7, 45.5180, -73.5610, 'offline'),
+(20, 45.5162, -73.5620, 'idle'),
 (21, 45.5205, -73.5710, 'offline');
 
 -- ---------------- ORD: RESTAURANTS / MENUS ----------------
@@ -120,7 +120,7 @@ INSERT INTO menus (restaurant_id) VALUES
 (10),
 (11),
 (12),
-(13)
+(13),
 (14);
 
 -- menu photos are served by the backend
@@ -132,7 +132,7 @@ INSERT INTO menu_items (menu_id, name, price, status, photo_url) VALUES
 (2, 'Harvest grain bowl', 15.75, 'available', '/menu-items-imgs/harvest-grain-bowl.jpg'), -- 4
 (2, 'Miso tofu bowl', 14.00, 'available', '/menu-items-imgs/miso-tofu-bowl.jpg'), -- 5
 (3, 'Smoked salmon bagel', 12.50, 'available', '/menu-items-imgs/smoked-salmon-bagel.jpg'), -- 6
-(4, 'Margherita pizza', 17.00, 'available', '/menu-items-imgs/margherita-pizza.jpg'); -- 7
+(4, 'Margherita pizza', 17.00, 'available', '/menu-items-imgs/margherita-pizza.jpg'), -- 7
 (6, 'Pho beef bowl', 18.00, 'available', '/menu-items-imgs/pho-beef-bowl.jpg'), -- 8
 (7, 'Onion rings', 7.50, 'available', '/menu-items-imgs/onion-rings.jpg'), -- 9
 (8, 'Indian spread', 16.50, 'available', '/menu-items-imgs/indian-food.jpg'), -- 10
