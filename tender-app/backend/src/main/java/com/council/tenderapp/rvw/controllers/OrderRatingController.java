@@ -1,8 +1,11 @@
 package com.council.tenderapp.rvw.controllers;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -11,7 +14,9 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.council.tenderapp.rvw.dtos.OrderRatingResponseDto;
+import com.council.tenderapp.rvw.dtos.OrderRatingViewDto;
 import com.council.tenderapp.rvw.dtos.SubmitRatingRequestDto;
+import com.council.tenderapp.reg.security.Session;
 import com.council.tenderapp.rvw.services.OrderRatingService;
 
 import jakarta.validation.Valid;
@@ -23,6 +28,14 @@ public class OrderRatingController {
 
     public OrderRatingController(OrderRatingService ratings) {
         this.ratings = ratings;
+    }
+
+    @GetMapping
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'COURIER')")
+    public ResponseEntity<OrderRatingViewDto> view(Authentication authentication, @PathVariable Long orderId) {
+        Session session = (Session) authentication.getDetails();
+        OrderRatingViewDto rating = ratings.view(orderId, session.role(), session.accountId(), session.restaurantId());
+        return rating == null ? ResponseEntity.noContent().build() : ResponseEntity.ok(rating);
     }
 
     @PostMapping
