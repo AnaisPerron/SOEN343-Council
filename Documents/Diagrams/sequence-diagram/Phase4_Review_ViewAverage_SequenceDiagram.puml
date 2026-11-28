@@ -1,0 +1,37 @@
+@startuml
+title R-RVW-02 Show Restaurant average
+
+actor Customer as C
+participant "Customer App" as UI
+participant BrowseController as BC
+participant BrowseService as BS
+participant RestaurantRepository as RestR
+participant RestaurantRatingService as RRS
+participant OrderRatingRepository as RR
+
+C -> UI : Open restaurant list
+UI -> BC : GET restaurants
+BC -> BS : getOpenRestaurants()
+BS -> RestR : findRestaurantBrowseByStatus("open")
+RestR --> BS : List<RestaurantBrowseProjection>
+BS -> RRS : summaries(restaurantIds)
+RRS -> RRS : Preload every id with\nRestaurantRatingSummary.NONE
+RRS -> RR : restaurantStarTotals(restaurantIds)
+
+RR --> RRS : List<RestaurantStarTotals>
+
+loop each restaurant that has ratings
+    RRS -> RRS : summary(starSum, ratingCount)
+    alt ratingCount == 0
+        RRS -> RRS : NONE (average = null)
+    else ratingCount > 0
+        RRS -> RRS : starSum / ratingCount,\n1 decimal, HALF_UP
+    end
+end
+
+RRS --> BS : Map<restaurantId, RestaurantRatingSummary>
+BS -> BS : Build RestaurantResponseDTO\n(averageRating, ratingCount) per restaurant
+BS --> BC : List<RestaurantResponseDTO>
+BC --> UI : 200 OK
+UI --> C : Restaurant cards with average stars\n(or no rating yet)
+@enduml
