@@ -1,0 +1,68 @@
+name: SonarQube Historical Snapshot
+
+on:
+  workflow_dispatch:
+    inputs:
+      snapshot:
+        description: Git tag to analyze
+        required: true
+        type: choice
+        options:
+          - phase4-refactored
+          - phase4
+
+permissions:
+  contents: read
+
+jobs:
+  sonar-historical:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout historical snapshot
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.snapshot }}
+          fetch-depth: 0
+
+      - name: Record the exact analyzed commit
+        shell: pwsh
+        run: |
+          $commit = git rev-parse HEAD
+          Write-Host "Requested snapshot: ${{ inputs.snapshot }}"
+          git log -1 --format="%H %s"
+          git status --short
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "Snapshot: ${{ inputs.snapshot }}"
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "Analyzed commit: $commit"
+
+      - name: Use the Phase III scan settings
+        shell: pwsh
+        run: |
+          # A later tag may contain sonar-project.properties with a different scope.
+          # The scan arguments below reproduce the Phase III workflow instead.
+          if (Test-Path -LiteralPath sonar-project.properties) {
+            Remove-Item -LiteralPath sonar-project.properties
+          }
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Build backend
+        shell: pwsh
+        working-directory: tender-app/backend
+        run: .\mvnw.cmd -B verify
+
+      - name: SonarQube Cloud Scan
+        uses: SonarSource/sonarqube-scan-action@59202af334b4ba7b5db01b701b8e79f8b3bef0f4 # v8.5.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.organization=anaisperron
+            -Dsonar.projectKey=AnaisPerron_SOEN343-Council
+            -Dsonar.sources=tender-app/backend/src/main/java,tender-app/frontend/src
+            -Dsonar.java.binaries=tender-app/backend/target/classes
+            -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/target/**,**/coverage/**
