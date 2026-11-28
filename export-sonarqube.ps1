@@ -1,6 +1,9 @@
 param(
     [Parameter(Mandatory)]
-    [string]$OutputDirectory
+    [string]$OutputDirectory,
+
+    # Export a pull-request analysis (e.g. 243) instead of the main-branch analysis.
+    [string]$PullRequest
 )
 
 $project = "AnaisPerron_SOEN343-Council"
@@ -31,6 +34,7 @@ do {
         ps         = 500
         p          = $page
     }
+    if ($PullRequest) { $query.pullRequest = $PullRequest }
 
     $parameters = ($query.GetEnumerator() | ForEach-Object {
         "$([uri]::EscapeDataString($_.Key))=$([uri]::EscapeDataString([string]$_.Value))"
@@ -73,7 +77,7 @@ $page = 1
 
 do {
     $response = Invoke-RestMethod `
-        -Uri "$base/api/issues/search?componentKeys=$project&ps=500&p=$page" `
+        -Uri "$base/api/issues/search?componentKeys=$project&ps=500&p=$page$(if ($PullRequest) { "&pullRequest=$PullRequest" })" `
         -Headers $headers
 
     $issues += @($response.issues)

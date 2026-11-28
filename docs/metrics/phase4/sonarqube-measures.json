@@ -112,7 +112,7 @@
                      ]
     },
     {
-        "id":  "AaIY8O0f6YLRJOyMpPp1",
+        "id":  "AaIgN3QFvdQeKIw9d3l8",
         "key":  "AnaisPerron_SOEN343-Council:tender-app/backend/docs/migrations/2026-11-25-order-ratings.sql",
         "name":  "2026-11-25-order-ratings.sql",
         "qualifier":  "FIL",
@@ -625,6 +625,34 @@
                      ]
     },
     {
+        "id":  "AaIgKzGqMcbYtfb9wdxB",
+        "key":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/java/com/council/tenderapp/dlv/services/AssignmentAdoption.java",
+        "name":  "AssignmentAdoption.java",
+        "qualifier":  "FIL",
+        "path":  "tender-app/backend/src/main/java/com/council/tenderapp/dlv/services/AssignmentAdoption.java",
+        "language":  "java",
+        "measures":  [
+                         {
+                             "metric":  "cognitive_complexity",
+                             "value":  "12",
+                             "bestValue":  false
+                         },
+                         {
+                             "metric":  "complexity",
+                             "value":  "13"
+                         },
+                         {
+                             "metric":  "ncloc",
+                             "value":  "44"
+                         },
+                         {
+                             "metric":  "code_smells",
+                             "value":  "0",
+                             "bestValue":  true
+                         }
+                     ]
+    },
+    {
         "id":  "AaIfj2dZUseLLAwL4dIk",
         "key":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/test/java/com/council/tenderapp/dlv/AssignmentFlowIntegrationTest.java",
         "name":  "AssignmentFlowIntegrationTest.java",
@@ -718,16 +746,16 @@
         "measures":  [
                          {
                              "metric":  "cognitive_complexity",
-                             "value":  "40",
+                             "value":  "28",
                              "bestValue":  false
                          },
                          {
                              "metric":  "complexity",
-                             "value":  "53"
+                             "value":  "41"
                          },
                          {
                              "metric":  "ncloc",
-                             "value":  "135"
+                             "value":  "114"
                          },
                          {
                              "metric":  "code_smells",
@@ -1681,7 +1709,7 @@
                      ]
     },
     {
-        "id":  "AaId0L3mL2rkli1a-BNj",
+        "id":  "AaIgN3QGvdQeKIw9d3mH",
         "key":  "AnaisPerron_SOEN343-Council:compose.deploy.yaml",
         "name":  "compose.deploy.yaml",
         "qualifier":  "FIL",
@@ -1729,7 +1757,7 @@
                      ]
     },
     {
-        "id":  "AaIdzKO9OHYb8rn6w5JC",
+        "id":  "AaIgN3QGvdQeKIw9d3mP",
         "key":  "AnaisPerron_SOEN343-Council:demo/compose.yaml",
         "name":  "compose.yaml",
         "qualifier":  "FIL",
@@ -2938,16 +2966,16 @@
         "measures":  [
                          {
                              "metric":  "cognitive_complexity",
-                             "value":  "38",
+                             "value":  "9",
                              "bestValue":  false
                          },
                          {
                              "metric":  "complexity",
-                             "value":  "45"
+                             "value":  "16"
                          },
                          {
                              "metric":  "ncloc",
-                             "value":  "206"
+                             "value":  "134"
                          },
                          {
                              "metric":  "code_smells",
@@ -3629,7 +3657,7 @@
                      ]
     },
     {
-        "id":  "AaId0pAIQ8uig-Dc1ZgG",
+        "id":  "AaIgN3QGvdQeKIw9d3mD",
         "key":  "AnaisPerron_SOEN343-Council:tender-app/frontend/src/components/customer/discover.styles.ts",
         "name":  "discover.styles.ts",
         "qualifier":  "FIL",
@@ -3657,7 +3685,7 @@
                      ]
     },
     {
-        "id":  "AaId0pAHQ8uig-Dc1ZgE",
+        "id":  "AaIgN3QGvdQeKIw9d3l-",
         "key":  "AnaisPerron_SOEN343-Council:tender-app/frontend/src/app/customer/discover.tsx",
         "name":  "discover.tsx",
         "qualifier":  "FIL",
@@ -3925,7 +3953,7 @@
                      ]
     },
     {
-        "id":  "AaIfj2dwUseLLAwL4dJ3",
+        "id":  "AaIgN3QGvdQeKIw9d3mS",
         "key":  "AnaisPerron_SOEN343-Council:export-sonarqube.ps1",
         "name":  "export-sonarqube.ps1",
         "qualifier":  "FIL",
@@ -4505,7 +4533,7 @@
                      ]
     },
     {
-        "id":  "AaIY8O0f6YLRJOyMpPpk",
+        "id":  "AaIgN3QFvdQeKIw9d3lq",
         "key":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/java/com/council/tenderapp/rvw/exceptions/InvalidRatingException.java",
         "name":  "InvalidRatingException.java",
         "qualifier":  "FIL",
@@ -4757,7 +4785,7 @@
                      ]
     },
     {
-        "id":  "AaIdrUb1yapA4lvseT53",
+        "id":  "AaIgN3QGvdQeKIw9d3mG",
         "key":  "AnaisPerron_SOEN343-Council:tender-app/frontend/src/components/LoadingScreen.tsx",
         "name":  "LoadingScreen.tsx",
         "qualifier":  "FIL",
@@ -6857,6 +6885,34 @@
                      ]
     },
     {
+        "id":  "AaIgKzGZMcbYtfb9wdw4",
+        "key":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/test/java/com/council/tenderapp/ord/OrderAccessCharacterizationTest.java",
+        "name":  "OrderAccessCharacterizationTest.java",
+        "qualifier":  "FIL",
+        "path":  "tender-app/backend/src/test/java/com/council/tenderapp/ord/OrderAccessCharacterizationTest.java",
+        "language":  "java",
+        "measures":  [
+                         {
+                             "metric":  "complexity",
+                             "value":  "28"
+                         },
+                         {
+                             "metric":  "ncloc",
+                             "value":  "180"
+                         },
+                         {
+                             "metric":  "cognitive_complexity",
+                             "value":  "0",
+                             "bestValue":  true
+                         },
+                         {
+                             "metric":  "code_smells",
+                             "value":  "0",
+                             "bestValue":  true
+                         }
+                     ]
+    },
+    {
         "id":  "AaILqwPUkR43N7b3DV8i",
         "key":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/java/com/council/tenderapp/ord/exceptions/OrderAccessDeniedException.java",
         "name":  "OrderAccessDeniedException.java",
@@ -6885,7 +6941,35 @@
                      ]
     },
     {
-        "id":  "AaIY8O0f6YLRJOyMpPpl",
+        "id":  "AaIgKzGhMcbYtfb9wdxA",
+        "key":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/java/com/council/tenderapp/ord/services/OrderAccessPolicy.java",
+        "name":  "OrderAccessPolicy.java",
+        "qualifier":  "FIL",
+        "path":  "tender-app/backend/src/main/java/com/council/tenderapp/ord/services/OrderAccessPolicy.java",
+        "language":  "java",
+        "measures":  [
+                         {
+                             "metric":  "cognitive_complexity",
+                             "value":  "1",
+                             "bestValue":  false
+                         },
+                         {
+                             "metric":  "complexity",
+                             "value":  "5"
+                         },
+                         {
+                             "metric":  "ncloc",
+                             "value":  "15"
+                         },
+                         {
+                             "metric":  "code_smells",
+                             "value":  "0",
+                             "bestValue":  true
+                         }
+                     ]
+    },
+    {
+        "id":  "AaIgN3QFvdQeKIw9d3lr",
         "key":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/java/com/council/tenderapp/rvw/exceptions/OrderAlreadyRatedException.java",
         "name":  "OrderAlreadyRatedException.java",
         "qualifier":  "FIL",
@@ -7006,16 +7090,16 @@
         "measures":  [
                          {
                              "metric":  "cognitive_complexity",
-                             "value":  "6",
+                             "value":  "4",
                              "bestValue":  false
                          },
                          {
                              "metric":  "complexity",
-                             "value":  "10"
+                             "value":  "8"
                          },
                          {
                              "metric":  "ncloc",
-                             "value":  "39"
+                             "value":  "34"
                          },
                          {
                              "metric":  "code_smells",
@@ -7034,12 +7118,12 @@
         "measures":  [
                          {
                              "metric":  "cognitive_complexity",
-                             "value":  "5",
+                             "value":  "4",
                              "bestValue":  false
                          },
                          {
                              "metric":  "complexity",
-                             "value":  "11"
+                             "value":  "10"
                          },
                          {
                              "metric":  "ncloc",
@@ -7641,6 +7725,34 @@
                      ]
     },
     {
+        "id":  "AaIgKzGhMcbYtfb9wdw_",
+        "key":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/java/com/council/tenderapp/ord/services/OrderPreparation.java",
+        "name":  "OrderPreparation.java",
+        "qualifier":  "FIL",
+        "path":  "tender-app/backend/src/main/java/com/council/tenderapp/ord/services/OrderPreparation.java",
+        "language":  "java",
+        "measures":  [
+                         {
+                             "metric":  "cognitive_complexity",
+                             "value":  "21",
+                             "bestValue":  false
+                         },
+                         {
+                             "metric":  "complexity",
+                             "value":  "27"
+                         },
+                         {
+                             "metric":  "ncloc",
+                             "value":  "104"
+                         },
+                         {
+                             "metric":  "code_smells",
+                             "value":  "0",
+                             "bestValue":  true
+                         }
+                     ]
+    },
+    {
         "id":  "AaIfj2drUseLLAwL4dJc",
         "key":  "AnaisPerron_SOEN343-Council:tender-app/frontend/src/tests/restaurant/orderQueue.test.ts",
         "name":  "orderQueue.test.ts",
@@ -7697,7 +7809,7 @@
                      ]
     },
     {
-        "id":  "AaIY8O0f6YLRJOyMpPpu",
+        "id":  "AaIgN3QFvdQeKIw9d3l1",
         "key":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/java/com/council/tenderapp/rvw/entities/OrderRating.java",
         "name":  "OrderRating.java",
         "qualifier":  "FIL",
@@ -7725,7 +7837,7 @@
                      ]
     },
     {
-        "id":  "AaIfj2dsUseLLAwL4dJp",
+        "id":  "AaIgN3QGvdQeKIw9d3mA",
         "key":  "AnaisPerron_SOEN343-Council:tender-app/frontend/src/tests/orderRating.test.ts",
         "name":  "orderRating.test.ts",
         "qualifier":  "FIL",
@@ -7753,7 +7865,7 @@
                      ]
     },
     {
-        "id":  "AaIfj2drUseLLAwL4dJh",
+        "id":  "AaIgN3QGvdQeKIw9d3l_",
         "key":  "AnaisPerron_SOEN343-Council:tender-app/frontend/src/tests/customer/orderRating.test.ts",
         "name":  "orderRating.test.ts",
         "qualifier":  "FIL",
@@ -7781,7 +7893,7 @@
                      ]
     },
     {
-        "id":  "AaIY8O0f6YLRJOyMpPp2",
+        "id":  "AaIgN3QGvdQeKIw9d3l9",
         "key":  "AnaisPerron_SOEN343-Council:tender-app/frontend/src/app/customer/services/orderRating.ts",
         "name":  "orderRating.ts",
         "qualifier":  "FIL",
@@ -7809,7 +7921,7 @@
                      ]
     },
     {
-        "id":  "AaIfQz5qO1rtQPqsiBTn",
+        "id":  "AaIgN3QGvdQeKIw9d3mB",
         "key":  "AnaisPerron_SOEN343-Council:tender-app/frontend/src/api/orderRating.ts",
         "name":  "orderRating.ts",
         "qualifier":  "FIL",
@@ -7837,7 +7949,7 @@
                      ]
     },
     {
-        "id":  "AaIY8O0f6YLRJOyMpPpy",
+        "id":  "AaIgN3QFvdQeKIw9d3l5",
         "key":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/java/com/council/tenderapp/rvw/controllers/OrderRatingController.java",
         "name":  "OrderRatingController.java",
         "qualifier":  "FIL",
@@ -7865,7 +7977,7 @@
                      ]
     },
     {
-        "id":  "AaIfj2dbUseLLAwL4dJN",
+        "id":  "AaIgN3QEvdQeKIw9d3ll",
         "key":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/test/java/com/council/tenderapp/rvw/OrderRatingControllerTest.java",
         "name":  "OrderRatingControllerTest.java",
         "qualifier":  "FIL",
@@ -7893,7 +8005,7 @@
                      ]
     },
     {
-        "id":  "AaIY8O0f6YLRJOyMpPpw",
+        "id":  "AaIgN3QFvdQeKIw9d3l3",
         "key":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/java/com/council/tenderapp/rvw/repositories/OrderRatingRepository.java",
         "name":  "OrderRatingRepository.java",
         "qualifier":  "FIL",
@@ -7921,7 +8033,7 @@
                      ]
     },
     {
-        "id":  "AaIY8O0f6YLRJOyMpPpn",
+        "id":  "AaIgN3QFvdQeKIw9d3lt",
         "key":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/java/com/council/tenderapp/rvw/dtos/OrderRatingResponseDto.java",
         "name":  "OrderRatingResponseDto.java",
         "qualifier":  "FIL",
@@ -7949,7 +8061,7 @@
                      ]
     },
     {
-        "id":  "AaIY8O0f6YLRJOyMpPpr",
+        "id":  "AaIgN3QFvdQeKIw9d3ly",
         "key":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/java/com/council/tenderapp/rvw/services/OrderRatingService.java",
         "name":  "OrderRatingService.java",
         "qualifier":  "FIL",
@@ -7958,12 +8070,12 @@
         "measures":  [
                          {
                              "metric":  "cognitive_complexity",
-                             "value":  "17",
+                             "value":  "16",
                              "bestValue":  false
                          },
                          {
                              "metric":  "complexity",
-                             "value":  "25"
+                             "value":  "24"
                          },
                          {
                              "metric":  "ncloc",
@@ -7977,7 +8089,7 @@
                      ]
     },
     {
-        "id":  "AaIfj2dbUseLLAwL4dJP",
+        "id":  "AaIgN3QEvdQeKIw9d3lm",
         "key":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/test/java/com/council/tenderapp/rvw/OrderRatingServiceIntegrationTest.java",
         "name":  "OrderRatingServiceIntegrationTest.java",
         "qualifier":  "FIL",
@@ -8005,7 +8117,7 @@
                      ]
     },
     {
-        "id":  "AaIfQz5lO1rtQPqsiBTm",
+        "id":  "AaIgN3QFvdQeKIw9d3lv",
         "key":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/java/com/council/tenderapp/rvw/dtos/OrderRatingViewDto.java",
         "name":  "OrderRatingViewDto.java",
         "qualifier":  "FIL",
@@ -8136,6 +8248,34 @@
                          {
                              "metric":  "ncloc",
                              "value":  "82"
+                         },
+                         {
+                             "metric":  "code_smells",
+                             "value":  "0",
+                             "bestValue":  true
+                         }
+                     ]
+    },
+    {
+        "id":  "AaIgKzGhMcbYtfb9wdw-",
+        "key":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/java/com/council/tenderapp/ord/services/OrderResponseAssembler.java",
+        "name":  "OrderResponseAssembler.java",
+        "qualifier":  "FIL",
+        "path":  "tender-app/backend/src/main/java/com/council/tenderapp/ord/services/OrderResponseAssembler.java",
+        "language":  "java",
+        "measures":  [
+                         {
+                             "metric":  "cognitive_complexity",
+                             "value":  "25",
+                             "bestValue":  false
+                         },
+                         {
+                             "metric":  "complexity",
+                             "value":  "33"
+                         },
+                         {
+                             "metric":  "ncloc",
+                             "value":  "128"
                          },
                          {
                              "metric":  "code_smells",
@@ -8322,16 +8462,16 @@
         "measures":  [
                          {
                              "metric":  "cognitive_complexity",
-                             "value":  "37",
+                             "value":  "11",
                              "bestValue":  false
                          },
                          {
                              "metric":  "complexity",
-                             "value":  "72"
+                             "value":  "35"
                          },
                          {
                              "metric":  "ncloc",
-                             "value":  "416"
+                             "value":  "295"
                          },
                          {
                              "metric":  "code_smells",
@@ -9509,7 +9649,7 @@
                      ]
     },
     {
-        "id":  "AaIfj2dbUseLLAwL4dJR",
+        "id":  "AaIgN3QEvdQeKIw9d3lo",
         "key":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/test/java/com/council/tenderapp/rvw/RatingFlowEndToEndTest.java",
         "name":  "RatingFlowEndToEndTest.java",
         "qualifier":  "FIL",
@@ -9537,7 +9677,7 @@
                      ]
     },
     {
-        "id":  "AaIY8O0f6YLRJOyMpPp3",
+        "id":  "AaIgN3QGvdQeKIw9d3mF",
         "key":  "AnaisPerron_SOEN343-Council:tender-app/frontend/src/components/RatingForm.tsx",
         "name":  "RatingForm.tsx",
         "qualifier":  "FIL",
@@ -9789,7 +9929,7 @@
                      ]
     },
     {
-        "id":  "AaIdzKO9OHYb8rn6w5JB",
+        "id":  "AaIgN3QGvdQeKIw9d3mO",
         "key":  "AnaisPerron_SOEN343-Council:demo/rehearse.sh",
         "name":  "rehearse.sh",
         "qualifier":  "FIL",
@@ -9813,7 +9953,7 @@
                      ]
     },
     {
-        "id":  "AaIdzKO9OHYb8rn6w5JD",
+        "id":  "AaIgN3QGvdQeKIw9d3mQ",
         "key":  "AnaisPerron_SOEN343-Council:demo/rehearse.yaml",
         "name":  "rehearse.yaml",
         "qualifier":  "FIL",
@@ -10649,7 +10789,7 @@
                      ]
     },
     {
-        "id":  "AaIfj2dbUseLLAwL4dJQ",
+        "id":  "AaIgN3QEvdQeKIw9d3ln",
         "key":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/test/java/com/council/tenderapp/rvw/RestaurantRatingAverageIntegrationTest.java",
         "name":  "RestaurantRatingAverageIntegrationTest.java",
         "qualifier":  "FIL",
@@ -10677,7 +10817,7 @@
                      ]
     },
     {
-        "id":  "AaIY8O0f6YLRJOyMpPps",
+        "id":  "AaIgN3QFvdQeKIw9d3lz",
         "key":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/java/com/council/tenderapp/rvw/services/RestaurantRatingService.java",
         "name":  "RestaurantRatingService.java",
         "qualifier":  "FIL",
@@ -10705,7 +10845,7 @@
                      ]
     },
     {
-        "id":  "AaIY8O0f6YLRJOyMpPpp",
+        "id":  "AaIgN3QFvdQeKIw9d3lw",
         "key":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/java/com/council/tenderapp/rvw/dtos/RestaurantRatingSummary.java",
         "name":  "RestaurantRatingSummary.java",
         "qualifier":  "FIL",
@@ -11097,7 +11237,7 @@
                      ]
     },
     {
-        "id":  "AaId0pAIQ8uig-Dc1ZgF",
+        "id":  "AaIgN3QGvdQeKIw9d3mC",
         "key":  "AnaisPerron_SOEN343-Council:tender-app/frontend/src/components/customer/RestaurantSwipeCard.tsx",
         "name":  "RestaurantSwipeCard.tsx",
         "qualifier":  "FIL",
@@ -11541,6 +11681,30 @@
                      ]
     },
     {
+        "id":  "AaIgN3QGvdQeKIw9d3mI",
+        "key":  "AnaisPerron_SOEN343-Council:docs/metrics/phase4/sonarqube-all-issues.json",
+        "name":  "sonarqube-all-issues.json",
+        "qualifier":  "FIL",
+        "path":  "docs/metrics/phase4/sonarqube-all-issues.json",
+        "language":  "json",
+        "measures":  [
+                         {
+                             "metric":  "ncloc",
+                             "value":  "1572"
+                         },
+                         {
+                             "metric":  "cognitive_complexity",
+                             "value":  "0",
+                             "bestValue":  true
+                         },
+                         {
+                             "metric":  "code_smells",
+                             "value":  "0",
+                             "bestValue":  true
+                         }
+                     ]
+    },
+    {
         "id":  "AaIVimG50AkOaJD7gkMu",
         "key":  "AnaisPerron_SOEN343-Council:docs/metrics/phase3/sonarqube-code-smells.json",
         "name":  "sonarqube-code-smells.json",
@@ -11551,6 +11715,54 @@
                          {
                              "metric":  "ncloc",
                              "value":  "228"
+                         },
+                         {
+                             "metric":  "cognitive_complexity",
+                             "value":  "0",
+                             "bestValue":  true
+                         },
+                         {
+                             "metric":  "code_smells",
+                             "value":  "0",
+                             "bestValue":  true
+                         }
+                     ]
+    },
+    {
+        "id":  "AaIgN3QGvdQeKIw9d3mJ",
+        "key":  "AnaisPerron_SOEN343-Council:docs/metrics/phase4/sonarqube-code-smells.json",
+        "name":  "sonarqube-code-smells.json",
+        "qualifier":  "FIL",
+        "path":  "docs/metrics/phase4/sonarqube-code-smells.json",
+        "language":  "json",
+        "measures":  [
+                         {
+                             "metric":  "ncloc",
+                             "value":  "228"
+                         },
+                         {
+                             "metric":  "cognitive_complexity",
+                             "value":  "0",
+                             "bestValue":  true
+                         },
+                         {
+                             "metric":  "code_smells",
+                             "value":  "0",
+                             "bestValue":  true
+                         }
+                     ]
+    },
+    {
+        "id":  "AaIgN3QGvdQeKIw9d3mN",
+        "key":  "AnaisPerron_SOEN343-Council:.github/workflows/sonarqube-historical.yml",
+        "name":  "sonarqube-historical.yml",
+        "qualifier":  "FIL",
+        "path":  ".github/workflows/sonarqube-historical.yml",
+        "language":  "yaml",
+        "measures":  [
+                         {
+                             "metric":  "ncloc",
+                             "value":  "57"
                          },
                          {
                              "metric":  "cognitive_complexity",
@@ -11589,7 +11801,31 @@
                      ]
     },
     {
-        "id":  "AaIY8O0f6YLRJOyMpPpo",
+        "id":  "AaIgN3QGvdQeKIw9d3mK",
+        "key":  "AnaisPerron_SOEN343-Council:docs/metrics/phase4/sonarqube-measures.json",
+        "name":  "sonarqube-measures.json",
+        "qualifier":  "FIL",
+        "path":  "docs/metrics/phase4/sonarqube-measures.json",
+        "language":  "json",
+        "measures":  [
+                         {
+                             "metric":  "ncloc",
+                             "value":  "12175"
+                         },
+                         {
+                             "metric":  "cognitive_complexity",
+                             "value":  "0",
+                             "bestValue":  true
+                         },
+                         {
+                             "metric":  "code_smells",
+                             "value":  "0",
+                             "bestValue":  true
+                         }
+                     ]
+    },
+    {
+        "id":  "AaIgN3QFvdQeKIw9d3lu",
         "key":  "AnaisPerron_SOEN343-Council:tender-app/backend/src/main/java/com/council/tenderapp/rvw/dtos/SubmitRatingRequestDto.java",
         "name":  "SubmitRatingRequestDto.java",
         "qualifier":  "FIL",
