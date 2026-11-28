@@ -1,0 +1,26 @@
+@startuml
+title Submit a rating (success scenario)
+
+actor Customer as C
+participant "Customer App" as UI
+participant OrderRatingController as Ctl
+participant OrderRatingService as Svc
+participant OrderRepository as OR
+participant OrderRatingRepository as RR
+
+C -> UI : Rate delivered order\n(restaurantStars, courierStars, comment)
+UI -> Ctl : POST /api/orders/{orderId}/rating
+Ctl -> Svc : rate(customerId, orderId, request)
+Svc -> OR : findWithLockById(orderId)
+OR --> Svc : Order (row locked)
+note over Svc : R-RVW-01
+Svc -> RR : existsByOrderId(orderId)
+RR --> Svc : false
+Svc -> Svc : checkCourierStars(order, request)
+Svc -> Svc : new OrderRating(...), normalise(comment)
+Svc -> RR : saveAndFlush(rating)
+RR --> Svc : saved OrderRating
+Svc --> Ctl : OrderRatingResponseDto.from(rating)
+Ctl --> UI : 201 Created
+UI --> C : Rating accepted
+@enduml
