@@ -37,7 +37,7 @@ public class OrderCancellationService {
     @PreAuthorize("hasRole('CUSTOMER')")
     public OrderStatusResponseDto cancelForCustomer(Long customerId, Long orderId) {
         Order order = lockedOrder(orderId);
-        if (customerId == null || !customerId.equals(order.getCustomerId())) {
+        if (!OrderAccessPolicy.isPlacedBy(order, customerId)) {
             throw new OrderAccessDeniedException("Order " + orderId + " does not belong to this customer");
         }
         return cancel(order);

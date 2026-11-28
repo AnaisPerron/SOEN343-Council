@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.council.tenderapp.ord.entities.Order;
 import com.council.tenderapp.ord.repositories.OrderRepository;
+import com.council.tenderapp.ord.services.OrderAccessPolicy;
 
 @Service
 public class OrderBelongingService
@@ -31,18 +32,12 @@ public class OrderBelongingService
     @Transactional(readOnly = true)
     public boolean isCourierOrder(Long orderId, Long courierId) {
         Optional<Order> order = orderRepository.findById(orderId);
-        if (order.isEmpty() || !Objects.equals(order.get().getCourierId(), courierId)) {
-            return false;
-        }
-        return true;
+        return order.isPresent() && OrderAccessPolicy.isAssignedTo(order.get(), courierId);
     }
 
     @Transactional(readOnly = true)
     public boolean isRestaurantOrder(Long orderId, Long restaurantId) {
         Optional<Order> order = orderRepository.findById(orderId);
-        if (order.isEmpty() || !Objects.equals(order.get().getRestaurantId(), restaurantId)) {
-            return false;
-        }
-        return true;
+        return order.isPresent() && OrderAccessPolicy.isFromRestaurant(order.get(), restaurantId);
     }
 }

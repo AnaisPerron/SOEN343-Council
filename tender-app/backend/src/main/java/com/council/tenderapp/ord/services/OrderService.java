@@ -169,11 +169,7 @@ public class OrderService {
     @Transactional
     public OrderResponse markPickedUpByCourier(Long courierId, Long orderId) {
         assignments.lockCouriers();
-        Order order = orderRepository.findByIdForUpdate(orderId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
-        if (!Objects.equals(order.getCourierId(), courierId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Order is not assigned to this courier");
-        }
+        Order order = getAssignedOrderForUpdate(courierId, orderId);
 
         OrderStatus previousStatus = order.getStatus();
         assignments.pickUp(order);
@@ -197,11 +193,7 @@ public class OrderService {
     @Transactional
     public OrderResponse markDeliveredByCourier(Long courierId, Long orderId) {
         assignments.lockCouriers();
-        Order order = orderRepository.findByIdForUpdate(orderId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
-        if (!Objects.equals(order.getCourierId(), courierId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Order is not assigned to this courier");
-        }
+        Order order = getAssignedOrderForUpdate(courierId, orderId);
 
         OrderStatus previousStatus = order.getStatus();
         assignments.current(order);
@@ -290,11 +282,20 @@ public class OrderService {
     private Order getOwnedOrderForUpdate(Long restaurantId, Long orderId) {
         Order order = orderRepository.findByIdForUpdate(orderId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
-        if (!Objects.equals(order.getRestaurantId(), restaurantId)) {
+        if (!OrderAccessPolicy.isFromRestaurant(order, restaurantId)) {
             throw new ResponseStatusException(
                 HttpStatus.BAD_REQUEST,
                 "Order does not belong to the restaurant"
             );
+        }
+        return order;
+    }
+
+    private Order getAssignedOrderForUpdate(Long courierId, Long orderId) {
+        Order order = orderRepository.findByIdForUpdate(orderId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+        if (!OrderAccessPolicy.isAssignedTo(order, courierId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Order is not assigned to this courier");
         }
         return order;
     }
