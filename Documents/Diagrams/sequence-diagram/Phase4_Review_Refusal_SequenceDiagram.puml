@@ -1,0 +1,37 @@
+@startuml
+title Submit a rating (refusals)
+
+actor Customer as C
+participant "Customer App" as UI
+participant OrderRatingController as Ctl
+participant OrderRatingService as Svc
+participant GlobalExceptionHandler as GEH
+
+C -> UI : Rate order
+UI -> Ctl : POST /api/orders/{orderId}/rating
+
+alt
+    Ctl --> GEH : MethodArgumentNotValidException
+    GEH --> UI : 400 Bad Request
+else Valid request
+    Ctl -> Svc : rate(customerId, orderId, request)
+
+    alt Order not found
+        Svc --> GEH : OrderNotFoundException
+        GEH --> UI : 404 Not Found
+    else Order belongs to another customer
+        Svc --> GEH : OrderAccessDeniedException
+        GEH --> UI : 403 Forbidden
+    else Order is not Delivered
+        Svc --> GEH : InvalidOrderStateException
+        GEH --> UI : 409 Conflict
+    else Order already rated
+        Svc --> GEH : OrderAlreadyRatedException
+        GEH --> UI : 409 Conflict
+    else Courier stars missing or unexpected
+        Svc --> GEH : InvalidRatingException
+        GEH --> UI : 400 Bad Request
+    end
+end
+UI --> C : Show error message
+@enduml
