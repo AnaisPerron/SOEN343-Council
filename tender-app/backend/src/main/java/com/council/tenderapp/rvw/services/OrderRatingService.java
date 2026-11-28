@@ -3,7 +3,6 @@ package com.council.tenderapp.rvw.services;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Locale;
-import java.util.Objects;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -17,6 +16,7 @@ import com.council.tenderapp.ord.exceptions.InvalidOrderStateException;
 import com.council.tenderapp.ord.exceptions.OrderAccessDeniedException;
 import com.council.tenderapp.ord.exceptions.OrderNotFoundException;
 import com.council.tenderapp.ord.repositories.OrderRepository;
+import com.council.tenderapp.ord.services.OrderAccessPolicy;
 import com.council.tenderapp.prc.exceptions.UnauthorizedOrderAccessException;
 import com.council.tenderapp.reg.entities.Role;
 import com.council.tenderapp.rvw.dtos.OrderRatingResponseDto;
@@ -51,9 +51,9 @@ public class OrderRatingService {
         Order order = orders.findById(orderId)
                 .orElseThrow(() -> new OrderNotFoundException("Order not found with id: " + orderId));
         boolean permitted = switch (role) {
-            case CUSTOMER -> Objects.equals(order.getCustomerId(), accountId);
-            case COURIER -> Objects.equals(order.getCourierId(), accountId);
-            case STAFF -> Objects.equals(order.getRestaurantId(), restaurantId);
+            case CUSTOMER -> OrderAccessPolicy.isPlacedBy(order, accountId);
+            case COURIER -> OrderAccessPolicy.isAssignedTo(order, accountId);
+            case STAFF -> OrderAccessPolicy.isFromRestaurant(order, restaurantId);
             default -> false;
         };
         if (!permitted) {
@@ -76,7 +76,7 @@ public class OrderRatingService {
         // Locking the order serialises concurrent ratings of it; the unique order_id is the backstop.
         Order order = orders.findWithLockById(orderId)
                 .orElseThrow(() -> new OrderNotFoundException("Order not found with id: " + orderId));
-        if (customerId == null || !customerId.equals(order.getCustomerId())) {
+        if (!OrderAccessPolicy.isPlacedBy(order, customerId)) {
             throw new OrderAccessDeniedException("Order " + orderId + " does not belong to this customer");
         }
         if (order.getStatus() != OrderStatus.DELIVERED) {
